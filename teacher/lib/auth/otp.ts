@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { getDb } from '../db';
 
 // In-memory OTP store for MVP (use Redis in production)
@@ -15,8 +16,8 @@ export function generateOtp(phone: string): string {
   if (process.env.NODE_ENV === 'development') {
     return '123456';
   }
-  // PROD: Generate real 6-digit OTP
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // PROD: Generate secure 6-digit OTP using crypto
+  return String(randomInt(100000, 999999));
 }
 
 export function requestOtp(phone: string): { success: boolean; error?: string } {
@@ -46,11 +47,6 @@ export function requestOtp(phone: string): { success: boolean; error?: string } 
   // Generate and store OTP
   const otp = generateOtp(phone);
   otpStore.set(phone, { otp, expiresAt: now + OTP_EXPIRY_MS });
-
-  // DEV: Log OTP for testing
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[DEV] OTP for ${phone}: ${otp}`);
-  }
 
   return { success: true };
 }
