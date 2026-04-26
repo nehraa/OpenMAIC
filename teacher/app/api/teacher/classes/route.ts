@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { withRole } from '@/middleware';
+import { getDb } from '@/lib/db';
+
+export const GET = withRole(['teacher'], async (req, ctx) => {
+  const db = getDb();
+
+  const classes = db.prepare(`
+    SELECT c.*,
+           (SELECT COUNT(*) FROM class_memberships WHERE class_id = c.id) as student_count
+    FROM classes c
+    WHERE c.teacher_id = ?
+    ORDER BY c.created_at DESC
+  `).all(ctx.user.id);
+
+  return NextResponse.json({ classes });
+});
+
+export const POST = withRole(['teacher'], async (req, ctx) => {
+  const { name, subject, batch } = await req.json();
+
+  if (!name) {
+    return NextResponse.json(
+      { error: 'Class name is required' },
+      { status: 400 }
+    );
+  }
+
+  // Generate unique join code
+  const join_code = generateJoinCode();
+
+  const db = getDb();
+
+  const result = db.prepare(`
+    INSERT INTO classes (teacher_id, name, subject, batch, join_code)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(ctx.user.id, name, subject || '', batch || '', join_code);
+
+  const newClass = db.prepare('SELECT * FROM classes WHERE id = ?').get(result.lastInsertRowid);
+
+  return NextResponse.json({ class: newClass }, { status: 201 });
+});
+
+function generateJoinCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
