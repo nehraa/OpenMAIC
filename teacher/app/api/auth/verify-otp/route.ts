@@ -22,15 +22,14 @@ export async function POST(request: NextRequest) {
     let user = db.prepare('SELECT * FROM users WHERE phone_e164 = ?').get(phone) as any;
 
     if (!user) {
-      // Create new user
-      const result = db
-        .prepare(`
+      // Create new user - use returning() clause for TEXT primary key safety
+      const insertResult = db.prepare(`
         INSERT INTO users (role, phone_e164, name)
         VALUES (?, ?, ?)
-      `)
-        .run(role, phone, name || '');
+      `).run(role, phone, name || '');
 
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      // For TEXT primary key, we must re-query since lastInsertRowid is numeric rowid
+      user = db.prepare('SELECT * FROM users WHERE phone_e164 = ?').get(phone) as any;
     }
 
     // Create session

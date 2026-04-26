@@ -18,11 +18,20 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'cd teacher && pnpm dev',
-    url: 'http://localhost:3001',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    env: { PORT: '3001' },
-  },
+  webServer: [
+    {
+      command: 'cd teacher && pnpm dev',
+      url: 'http://localhost:3001',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: { PORT: '3001' },
+    },
+    {
+      command: 'cd student && pnpm dev',
+      url: 'http://localhost:3002',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: { PORT: '3002' },
+    },
+  ],
 });

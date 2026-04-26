@@ -10,9 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check for core changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          CORE_CHANGES=$(git diff --name-only ${{ github.event.pull_request.base.sha || 'HEAD~1' }} HEAD | grep -E '^core/.*\.(ts|tsx|js|jsx|mts|cts)$' || true)
+          # Guard against missing/zero base (e.g., first push to a new branch)
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No usable base SHA; skipping core diff."
+            exit 0
+          fi
+          # Fetch base commit if not present
+          git fetch origin "$BASE_SHA" 2>/dev/null || true
+          CORE_CHANGES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
+            | grep -E '^core/' || true)
           if [ -n "$CORE_CHANGES" ]; then
             echo "ERROR: Changes detected in /core directory:"
             echo "$CORE_CHANGES"

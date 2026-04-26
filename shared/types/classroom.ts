@@ -5,7 +5,8 @@ export interface Class {
   subject: string;
   batch: string;
   join_code: string;
-  peer_visibility_enabled: boolean;
+  // SQLite stores as INTEGER (0 or 1); API normalizes to boolean on read
+  peer_visibility_enabled: boolean | number;
   created_at: string;
   updated_at: string;
 }

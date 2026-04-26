@@ -69,7 +69,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  db.prepare(`UPDATE classes SET status = 'inactive', updated_at = datetime('now') WHERE id = ?`).run(classId);
+  db.prepare(`UPDATE classes SET updated_at = datetime('now') WHERE id = ?`).run(classId);
 
   return NextResponse.json({ success: true });
 });

@@ -1,8 +1,5 @@
-{
-  "packages": [
-    "packages/*",
-    "teacher",
-    "student",
-    "shared"
-  ]
-}
+packages:
+  - "packages/*"
+  - "teacher"
+  - "student"
+  - "shared"

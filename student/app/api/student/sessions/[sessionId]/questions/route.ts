@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth/require-auth';
 import { getDb } from '@/lib/db';
-
-const QUESTION_RATE_LIMIT_MINUTES = 1;
+import { QUESTION_RATE_LIMIT_MINUTES } from '@shared/constants';
 
 // POST /api/student/sessions/[sessionId]/questions
 export const POST = async (
@@ -78,6 +77,17 @@ export const GET = async (
   const { sessionId } = await context.params;
 
   const db = getDb();
+
+  // Verify enrollment in the session's class before returning questions
+  const session = db.prepare(`
+    SELECT cs.class_id FROM classroom_sessions cs
+    JOIN class_memberships cm ON cm.class_id = cs.class_id
+    WHERE cs.id = ? AND cm.student_id = ?
+  `).get(sessionId, authResult.user.id) as { class_id: string } | undefined;
+
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found or not enrolled' }, { status: 404 });
+  }
 
   const questions = db.prepare(`
     SELECT id, session_id, student_id, question_text, answer_text, created_at, answered_at
