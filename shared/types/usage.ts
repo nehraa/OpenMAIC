@@ -1,8 +1,10 @@
+import type { UserRole } from './roles';
+
 export interface LLMUsageEvent {
   id: string;
   timestamp: string;
   actor_user_id: string;
-  actor_role: 'teacher' | 'student_classroom' | 'student_b2c';
+  actor_role: UserRole;
   provider: string;
   model: string;
   endpoint: string;

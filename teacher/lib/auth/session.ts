@@ -1,7 +1,6 @@
 import { getDb } from '../db';
 import type { User } from '@shared/types/roles';
-
-const SESSION_EXPIRY_DAYS = 7;
+import { SESSION_EXPIRY_DAYS } from '@shared/constants';
 
 interface UserRow {
   id: string;
@@ -35,8 +34,8 @@ export function getSession(sessionId: string): { user: User } | null {
            u.id as u_id, u.role, u.phone_e164, u.name, u.status, u.created_at, u.updated_at
     FROM auth_sessions s
     JOIN users u ON s.user_id = u.id
-    WHERE s.id = ? AND s.expires_at > datetime('now') AND u.status = 'active'
-  `).get(sessionId) as (UserRow & { expires_at: string }) | undefined;
+    WHERE s.id = ? AND s.expires_at > ? AND u.status = 'active'
+  `).get(sessionId, new Date().toISOString()) as (UserRow & { expires_at: string }) | undefined;
 
   if (!session) {
     return null;

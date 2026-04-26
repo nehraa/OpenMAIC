@@ -1,21 +1,2 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Database instance (singleton)
-let db: Database.Database | null = null;
-
-export function getDb(): Database.Database {
-  if (!db) {
-    const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'aic_classroom.db');
-    db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-  }
-  return db;
-}
-
-export function closeDb(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
-}
+// Re-export from db/index.ts which has schema initialization
+export { getDb, closeDb } from './db/index';
