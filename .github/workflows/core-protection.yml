@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check for core changes
         run: |
-          CORE_CHANGES=$(git diff --name-only ${{ github.event.pull_request.base.sha || 'HEAD~1' }} HEAD | grep -E '^core/.*\.(ts|tsx|js|jsx)$' || true)
+          CORE_CHANGES=$(git diff --name-only ${{ github.event.pull_request.base.sha || 'HEAD~1' }} HEAD | grep -E '^core/.*\.(ts|tsx|js|jsx|mts|cts)$' || true)
           if [ -n "$CORE_CHANGES" ]; then
             echo "ERROR: Changes detected in /core directory:"
             echo "$CORE_CHANGES"
