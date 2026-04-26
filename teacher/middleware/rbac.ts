@@ -2,28 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthContext } from './auth';
 import type { UserRole } from '@shared/types/roles';
 
-// Route handler type that supports params from Next.js App Router
-// Using any for routeContext to allow flexible param types across routes
-type RouteHandler = (
-  req: NextRequest,
-  context: AuthContext,
-  routeContext?: any
-) => Promise<NextResponse>;
-
+// Wrapper that adds role checking to auth - compatible with Next.js 16 route handlers
 export function withRole(
   allowedRoles: UserRole[],
-  handler: RouteHandler
+  handler: (req: NextRequest, ctx: AuthContext) => Promise<NextResponse>
 ) {
-  return async (req: NextRequest, ctx: AuthContext, routeContext: { params: Promise<{ [key: string]: string }> }) => {
+  return withAuth(async (req: NextRequest, ctx: AuthContext): Promise<NextResponse> => {
     if (!allowedRoles.includes(ctx.user.role)) {
-      return NextResponse.json(
-        { error: 'Access denied. Insufficient permissions.' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
-
-    // Forward all arguments to the handler including routeContext (params)
-    // routeContext is passed by Next.js for dynamic routes
-    return handler(req, ctx, routeContext);
-  };
+    return handler(req, ctx);
+  });
 }
