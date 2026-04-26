@@ -25,9 +25,24 @@ export function getDb(): Database.Database {
 }
 
 function runMigrations(database: Database.Database): void {
+  // Run base schema
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   database.exec(schema);
+
+  // Run numbered migrations from migrations folder
+  const migrationsDir = path.join(__dirname, 'migrations');
+  if (fs.existsSync(migrationsDir)) {
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    for (const file of migrationFiles) {
+      const migrationPath = path.join(migrationsDir, file);
+      const migration = fs.readFileSync(migrationPath, 'utf-8');
+      database.exec(migration);
+    }
+  }
 }
 
 export default { getDb };
