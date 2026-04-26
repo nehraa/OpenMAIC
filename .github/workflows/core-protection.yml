@@ -1,0 +1,24 @@
+name: Core Protection
+on:
+  push:
+    branches: [main, phase-1-implementation]
+  pull_request:
+    branches: [main, phase-1-implementation]
+
+jobs:
+  check-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for core changes
+        run: |
+          CORE_CHANGES=$(git diff --name-only ${{ github.event.pull_request.base.sha || 'HEAD~1' }} HEAD | grep -E '^core/.*\.(ts|tsx|js|jsx)$' || true)
+          if [ -n "$CORE_CHANGES" ]; then
+            echo "ERROR: Changes detected in /core directory:"
+            echo "$CORE_CHANGES"
+            echo ""
+            echo "The /core directory is the sacred baseline for Phase 1."
+            echo "All teacher/student development must happen in /teacher and /student."
+            exit 1
+          fi
+          echo "No core changes detected. Core protection passed."
