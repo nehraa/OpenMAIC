@@ -1,0 +1,117 @@
+===== FILE: student/app/layout.tsx =====
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Student App',
+  description: 'Aidutech Student Dashboard',
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
+        {children}
+      </body>
+    </html>
+  );
+}
+
+===== FILE: student/app/page.tsx =====
+export default function HomePage() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <h1 className="text-4xl font-bold">Student Dashboard</h1>
+      <p className="mt-4 text-lg text-muted-foreground">Welcome to Aidutech Student App</p>
+    </main>
+  );
+}
+
+===== FILE: student/lib/utils.ts =====
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+===== FILE: student/next-env.d.ts =====
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+===== FILE: student/next.config.ts =====
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+};
+
+export default nextConfig;
+
+===== FILE: teacher/app/layout.tsx =====
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Teacher App',
+  description: 'Aidutech Teacher Dashboard',
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
+        {children}
+      </body>
+    </html>
+  );
+}
+
+===== FILE: teacher/app/page.tsx =====
+export default function HomePage() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <h1 className="text-4xl font-bold">Teacher Dashboard</h1>
+      <p className="mt-4 text-lg text-muted-foreground">Welcome to Aidutech Teacher App</p>
+    </main>
+  );
+}
+
+===== FILE: teacher/lib/utils.ts =====
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+===== FILE: teacher/next-env.d.ts =====
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+===== FILE: teacher/next.config.ts =====
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+  serverExternalPackages: ['better-sqlite3'],
+};
+
+export default nextConfig;
+

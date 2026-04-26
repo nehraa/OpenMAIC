@@ -10,6 +10,7 @@ export interface User {
   updated_at: string;
 }
 
+// Will be used in Task 2.2 for session management
 export interface AuthSession {
   id: string;
   user_id: string;

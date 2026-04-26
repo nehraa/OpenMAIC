@@ -1,0 +1,74 @@
+===== FILE: .github/workflows/core-protection.yml =====
+name: Core Protection
+on:
+  push:
+    branches: [main, phase-1-implementation]
+  pull_request:
+    branches: [main, phase-1-implementation]
+
+jobs:
+  check-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for core changes
+        run: |
+          CORE_CHANGES=$(git diff --name-only ${{ github.event.pull_request.base.sha || 'HEAD~1' }} HEAD | grep -E '^core/.*\.(ts|tsx|js|jsx)$' || true)
+          if [ -n "$CORE_CHANGES" ]; then
+            echo "ERROR: Changes detected in /core directory:"
+            echo "$CORE_CHANGES"
+            echo ""
+            echo "The /core directory is the sacred baseline for Phase 1."
+            echo "All teacher/student development must happen in /teacher and /student."
+            exit 1
+          fi
+          echo "No core changes detected. Core protection passed."
+===== FILE: CONTRIBUTING.md =====
+# Contributing to Aidutech Classroom
+
+Thank you for your interest in contributing to the Aidutech Classroom product.
+
+## Repository Rule (Phase 1)
+
+The `/core` directory is the sacred baseline from OpenMAIC and must remain untouched during Phase 1 development.
+
+**Why:** Phase 1 builds teacher and student products by copying/adapting code from core into `/teacher` and `/student`.
+
+**How to handle bugs in core:** File an issue, get approval before modifying core.
+
+**Copy-on-write policy:** If you need functionality from core, copy it to teacher/student and adapt there. Never modify core directly.
+
+## Getting Started
+
+1. Clone the repository
+2. Create a feature branch from `main`
+3. Make your changes in `/teacher` or `/student` directories
+4. Submit a pull request for review
+
+## Development Guidelines
+
+- All Phase 1 development must occur in `/teacher` and `/student` directories
+- Use the CI workflow to validate your changes
+- Run tests before submitting pull requests
+===== FILE: scripts/check-core-changes.sh =====
+#!/bin/bash
+# Warn if core files are being committed
+
+CORE_CHANGES=$(git diff --cached --name-only | grep -E '^core/.*\.(ts|tsx|js|jsx)$' || true)
+
+if [ -n "$CORE_CHANGES" ]; then
+  echo "WARNING: You are committing changes to /core"
+  echo "This is NOT allowed during Phase 1 development."
+  echo ""
+  echo "Changed files:"
+  echo "$CORE_CHANGES"
+  echo ""
+  echo "All Phase 1 teacher/student work must go in /teacher and /student."
+  echo "If you need something from core, COPY and ADAPT it."
+  echo ""
+  read -p "Continue with commit? (y/N) " -n 1 -r
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Commit cancelled."
+    exit 1
+  fi
+fi
