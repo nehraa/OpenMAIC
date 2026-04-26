@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Next.js
+.next
+out
+
+# Build
+build
+dist
+
+# System files
+.DS_Store
+*.log
+
+# TypeScript
+*.tsbuildinfo

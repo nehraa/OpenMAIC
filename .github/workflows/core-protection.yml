@@ -1,0 +1,37 @@
+name: Core Protection
+on:
+  push:
+    branches: [main, phase-1-implementation]
+  pull_request:
+    branches: [main, phase-1-implementation]
+
+jobs:
+  check-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for core changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # Guard against missing/zero base (e.g., first push to a new branch)
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No usable base SHA; skipping core diff."
+            exit 0
+          fi
+          # Fetch base commit if not present
+          git fetch origin "$BASE_SHA" 2>/dev/null || true
+          CORE_CHANGES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
+            | grep -E '^core/' || true)
+          if [ -n "$CORE_CHANGES" ]; then
+            echo "ERROR: Changes detected in /core directory:"
+            echo "$CORE_CHANGES"
+            echo ""
+            echo "The /core directory is the sacred baseline for Phase 1."
+            echo "All teacher/student development must happen in /teacher and /student."
+            exit 1
+          fi
+          echo "No core changes detected. Core protection passed."

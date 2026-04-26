@@ -1,0 +1,40 @@
+{
+  "name": "@aidutech/teacher",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "check": "prettier . --check",
+    "format": "prettier . --write"
+  },
+  "dependencies": {
+    "next": "16.1.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "better-sqlite3": "^11.9.1",
+    "zod": "^4.3.5",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.0",
+    "lucide-react": "^0.562.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/better-sqlite3": "^7.6.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.2",
+    "prettier": "3.8.1",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48"
+}
