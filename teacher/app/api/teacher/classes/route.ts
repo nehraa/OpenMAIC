@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import { getDb } from '@/lib/db';
 
+// Generate unique join code
+function generateJoinCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// GET /api/teacher/classes - List all classes for teacher
 export const GET = withRole(['teacher'], async (req, ctx) => {
   const db = getDb();
 
@@ -16,17 +27,17 @@ export const GET = withRole(['teacher'], async (req, ctx) => {
   return NextResponse.json({ classes });
 });
 
+// POST /api/teacher/classes - Create a new class
 export const POST = withRole(['teacher'], async (req, ctx) => {
   const { name, subject, batch } = await req.json();
 
-  if (!name) {
+  if (!name || name.trim().length === 0) {
     return NextResponse.json(
       { error: 'Class name is required' },
       { status: 400 }
     );
   }
 
-  // Generate unique join code
   const join_code = generateJoinCode();
 
   const db = getDb();
@@ -34,18 +45,9 @@ export const POST = withRole(['teacher'], async (req, ctx) => {
   const result = db.prepare(`
     INSERT INTO classes (teacher_id, name, subject, batch, join_code)
     VALUES (?, ?, ?, ?, ?)
-  `).run(ctx.user.id, name, subject || '', batch || '', join_code);
+  `).run(ctx.user.id, name.trim(), subject?.trim() || '', batch?.trim() || '', join_code);
 
   const newClass = db.prepare('SELECT * FROM classes WHERE id = ?').get(result.lastInsertRowid);
 
   return NextResponse.json({ class: newClass }, { status: 201 });
 });
-
-function generateJoinCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
