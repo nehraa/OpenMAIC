@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import { getDb } from '@/lib/db';
+import type { AuthContext } from '@/middleware/auth';
 
 // Generate unique join code
 function generateJoinCode(): string {
@@ -13,7 +14,7 @@ function generateJoinCode(): string {
 }
 
 // GET /api/teacher/classes - List all classes for teacher
-export const GET = withRole(['teacher'], async (req, ctx) => {
+export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthContext) => {
   const db = getDb();
 
   const classes = db.prepare(`
@@ -28,14 +29,11 @@ export const GET = withRole(['teacher'], async (req, ctx) => {
 });
 
 // POST /api/teacher/classes - Create a new class
-export const POST = withRole(['teacher'], async (req, ctx) => {
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
   const { name, subject, batch } = await req.json();
 
   if (!name || name.trim().length === 0) {
-    return NextResponse.json(
-      { error: 'Class name is required' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Class name is required' }, { status: 400 });
   }
 
   const join_code = generateJoinCode();

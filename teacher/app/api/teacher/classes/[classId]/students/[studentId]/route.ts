@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import { getDb } from '@/lib/db';
-
-interface RouteParams {
-  params: Promise<{ classId: string; studentId: string }>;
-}
+import type { AuthContext } from '@/middleware/auth';
 
 // DELETE /api/teacher/classes/[classId]/students/[studentId] - Remove student from class
-export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: any, { params }: RouteParams) => {
-  const { classId, studentId } = await params;
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
+  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
+  const studentId = pathParts[pathParts.length - 1];
+  const classId = pathParts[pathParts.length - 3];
   const db = getDb();
 
-  // Verify ownership
   const classData = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
   if (!classData) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  // Remove membership
   const result = db.prepare('DELETE FROM class_memberships WHERE class_id = ? AND student_id = ?').run(classId, studentId);
 
   if (result.changes === 0) {
