@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS assignment_attempts (
   started_at TEXT NOT NULL DEFAULT (datetime('now')),
   submitted_at TEXT,
   score_percent REAL,
+  answers_json TEXT,
   completion_state TEXT NOT NULL DEFAULT 'pending' CHECK (completion_state IN ('pending', 'in_progress', 'submitted', 'graded')),
   UNIQUE(assignment_id, student_id)
 );

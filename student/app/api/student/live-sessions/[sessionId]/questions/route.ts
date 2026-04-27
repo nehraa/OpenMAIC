@@ -41,13 +41,13 @@ export const POST = async (
     return NextResponse.json({ error: 'Questions can only be asked during live sessions' }, { status: 400 });
   }
 
-  // Verify student is enrolled in the assignment's class
+  // Verify student is enrolled in the assignment's class and is a recipient of the assignment
   const enrollment = db.prepare(`
     SELECT ar.id FROM assignment_recipients ar
     JOIN assignments a ON ar.assignment_id = a.id
     JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ar.assignment_id = ? AND cm.student_id = ?
-  `).get(session.assignment_id, authResult.user.id);
+    WHERE ar.assignment_id = ? AND ar.student_id = ? AND cm.student_id = ?
+  `).get(session.assignment_id, authResult.user.id, authResult.user.id);
 
   if (!enrollment) {
     return NextResponse.json({ error: 'Not enrolled in this class' }, { status: 403 });
@@ -66,12 +66,11 @@ export const POST = async (
     return NextResponse.json({ error: 'Please wait before asking another question' }, { status: 429 });
   }
 
-  const result = db.prepare(`
+  const createdQuestion = db.prepare(`
     INSERT INTO live_session_questions (session_id, student_id, question_text)
     VALUES (?, ?, ?)
-  `).run(sessionId, authResult.user.id, trimmedQuestion);
-
-  const createdQuestion = db.prepare('SELECT * FROM live_session_questions WHERE id = ?').get(result.lastInsertRowid);
+    RETURNING *
+  `).get(sessionId, authResult.user.id, trimmedQuestion);
 
   return NextResponse.json({ question: createdQuestion }, { status: 201 });
 };
@@ -95,9 +94,10 @@ export const GET = async (
   const session = db.prepare(`
     SELECT ls.assignment_id FROM live_sessions ls
     JOIN assignment_recipients ar ON ar.assignment_id = ls.assignment_id
-    JOIN class_memberships cm ON cm.class_id = ar.assignment_id
-    WHERE ls.id = ? AND cm.student_id = ?
-  `).get(sessionId, authResult.user.id) as { assignment_id: string } | undefined;
+    JOIN assignments a ON a.id = ls.assignment_id
+    JOIN class_memberships cm ON cm.class_id = a.class_id
+    WHERE ls.id = ? AND ar.student_id = ? AND cm.student_id = ?
+  `).get(sessionId, authResult.user.id, authResult.user.id) as { assignment_id: string } | undefined;
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found or not enrolled' }, { status: 404 });

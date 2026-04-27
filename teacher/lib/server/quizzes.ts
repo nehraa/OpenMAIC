@@ -140,16 +140,17 @@ export function createQuiz(data: CreateQuizData): Quiz {
   const db = getDb();
 
   // Create the quiz content asset
-  const result = db.prepare(`
+  const quiz = db.prepare(`
     INSERT INTO content_assets (owner_teacher_id, type, title, subject_tag, source_kind, source_ref)
     VALUES (?, 'quiz', ?, ?, 'manual', '')
-  `).run(
+    RETURNING *
+  `).get(
     data.teacherId,
     data.title,
     data.subjectTag || ''
-  );
+  ) as Quiz;
 
-  const assetId = result.lastInsertRowid;
+  const assetId = quiz.id;
 
   // Create initial draft version with empty questions
   db.prepare(`
@@ -157,7 +158,6 @@ export function createQuiz(data: CreateQuizData): Quiz {
     VALUES (?, 1, '{"questions":[]}', 'draft')
   `).run(assetId);
 
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ?').get(assetId) as Quiz;
   return quiz;
 }
 
@@ -368,32 +368,25 @@ export function addQuestion(quizId: string, questionData: AddQuestionData): Quiz
 /**
  * Update a question in the quiz
  */
-export function updateQuestion(questionId: string, data: UpdateQuestionData): QuizQuestion | null {
+export function updateQuestion(quizId: string, questionId: string, data: UpdateQuestionData): QuizQuestion | null {
   const db = getDb();
 
-  // Find the version containing this question
-  const versions = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE status = 'draft' ORDER BY version_number DESC
-  `).all() as QuizVersion[];
+  // Find the draft version for the specific quiz
+  const targetVersion = db.prepare(`
+    SELECT * FROM content_asset_versions WHERE asset_id = ? AND status = 'draft' ORDER BY version_number DESC LIMIT 1
+  `).get(quizId) as QuizVersion | null;
 
-  let targetVersion: QuizVersion | null = null;
-  let questionIndex = -1;
-
-  for (const version of versions) {
-    const payload: QuizPayload = JSON.parse(version.payload_json);
-    const idx = payload.questions.findIndex(q => q.id === questionId);
-    if (idx !== -1) {
-      targetVersion = version;
-      questionIndex = idx;
-      break;
-    }
-  }
-
-  if (!targetVersion || questionIndex === -1) {
+  if (!targetVersion) {
     return null;
   }
 
   const payload: QuizPayload = JSON.parse(targetVersion.payload_json);
+  const questionIndex = payload.questions.findIndex(q => q.id === questionId);
+
+  if (questionIndex === -1) {
+    return null;
+  }
+
   const question = payload.questions[questionIndex];
 
   // Update based on question type
@@ -430,32 +423,29 @@ export function updateQuestion(questionId: string, data: UpdateQuestionData): Qu
 /**
  * Delete a question from the quiz
  */
-export function deleteQuestion(questionId: string): boolean {
+export function deleteQuestion(quizId: string, questionId: string): boolean {
   const db = getDb();
 
-  // Find the version containing this question
-  const versions = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE status = 'draft' ORDER BY version_number DESC
-  `).all() as QuizVersion[];
+  // Find the draft version for the specific quiz
+  const version = db.prepare(`
+    SELECT * FROM content_asset_versions WHERE asset_id = ? AND status = 'draft' ORDER BY version_number DESC LIMIT 1
+  `).get(quizId) as QuizVersion | null;
 
-  let targetVersion: QuizVersion | null = null;
-
-  for (const version of versions) {
-    const payload: QuizPayload = JSON.parse(version.payload_json);
-    const idx = payload.questions.findIndex(q => q.id === questionId);
-    if (idx !== -1) {
-      targetVersion = version;
-      // Remove the question
-      payload.questions.splice(idx, 1);
-      // Update version
-      db.prepare(`
-        UPDATE content_asset_versions SET payload_json = ? WHERE id = ?
-      `).run(JSON.stringify(payload), targetVersion.id);
-      return true;
-    }
+  if (!version) {
+    return false;
   }
 
-  return false;
+  const payload: QuizPayload = JSON.parse(version.payload_json);
+  const idx = payload.questions.findIndex(q => q.id === questionId);
+  if (idx === -1) {
+    return false;
+  }
+
+  payload.questions.splice(idx, 1);
+  db.prepare(`
+    UPDATE content_asset_versions SET payload_json = ? WHERE id = ?
+  `).run(JSON.stringify(payload), version.id);
+  return true;
 }
 
 /**

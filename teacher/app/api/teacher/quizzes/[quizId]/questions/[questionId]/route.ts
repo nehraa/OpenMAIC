@@ -42,7 +42,7 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
   }
 
   try {
-    const updated = updateQuestion(questionId, {
+    const updated = updateQuestion(quizId, questionId, {
       question: parsed.data.question,
       options: parsed.data.options,
       correctIndex: parsed.data.correctIndex,
@@ -75,7 +75,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  const deleted = deleteQuestion(questionId);
+  const deleted = deleteQuestion(quizId, questionId);
   if (!deleted) {
     return NextResponse.json({ error: 'Question not found' }, { status: 404 });
   }

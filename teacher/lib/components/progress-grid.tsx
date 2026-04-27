@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 
 export interface StudentProgress {
   studentId: string;
@@ -227,8 +227,8 @@ export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: 
                 const isExpanded = expandedStudents.has(student.studentId);
 
                 return (
-                  <>
-                    <tr key={student.studentId} className="hover:bg-gray-50">
+                  <Fragment key={student.studentId}>
+                    <tr className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <button
                           onClick={() => toggleExpanded(student.studentId)}
@@ -330,7 +330,7 @@ export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: 
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })
             )}

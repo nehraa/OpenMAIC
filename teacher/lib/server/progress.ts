@@ -51,16 +51,15 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
     return null;
   }
 
-  // Build the base query for students in the class
-  let studentQuery = `
+  // Get all students in the class
+  const studentQuery = `
     SELECT DISTINCT u.id as student_id, u.name as student_name, u.phone_e164 as student_phone
     FROM users u
     INNER JOIN class_memberships cm ON cm.student_id = u.id
     WHERE cm.class_id = ?
   `;
-  const studentParams: (string | number)[] = [classId];
 
-  const students = db.prepare(studentQuery).all(...studentParams) as Array<{
+  const students = db.prepare(studentQuery).all(classId) as Array<{
     student_id: string;
     student_name: string;
     student_phone: string;
@@ -68,7 +67,7 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
 
   // Get all assignments for this class
   let assignmentQuery = `
-    SELECT a.id, a.title
+    SELECT a.id, a.title, a.slide_asset_version_id
     FROM assignments a
     WHERE a.class_id = ? AND a.status = 'released'
   `;
@@ -82,58 +81,106 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
   const assignments = db.prepare(assignmentQuery).all(...assignmentParams) as Array<{
     id: string;
     title: string;
+    slide_asset_version_id: string | null;
   }>;
+
+  if (assignments.length === 0 || students.length === 0) {
+    return {
+      classId,
+      className: classRecord.name,
+      students: students.map((s) => ({
+        studentId: s.student_id,
+        studentName: s.student_name,
+        studentPhone: s.student_phone,
+        assignments: []
+      })),
+      totalStudents: students.length
+    };
+  }
+
+  const assignmentIds = assignments.map((a) => a.id);
+  const placeholders = assignmentIds.map(() => '?').join(', ');
+
+  // Batch fetch slide progress for all students/assignments
+  const slideProgressRows = db.prepare(`
+    SELECT assignment_id, student_id, COUNT(DISTINCT slide_id) as slides_viewed
+    FROM assignment_slide_progress
+    WHERE assignment_id IN (${placeholders})
+    GROUP BY assignment_id, student_id
+  `).all(...assignmentIds) as Array<{ assignment_id: string; student_id: string; slides_viewed: number }>;
+
+  const slideProgressMap = new Map<string, number>();
+  slideProgressRows.forEach((row) => {
+    slideProgressMap.set(`${row.assignment_id}:${row.student_id}`, row.slides_viewed);
+  });
+
+  // Compute total slides per assignment from payload_json
+  const totalSlidesMap = new Map<string, number>();
+  for (const assignment of assignments) {
+    if (!assignment.slide_asset_version_id) {
+      totalSlidesMap.set(assignment.id, 0);
+      continue;
+    }
+    const versionRow = db.prepare(`
+      SELECT payload_json FROM content_asset_versions WHERE id = ?
+    `).get(assignment.slide_asset_version_id) as { payload_json: string } | undefined;
+    if (!versionRow) {
+      totalSlidesMap.set(assignment.id, 0);
+      continue;
+    }
+    try {
+      const payload = JSON.parse(versionRow.payload_json);
+      const slideCount = Array.isArray(payload.slides) ? payload.slides.length : 0;
+      totalSlidesMap.set(assignment.id, slideCount);
+    } catch {
+      totalSlidesMap.set(assignment.id, 0);
+    }
+  }
+
+  // Batch fetch attempts
+  const attemptRows = db.prepare(`
+    SELECT assignment_id, student_id, score_percent, submitted_at, started_at
+    FROM assignment_attempts
+    WHERE assignment_id IN (${placeholders})
+  `).all(...assignmentIds) as Array<{
+    assignment_id: string;
+    student_id: string;
+    score_percent: number | null;
+    submitted_at: string | null;
+    started_at: string;
+  }>;
+
+  const attemptMap = new Map<string, { score_percent: number | null; submitted_at: string | null; started_at: string }>();
+  attemptRows.forEach((row) => {
+    attemptMap.set(`${row.assignment_id}:${row.student_id}`, row);
+  });
+
+  // Batch fetch last slide view per student/assignment
+  const lastViewRows = db.prepare(`
+    SELECT assignment_id, student_id, MAX(viewed_at) as last_view
+    FROM assignment_slide_progress
+    WHERE assignment_id IN (${placeholders})
+    GROUP BY assignment_id, student_id
+  `).all(...assignmentIds) as Array<{ assignment_id: string; student_id: string; last_view: string | null }>;
+
+  const lastViewMap = new Map<string, string | null>();
+  lastViewRows.forEach((row) => {
+    lastViewMap.set(`${row.assignment_id}:${row.student_id}`, row.last_view);
+  });
 
   // Build progress data for each student
   const studentProgressList: StudentProgress[] = students.map((student) => {
     const assignmentProgressList: AssignmentProgress[] = assignments.map((assignment) => {
-      // Get slide progress count
-      const slideProgress = db.prepare(`
-        SELECT COUNT(DISTINCT slide_id) as slides_viewed
-        FROM assignment_slide_progress
-        WHERE assignment_id = ? AND student_id = ?
-      `).get(assignment.id, student.student_id) as { slides_viewed: number };
-
-      // Get total slides from content asset
-      const totalSlidesResult = db.prepare(`
-        SELECT COUNT(*) as total_slides
-        FROM content_asset_versions cav
-        INNER JOIN content_assets ca ON ca.id = cav.asset_id
-        WHERE cav.id = (
-          SELECT slide_asset_version_id FROM assignments WHERE id = ?
-        )
-      `).get(assignment.id) as { total_slides: number } | undefined;
-      const totalSlides = totalSlidesResult?.total_slides || 0;
-
-      // Get attempt data
-      const attempt = db.prepare(`
-        SELECT score_percent, submitted_at, started_at
-        FROM assignment_attempts
-        WHERE assignment_id = ? AND student_id = ?
-      `).get(assignment.id, student.student_id) as {
-        score_percent: number | null;
-        submitted_at: string | null;
-        started_at: string;
-      } | undefined;
-
-      // Get last activity (most recent slide view or attempt)
-      const lastActivity = db.prepare(`
-        SELECT MAX(viewed_at) as last_view
-        FROM assignment_slide_progress
-        WHERE assignment_id = ? AND student_id = ?
-        UNION ALL
-        SELECT MAX(started_at) as last_view
-        FROM assignment_attempts
-        WHERE assignment_id = ? AND student_id = ?
-      `).all(assignment.id, student.student_id, assignment.id, student.student_id) as Array<{ last_view: string | null }>;
-
-      const lastActivityAt = lastActivity
-        .map((r) => r.last_view)
+      const key = `${assignment.id}:${student.student_id}`;
+      const slidesViewed = slideProgressMap.get(key) || 0;
+      const totalSlides = totalSlidesMap.get(assignment.id) || 0;
+      const attempt = attemptMap.get(key);
+      const lastSlideView = lastViewMap.get(key) || null;
+      const lastActivityAt = [lastSlideView, attempt?.started_at]
         .filter(Boolean)
         .sort()
         .pop() || null;
 
-      // Calculate time spent (from attempt started_at to submitted_at or now)
       let totalTimeMinutes = 0;
       if (attempt) {
         const startTime = new Date(attempt.started_at).getTime();
@@ -146,9 +193,9 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
       return {
         assignmentId: assignment.id,
         assignmentTitle: assignment.title,
-        slidesViewed: slideProgress.slides_viewed,
+        slidesViewed,
         totalSlides,
-        slidesCompleted: totalSlides > 0 && slideProgress.slides_viewed >= totalSlides,
+        slidesCompleted: totalSlides > 0 && slidesViewed >= totalSlides,
         quizCompleted: !!attempt?.submitted_at,
         quizScorePercent: attempt?.score_percent ?? null,
         totalTimeMinutes,
@@ -248,16 +295,20 @@ export function getAssignmentProgress(assignmentId: string): AssignmentProgressR
     slideProgressMap.set(row.student_id, row.slides_viewed);
   });
 
-  // Get total slides
-  const totalSlidesResult = db.prepare(`
-    SELECT COUNT(*) as total_slides
-    FROM content_asset_versions cav
-    INNER JOIN content_assets ca ON ca.id = cav.asset_id
-    WHERE cav.id = (
-      SELECT slide_asset_version_id FROM assignments WHERE id = ?
-    )
-  `).get(assignmentId) as { total_slides: number } | undefined;
-  const totalSlides = totalSlidesResult?.total_slides || 0;
+  // Get total slides from slide asset payload_json
+  let totalSlides = 0;
+  const assignmentRow = db.prepare('SELECT slide_asset_version_id FROM assignments WHERE id = ?').get(assignmentId) as { slide_asset_version_id: string | null } | undefined;
+  if (assignmentRow?.slide_asset_version_id) {
+    const versionRow = db.prepare('SELECT payload_json FROM content_asset_versions WHERE id = ?').get(assignmentRow.slide_asset_version_id) as { payload_json: string } | undefined;
+    if (versionRow) {
+      try {
+        const payload = JSON.parse(versionRow.payload_json);
+        totalSlides = Array.isArray(payload.slides) ? payload.slides.length : 0;
+      } catch {
+        totalSlides = 0;
+      }
+    }
+  }
 
   // Get attempt data for all students
   const attemptMap = new Map<string, { score_percent: number | null; submitted_at: string | null; started_at: string }>();

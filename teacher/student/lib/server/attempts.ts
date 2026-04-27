@@ -36,19 +36,18 @@ export function startAttempt(studentId: string, assignmentId: string): Assignmen
   }
 
   // Create new attempt
-  const result = db.prepare(`
+  const attempt = db.prepare(`
     INSERT INTO assignment_attempts (assignment_id, student_id, completion_state)
     VALUES (?, ?, 'in_progress')
-  `).run(assignmentId, studentId);
-
-  const attempt = db.prepare('SELECT * FROM assignment_attempts WHERE id = ?').get(result.lastInsertRowid) as AssignmentAttempt;
+    RETURNING *
+  `).get(assignmentId, studentId) as AssignmentAttempt;
   return attempt;
 }
 
 /**
  * Records that a student has viewed a specific slide.
  */
-export function recordSlideView(attemptId: string, studentId: string, assignmentId: string, slideId: string): AssignmentSlideProgress {
+export function recordSlideView(studentId: string, assignmentId: string, slideId: string): AssignmentSlideProgress {
   const db = getDb();
 
   // Upsert slide progress (ignore if already viewed)
@@ -91,14 +90,14 @@ export function submitAttempt(
     throw new Error('Assignment already submitted');
   }
 
-  // Store answers as JSON in a separate table or update the attempt
-  // For now, we just mark as submitted - grading would happen async
+  // Store answers as JSON and mark as submitted
   db.prepare(`
     UPDATE assignment_attempts
     SET completion_state = 'submitted',
-        submitted_at = datetime('now')
+        submitted_at = datetime('now'),
+        answers_json = ?
     WHERE id = ?
-  `).run(attemptId);
+  `).run(JSON.stringify(answers), attemptId);
 
   // Update recipient visibility to completed
   db.prepare(`
