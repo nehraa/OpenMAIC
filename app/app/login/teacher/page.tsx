@@ -14,12 +14,12 @@ export default function TeacherLoginPage() {
     setIsLoading(true);
 
     // Bypass login: set role cookie and redirect to teacher app
-    document.cookie = `aidutech_role=teacher; path=/; max-age=${60 * 60 * 24 * 30}`;
-    document.cookie = `aidutech_name=${encodeURIComponent(name)}; path=/; max-age=${60 * 60 * 24 * 30}`;
+    document.cookie = `aidutech_role=teacher; path=/; domain=localhost; max-age=${60 * 60 * 24 * 30}`;
+    document.cookie = `aidutech_name=${encodeURIComponent(name)}; path=/; domain=localhost; max-age=${60 * 60 * 24 * 30}`;
 
     // Small delay for visual feedback before redirect
     await new Promise((resolve) => setTimeout(resolve, 500));
-    router.push('/teacher');
+    router.push('http://localhost:3001/teacher');
   };
 
   return (
