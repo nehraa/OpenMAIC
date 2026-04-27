@@ -6,13 +6,16 @@ export interface AuthContext {
   user: User;
 }
 
+type RouteContext = { params: Promise<Record<string, string>> };
+
 export function withAuth(
   handler: (
     req: NextRequest,
-    context: AuthContext
+    context: AuthContext,
+    routeCtx: RouteContext
   ) => Promise<NextResponse>
 ) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest, routeCtx: RouteContext = { params: Promise.resolve({}) }): Promise<NextResponse> => {
     const sessionId = req.headers.get('x-session-id');
 
     if (!sessionId) {
@@ -31,6 +34,6 @@ export function withAuth(
       );
     }
 
-    return handler(req, { user: session.user });
+    return handler(req, { user: session.user }, routeCtx);
   };
 }

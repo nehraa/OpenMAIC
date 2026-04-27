@@ -50,10 +50,11 @@ export function createScheduleJob(assignmentId: string, releaseAt: string): Sche
   }
 
   // Create new job
-  const result = db.prepare(`
+  const job = db.prepare(`
     INSERT INTO scheduler_jobs (target_type, target_id, run_at, status)
     VALUES ('assignment', ?, ?, 'pending')
-  `).run(assignmentId, releaseAt);
+    RETURNING *
+  `).get(assignmentId, releaseAt) as SchedulerJob;
 
   // Update assignment status to scheduled
   db.prepare(`
@@ -61,11 +62,11 @@ export function createScheduleJob(assignmentId: string, releaseAt: string): Sche
     WHERE id = ?
   `).run(releaseAt, assignmentId);
 
-  return db.prepare('SELECT * FROM scheduler_jobs WHERE id = ?').get(result.lastInsertRowid) as SchedulerJob;
+  return job;
 }
 
 /**
- * Cancels a scheduled job by setting its status to 'canceled'.
+ * Cancels a scheduled job by setting its status to 'failed' with a user-cancellation error.
  * Returns the updated job or null if no pending job was found.
  */
 export function cancelScheduleJob(assignmentId: string): SchedulerJob | null {

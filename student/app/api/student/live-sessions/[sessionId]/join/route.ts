@@ -24,13 +24,13 @@ export const POST = async (
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  // Verify student is enrolled in the assignment's class
+  // Verify student is enrolled in the assignment's class and is a recipient
   const enrollment = db.prepare(`
     SELECT ar.id FROM assignment_recipients ar
     JOIN assignments a ON ar.assignment_id = a.id
     JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ar.assignment_id = ? AND cm.student_id = ?
-  `).get(session.assignment_id, authResult.user.id);
+    WHERE ar.assignment_id = ? AND ar.student_id = ? AND cm.student_id = ?
+  `).get(session.assignment_id, authResult.user.id, authResult.user.id);
 
   if (!enrollment) {
     return NextResponse.json({ error: 'Not enrolled in this class' }, { status: 403 });

@@ -29,10 +29,11 @@ export interface AssignmentWithRecipients extends Assignment {
 export function createAssignment(data: CreateAssignmentData): Assignment {
   const db = getDb();
 
-  const result = db.prepare(`
+  const assignment = db.prepare(`
     INSERT INTO assignments (class_id, teacher_id, title, description, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')
-  `).run(
+    RETURNING *
+  `).get(
     data.classId,
     data.teacherId,
     data.title,
@@ -41,9 +42,7 @@ export function createAssignment(data: CreateAssignmentData): Assignment {
     data.quizAssetVersionId || null,
     data.releaseAt || null,
     data.dueAt || null
-  );
-
-  const assignment = db.prepare('SELECT * FROM assignments WHERE id = ?').get(result.lastInsertRowid) as Assignment;
+  ) as Assignment;
   return assignment;
 }
 
@@ -110,21 +109,15 @@ export function addRecipients(assignmentId: string, studentIds: string[]): Assig
   const insertedRecipients: AssignmentRecipient[] = [];
 
   const insertStmt = db.prepare(`
-    INSERT INTO assignment_recipients (assignment_id, student_id, visibility_status)
+    INSERT OR IGNORE INTO assignment_recipients (assignment_id, student_id, visibility_status)
     VALUES (?, ?, 'hidden')
-  `);
-
-  const selectStmt = db.prepare(`
-    SELECT * FROM assignment_recipients WHERE assignment_id = ? AND student_id = ?
+    RETURNING *
   `);
 
   const insertMany = db.transaction((ids: string[]) => {
     for (const studentId of ids) {
-      // Check if already exists
-      const existing = selectStmt.get(assignmentId, studentId) as AssignmentRecipient | undefined;
-      if (!existing) {
-        const result = insertStmt.run(assignmentId, studentId);
-        const recipient = db.prepare('SELECT * FROM assignment_recipients WHERE id = ?').get(result.lastInsertRowid) as AssignmentRecipient;
+      const recipient = insertStmt.get(assignmentId, studentId) as AssignmentRecipient | undefined;
+      if (recipient) {
         insertedRecipients.push(recipient);
       }
     }

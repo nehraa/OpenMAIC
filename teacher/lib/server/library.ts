@@ -28,19 +28,20 @@ export function saveGeneratedContent(data: SaveAssetData): ContentAsset {
   const db = getDb();
 
   // Create the asset
-  const result = db.prepare(`
+  const asset = db.prepare(`
     INSERT INTO content_assets (owner_teacher_id, type, title, subject_tag, source_kind, source_ref)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
+    RETURNING *
+  `).get(
     data.teacherId,
     data.type,
     data.title,
     data.subjectTag || '',
     data.sourceKind || 'ai_generated',
     data.sourceRef || ''
-  );
+  ) as ContentAsset;
 
-  const assetId = String(result.lastInsertRowid) as string;
+  const assetId = asset.id;
 
   // Create the first version
   db.prepare(`
@@ -48,7 +49,6 @@ export function saveGeneratedContent(data: SaveAssetData): ContentAsset {
     VALUES (?, 1, ?, 'published')
   `).run(assetId, JSON.stringify(data.payload));
 
-  const asset = db.prepare('SELECT * FROM content_assets WHERE id = ?').get(assetId) as ContentAsset;
   return asset;
 }
 
@@ -156,10 +156,11 @@ export function reuseAsset(teacherId: string, data: ReuseAssetData): import('@sh
   // Create assignment referencing the asset version
   const assignmentTitle = data.title || asset.title;
 
-  const result = db.prepare(`
+  const assignment = db.prepare(`
     INSERT INTO assignments (class_id, teacher_id, title, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')
-  `).run(
+    RETURNING *
+  `).get(
     data.targetClassId,
     teacherId,
     assignmentTitle,
@@ -167,9 +168,7 @@ export function reuseAsset(teacherId: string, data: ReuseAssetData): import('@sh
     asset.type === 'quiz' ? currentVersion.id : null,
     data.releaseAt || null,
     data.dueAt || null
-  );
-
-  const assignment = db.prepare('SELECT * FROM assignments WHERE id = ?').get(result.lastInsertRowid) as import('@shared/types/assignment').Assignment;
+  ) as import('@shared/types/assignment').Assignment;
   return assignment;
 }
 

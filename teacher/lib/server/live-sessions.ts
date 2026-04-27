@@ -42,16 +42,15 @@ export function createLiveSession(assignmentId: string, teacherId: string): Live
     timestamp: new Date().toISOString()
   };
 
-  const result = db.prepare(`
+  const session = db.prepare(`
     INSERT INTO live_sessions (assignment_id, teacher_id, state_snapshot_json, status)
     VALUES (?, ?, ?, 'live')
-  `).run(
+    RETURNING *
+  `).get(
     assignmentId,
     teacherId,
     JSON.stringify(initialState)
-  );
-
-  const session = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(result.lastInsertRowid) as LiveSession;
+  ) as LiveSession;
   return session;
 }
 
@@ -165,12 +164,13 @@ export function joinSession(sessionId: string, userId: string): LiveSessionParti
     return db.prepare('SELECT * FROM live_session_participants WHERE id = ?').get(existing.id) as LiveSessionParticipant;
   }
 
-  const result = db.prepare(`
+  const participant = db.prepare(`
     INSERT INTO live_session_participants (live_session_id, user_id)
     VALUES (?, ?)
-  `).run(sessionId, userId);
+    RETURNING *
+  `).get(sessionId, userId) as LiveSessionParticipant;
 
-  return db.prepare('SELECT * FROM live_session_participants WHERE id = ?').get(result.lastInsertRowid) as LiveSessionParticipant;
+  return participant;
 }
 
 export function markParticipantComplete(sessionId: string, userId: string): LiveSessionParticipant | null {
