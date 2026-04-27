@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const LANDING_URL = 'http://localhost:3001';
+
 /** Convert string to Uint8Array */
 function encode(str: string): Uint8Array {
   return new TextEncoder().encode(str);
@@ -32,7 +34,6 @@ async function verifyToken(token: string, accessCode: string): Promise<boolean> 
   const data = encode(timestamp);
   const expected = bufToHex(await crypto.subtle.sign('HMAC', key, data.buffer as ArrayBuffer));
 
-  // Constant-length comparison (not truly constant-time in JS, but sufficient here)
   if (signature.length !== expected.length) return false;
   let mismatch = 0;
   for (let i = 0; i < signature.length; i++) {
@@ -42,36 +43,49 @@ async function verifyToken(token: string, accessCode: string): Promise<boolean> 
 }
 
 export async function middleware(request: NextRequest) {
-  const accessCode = process.env.ACCESS_CODE;
-  if (!accessCode) {
-    return NextResponse.next();
-  }
-
   const { pathname } = request.nextUrl;
+  const accessCode = process.env.ACCESS_CODE;
 
-  // Whitelist: access-code endpoints, health check
-  if (pathname.startsWith('/api/access-code/') || pathname === '/api/health') {
+  // Whitelist: static assets, _next, api/access-code, health
+  if (
+    pathname.startsWith('/api/access-code/') ||
+    pathname === '/api/health' ||
+    pathname.startsWith('/_next/static') ||
+    pathname.startsWith('/_next/image') ||
+    pathname === '/favicon.ico' ||
+    pathname.startsWith('/logos')
+  ) {
     return NextResponse.next();
   }
 
-  // Check cookie — validate HMAC signature, not just existence
-  const cookie = request.cookies.get('openmaic_access');
-  if (cookie?.value && (await verifyToken(cookie.value, accessCode))) {
-    return NextResponse.next();
+  // Access code check (existing logic)
+  if (accessCode) {
+    const cookie = request.cookies.get('openmaic_access');
+    if (cookie?.value && (await verifyToken(cookie.value, accessCode))) {
+      return NextResponse.next();
+    }
+
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { success: false, errorCode: 'INVALID_REQUEST', error: 'Access code required' },
+        { status: 401 },
+      );
+    }
   }
 
-  // API requests without valid cookie → 401
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.json(
-      { success: false, errorCode: 'INVALID_REQUEST', error: 'Access code required' },
-      { status: 401 },
-    );
+  // Role cookie check for non-API routes
+  if (!pathname.startsWith('/api/')) {
+    const role = request.cookies.get('aidutech_role')?.value;
+    if (role !== 'individual') {
+      const loginUrl = new URL('/login/individual', LANDING_URL);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  // Page requests → let through, frontend shows modal
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|logos/).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|logos).*)'],
 };
