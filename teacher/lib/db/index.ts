@@ -30,6 +30,13 @@ function runMigrations(database: Database.Database): void {
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   database.exec(schema);
 
+  // Run phase 2 schema
+  const phase2SchemaPath = path.join(__dirname, 'phase2-schema.sql');
+  if (fs.existsSync(phase2SchemaPath)) {
+    const phase2Schema = fs.readFileSync(phase2SchemaPath, 'utf-8');
+    database.exec(phase2Schema);
+  }
+
   // Run numbered migrations from migrations folder
   const migrationsDir = path.join(__dirname, 'migrations');
   if (fs.existsSync(migrationsDir)) {
