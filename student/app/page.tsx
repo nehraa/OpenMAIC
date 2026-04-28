@@ -4,12 +4,19 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { User, BookOpen, ClipboardList, MessageSquare, Play } from 'lucide-react';
 
+interface Class {
+  id: string;
+  name: string;
+  subject: string;
+  teacher_name: string;
+}
+
 interface Assignment {
   id: string;
   title: string;
   class_name: string;
   due_at: string | null;
-  status: 'pending' | 'completed' | 'overdue';
+  status: 'pending' | 'completed' | 'in_progress';
 }
 
 interface LiveSession {
@@ -20,25 +27,28 @@ interface LiveSession {
   started_at: string;
 }
 
-interface Quiz {
-  id: string;
-  title: string;
-  status: string;
-}
-
 export default function StudentDashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/student/assignments').then(r => r.json()).catch(() => ({ assignments: [] })),
-      fetch('/api/student/live-sessions').then(r => r.json()).catch(() => ({ sessions: [] })),
-    ]).then(([assignmentsData, sessionsData]) => {
-      setAssignments(assignmentsData.assignments?.slice(0, 5) || []);
-      setLiveSessions(sessionsData.sessions?.filter((s: LiveSession) => s.status === 'live').slice(0, 3) || []);
-    }).finally(() => setLoading(false));
+      fetch('/api/student/classes').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch classes'))),
+      fetch('/api/student/assignments').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch assignments'))),
+      fetch('/api/student/live-sessions').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch live sessions'))),
+    ])
+      .then(([classesData, assignmentsData, sessionsData]) => {
+        setClasses(classesData.classes?.slice(0, 4) || []);
+        setAssignments(assignmentsData.assignments?.slice(0, 5) || []);
+        setLiveSessions(sessionsData.sessions?.filter((s: LiveSession) => s.status === 'live').slice(0, 3) || []);
+      })
+      .catch(err => {
+        setError(err.message);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -60,7 +70,7 @@ export default function StudentDashboard() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Live Sessions */}
-        {liveSessions.length > 0 && (
+        {loading && liveSessions.length === 0 ? null : liveSessions.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
@@ -83,8 +93,36 @@ export default function StudentDashboard() {
           </div>
         )}
 
+        {/* My Classes Preview */}
+        {classes.length > 0 && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold">My Classes</h2>
+              <Link href="/student/classes" className="text-sm text-primary font-medium hover:underline">
+                View All
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {classes.slice(0, 4).map(cls => (
+                <div key={cls.id} className="bg-white rounded-xl border p-4 hover:border-primary/40 transition-all">
+                  <h3 className="font-semibold truncate">{cls.name}</h3>
+                  <p className="text-sm text-muted-foreground truncate">with {cls.teacher_name}</p>
+                  {cls.subject && (
+                    <p className="text-xs text-primary/80 mt-1">{cls.subject}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Link href="/student/classes" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
+            <BookOpen className="h-8 w-8 text-primary mb-3" />
+            <h3 className="font-semibold mb-1">My Classes</h3>
+            <p className="text-sm text-muted-foreground">View enrolled classes</p>
+          </Link>
           <Link href="/student/lessons" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
             <BookOpen className="h-8 w-8 text-primary mb-3" />
             <h3 className="font-semibold mb-1">My Lessons</h3>
@@ -129,7 +167,7 @@ export default function StudentDashboard() {
                     )}
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       a.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      a.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                      a.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
                       'bg-yellow-100 text-yellow-700'
                     }`}>{a.status}</span>
                   </div>
