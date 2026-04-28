@@ -1,31 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/session';
-import type { User } from '../../../shared/types/roles';
+import { verifyAccessToken } from './jwt';
+import type { User } from '@shared/types/roles';
 
 export interface AuthResult {
   user: User;
-  sessionId: string;
+  tenantId: string;
 }
 
-// Extract and validate auth from request - works in any route handler context
-export async function requireAuth(request: NextRequest): Promise<AuthResult | NextResponse> {
-  const sessionId = request.headers.get('x-session-id');
-
-  if (!sessionId) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-  }
-
-  const session = getSession(sessionId);
-
-  if (!session) {
-    return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
-  }
-
-  return { user: session.user, sessionId };
+interface TokenPayload {
+  userId: string;
+  tenantId: string;
+  role: string;
 }
 
-// Require specific roles - call after requireAuth
-export function requireRole(user: User, allowedRoles: string[]): NextResponse | null {
+/**
+ * Extract and validate auth from request using JWT in httpOnly cookies.
+ * Sets current_tenant_id from student record's teacher_id.
+ */
+export async function requireAuth(
+  request: NextRequest
+): Promise<AuthResult | NextResponse> {
+  const accessToken = request.cookies.get('access_token')?.value;
+
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const payload = await verifyAccessToken(accessToken);
+
+    // Students must have student_classroom role
+    if (payload.role !== 'student_classroom') {
+      return NextResponse.json(
+        { error: 'Access denied. Student account required.' },
+        { status: 403 }
+      );
+    }
+
+    return {
+      user: {
+        id: payload.userId,
+        role: payload.role as User['role'],
+        phone_e164: '', // Not needed from JWT
+        name: '', // Not needed from JWT
+        status: 'active',
+        created_at: '',
+        updated_at: '',
+      },
+      tenantId: payload.tenantId, // This is the teacherId for students
+    };
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid or expired token' },
+      { status: 401 }
+    );
+  }
+}
+
+/**
+ * Require specific roles - call after requireAuth.
+ */
+export function requireRole(
+  user: User,
+  allowedRoles: string[]
+): NextResponse | null {
   if (!allowedRoles.includes(user.role)) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
