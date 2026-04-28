@@ -35,17 +35,6 @@ export const QuizPayloadSchema = z.object({
   questions: z.array(z.union([MCQQuestionSchema, ShortAnswerQuestionSchema]))
 });
 
-// Question generation from slide content
-const SLIDE_CONTENT_QUERY = `
-  SELECT cav.payload_json
-  FROM content_asset_versions cav
-  WHERE cav.id = ?
-`;
-
-const SLIDE_CONTENT_PARSE_QUERY = `
-  SELECT payload_json FROM content_asset_versions WHERE id = ?
-`;
-
 export interface GeneratedQuestion {
   type: 'mcq' | 'short_answer';
   question: string;
@@ -55,14 +44,11 @@ export interface GeneratedQuestion {
   points: number;
 }
 
-/**
- * Generate quiz questions from slide content
- * This is a simple extraction-based approach that looks for text content in slides
- */
-export function generateQuizFromSlides(slideAssetVersionId: string): GeneratedQuestion[] {
+export async function generateQuizFromSlides(slideAssetVersionId: string): Promise<GeneratedQuestion[]> {
   const db = getDb();
 
-  const versionRow = db.prepare(SLIDE_CONTENT_PARSE_QUERY).get(slideAssetVersionId) as { payload_json: string } | undefined;
+  const versionResult = await db.query('SELECT payload_json FROM content_asset_versions WHERE id = $1', [slideAssetVersionId]);
+  const versionRow = versionResult.rows[0] as { payload_json: string } | undefined;
 
   if (!versionRow) {
     throw new Error('Slide asset version not found');
@@ -78,22 +64,16 @@ export function generateQuizFromSlides(slideAssetVersionId: string): GeneratedQu
   const slides = payload.slides || [];
   const questions: GeneratedQuestion[] = [];
 
-  // Extract text content from slides to generate questions
-  // Simple approach: create questions from slide text content
   for (const slide of slides) {
     const text = slide.content || slide.text || '';
     const title = slide.title || '';
 
     if (text.length > 20) {
-      // Create a question from the slide content
-      // Split text into sentences and create questions
       const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
 
       if (sentences.length >= 2) {
-        // Generate MCQ from first sentence
         const questionText = sentences[0].trim();
         if (questionText.length > 15) {
-          // Simple distractors generation (in production, this would use AI)
           const distractors = [
             'This is a common misconception about the topic',
             'The correct answer relates to the main concept',
@@ -117,11 +97,8 @@ export function generateQuizFromSlides(slideAssetVersionId: string): GeneratedQu
     }
   }
 
-  // Ensure we have at least some questions
   if (questions.length === 0 && slides.length > 0) {
-    // Use first slide's title or a default
     const firstSlideTitle = slides[0]?.title || '';
-    // Generate a general question about the slides
     questions.push({
       type: 'short_answer',
       question: `Summarize the key concepts covered in the slide deck titled "${firstSlideTitle || 'the presentation'}"`,
@@ -130,53 +107,42 @@ export function generateQuizFromSlides(slideAssetVersionId: string): GeneratedQu
     });
   }
 
-  return questions.slice(0, 10); // Limit to 10 questions max
+  return questions.slice(0, 10);
 }
 
-/**
- * Create a new quiz asset with initial draft version
- */
-export function createQuiz(data: CreateQuizData): Quiz {
+export async function createQuiz(data: CreateQuizData): Promise<Quiz> {
   const db = getDb();
 
-  // Create the quiz content asset
-  const quiz = db.prepare(`
+  const quizResult = await db.query(`
     INSERT INTO content_assets (owner_teacher_id, type, title, subject_tag, source_kind, source_ref)
-    VALUES (?, 'quiz', ?, ?, 'manual', '')
+    VALUES ($1, 'quiz', $2, $3, 'manual', '')
     RETURNING *
-  `).get(
-    data.teacherId,
-    data.title,
-    data.subjectTag || ''
-  ) as Quiz;
+  `, [data.teacherId, data.title, data.subjectTag || '']);
 
+  const quiz = quizResult.rows[0] as Quiz;
   const assetId = quiz.id;
 
-  // Create initial draft version with empty questions
-  db.prepare(`
+  await db.query(`
     INSERT INTO content_asset_versions (asset_id, version_number, payload_json, status)
-    VALUES (?, 1, '{"questions":[]}', 'draft')
-  `).run(assetId);
+    VALUES ($1, 1, '{"questions":[]}', 'draft')
+  `, [assetId]);
 
   return quiz;
 }
 
-/**
- * Update quiz metadata (only draft quizzes)
- */
-export function updateQuiz(id: string, data: UpdateQuizData): Quiz | null {
+export async function updateQuiz(id: string, data: UpdateQuizData): Promise<Quiz | null> {
   const db = getDb();
 
-  // Check quiz exists and get current version status
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ? AND type = ?').get(id, 'quiz') as Quiz | undefined;
+  const quizResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND type = $2', [id, 'quiz']);
+  const quiz = quizResult.rows[0] as Quiz | undefined;
   if (!quiz) {
     return null;
   }
 
-  // Get current version
-  const currentVersion = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? ORDER BY version_number DESC LIMIT 1
-  `).get(id) as QuizVersion | undefined;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 ORDER BY version_number DESC LIMIT 1
+  `, [id]);
+  const currentVersion = versionResult.rows[0] as QuizVersion | undefined;
 
   if (!currentVersion || currentVersion.status !== 'draft') {
     throw new Error(`Cannot update quiz with status '${currentVersion?.status || 'unknown'}'`);
@@ -184,39 +150,40 @@ export function updateQuiz(id: string, data: UpdateQuizData): Quiz | null {
 
   const fields: string[] = [];
   const values: (string | null)[] = [];
+  let paramIndex = 1;
 
   if (data.title !== undefined) {
-    fields.push('title = ?');
+    fields.push(`title = $${paramIndex++}`);
     values.push(data.title);
   }
   if (data.subjectTag !== undefined) {
-    fields.push('subject_tag = ?');
+    fields.push(`subject_tag = $${paramIndex++}`);
     values.push(data.subjectTag);
   }
 
   if (fields.length > 0) {
-    fields.push("updated_at = datetime('now')");
+    fields.push(`updated_at = NOW()`);
     values.push(id);
-    db.prepare(`UPDATE content_assets SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    await db.query(`UPDATE content_assets SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
   }
 
-  return db.prepare('SELECT * FROM content_assets WHERE id = ?').get(id) as Quiz;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [id]);
+  return result.rows[0] as Quiz;
 }
 
-/**
- * Publish quiz (change draft version to published)
- */
-export function publishQuiz(id: string): Quiz | null {
+export async function publishQuiz(id: string): Promise<Quiz | null> {
   const db = getDb();
 
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ? AND type = ?').get(id, 'quiz') as Quiz | undefined;
+  const quizResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND type = $2', [id, 'quiz']);
+  const quiz = quizResult.rows[0] as Quiz | undefined;
   if (!quiz) {
     return null;
   }
 
-  const currentVersion = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? ORDER BY version_number DESC LIMIT 1
-  `).get(id) as QuizVersion | undefined;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 ORDER BY version_number DESC LIMIT 1
+  `, [id]);
+  const currentVersion = versionResult.rows[0] as QuizVersion | undefined;
 
   if (!currentVersion) {
     throw new Error('No version found for quiz');
@@ -226,72 +193,68 @@ export function publishQuiz(id: string): Quiz | null {
     throw new Error(`Cannot publish quiz with status '${currentVersion.status}'`);
   }
 
-  // Validate quiz has questions before publishing
   const payload: QuizPayload = JSON.parse(currentVersion.payload_json);
   if (payload.questions.length === 0) {
     throw new Error('Cannot publish an empty quiz');
   }
 
-  // Archive any existing published versions
-  db.prepare(`
-    UPDATE content_asset_versions SET status = 'archived' WHERE asset_id = ? AND status = 'published'
-  `).run(id);
+  await db.query(`
+    UPDATE content_asset_versions SET status = 'archived' WHERE asset_id = $1 AND status = 'published'
+  `, [id]);
 
-  // Publish the current version
-  db.prepare(`
-    UPDATE content_asset_versions SET status = 'published' WHERE id = ?
-  `).run(currentVersion.id);
+  await db.query(`
+    UPDATE content_asset_versions SET status = 'published' WHERE id = $1
+  `, [currentVersion.id]);
 
-  return db.prepare('SELECT * FROM content_assets WHERE id = ?').get(id) as Quiz;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [id]);
+  return result.rows[0] as Quiz;
 }
 
-/**
- * Duplicate quiz to a new draft version
- */
-export function duplicateQuiz(id: string): Quiz | null {
+export async function duplicateQuiz(id: string): Promise<Quiz | null> {
   const db = getDb();
 
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ? AND type = ?').get(id, 'quiz') as Quiz | undefined;
+  const quizResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND type = $2', [id, 'quiz']);
+  const quiz = quizResult.rows[0] as Quiz | undefined;
   if (!quiz) {
     return null;
   }
 
-  const currentVersion = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? ORDER BY version_number DESC LIMIT 1
-  `).get(id) as QuizVersion | undefined;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 ORDER BY version_number DESC LIMIT 1
+  `, [id]);
+  const currentVersion = versionResult.rows[0] as QuizVersion | undefined;
 
   if (!currentVersion) {
     throw new Error('No version found for quiz');
   }
 
-  // Get max version number
-  const maxVersion = db.prepare(`
-    SELECT MAX(version_number) as max_v FROM content_asset_versions WHERE asset_id = ?
-  `).get(id) as { max_v: number };
+  const maxVersionResult = await db.query(`
+    SELECT MAX(version_number) as max_v FROM content_asset_versions WHERE asset_id = $1
+  `, [id]);
+  const maxVersion = maxVersionResult.rows[0] as { max_v: number };
 
-  // Create new draft version with same payload
-  db.prepare(`
+  await db.query(`
     INSERT INTO content_asset_versions (asset_id, version_number, payload_json, status)
-    VALUES (?, ?, ?, 'draft')
-  `).run(id, maxVersion.max_v + 1, currentVersion.payload_json);
+    VALUES ($1, $2, $3, 'draft')
+  `, [id, maxVersion.max_v + 1, currentVersion.payload_json]);
 
-  return db.prepare('SELECT * FROM content_assets WHERE id = ?').get(id) as Quiz;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [id]);
+  return result.rows[0] as Quiz;
 }
 
-/**
- * Get quiz with its current version
- */
-export function getQuizWithVersion(id: string): { quiz: Quiz; version: QuizVersion; payload: QuizPayload } | null {
+export async function getQuizWithVersion(id: string): Promise<{ quiz: Quiz; version: QuizVersion; payload: QuizPayload } | null> {
   const db = getDb();
 
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ? AND type = ?').get(id, 'quiz') as Quiz | undefined;
+  const quizResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND type = $2', [id, 'quiz']);
+  const quiz = quizResult.rows[0] as Quiz | undefined;
   if (!quiz) {
     return null;
   }
 
-  const version = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? ORDER BY version_number DESC LIMIT 1
-  `).get(id) as QuizVersion | undefined;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 ORDER BY version_number DESC LIMIT 1
+  `, [id]);
+  const version = versionResult.rows[0] as QuizVersion | undefined;
 
   if (!version) {
     return null;
@@ -301,20 +264,19 @@ export function getQuizWithVersion(id: string): { quiz: Quiz; version: QuizVersi
   return { quiz, version, payload };
 }
 
-/**
- * Add a question to the quiz
- */
-export function addQuestion(quizId: string, questionData: AddQuestionData): QuizQuestion {
+export async function addQuestion(quizId: string, questionData: AddQuestionData): Promise<QuizQuestion> {
   const db = getDb();
 
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ? AND type = ?').get(quizId, 'quiz') as Quiz | undefined;
+  const quizResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND type = $2', [quizId, 'quiz']);
+  const quiz = quizResult.rows[0] as Quiz | undefined;
   if (!quiz) {
     throw new Error('Quiz not found');
   }
 
-  const currentVersion = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? ORDER BY version_number DESC LIMIT 1
-  `).get(quizId) as QuizVersion | undefined;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 ORDER BY version_number DESC LIMIT 1
+  `, [quizId]);
+  const currentVersion = versionResult.rows[0] as QuizVersion | undefined;
 
   if (!currentVersion || currentVersion.status !== 'draft') {
     throw new Error('Can only add questions to draft quizzes');
@@ -322,7 +284,6 @@ export function addQuestion(quizId: string, questionData: AddQuestionData): Quiz
 
   const payload: QuizPayload = JSON.parse(currentVersion.payload_json);
 
-  // Generate question ID
   const questionId = `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   let question: QuizQuestion;
@@ -357,24 +318,20 @@ export function addQuestion(quizId: string, questionData: AddQuestionData): Quiz
 
   payload.questions.push(question);
 
-  // Update version with new payload
-  db.prepare(`
-    UPDATE content_asset_versions SET payload_json = ? WHERE id = ?
-  `).run(JSON.stringify(payload), currentVersion.id);
+  await db.query(`
+    UPDATE content_asset_versions SET payload_json = $1 WHERE id = $2
+  `, [JSON.stringify(payload), currentVersion.id]);
 
   return question;
 }
 
-/**
- * Update a question in the quiz
- */
-export function updateQuestion(quizId: string, questionId: string, data: UpdateQuestionData): QuizQuestion | null {
+export async function updateQuestion(quizId: string, questionId: string, data: UpdateQuestionData): Promise<QuizQuestion | null> {
   const db = getDb();
 
-  // Find the draft version for the specific quiz
-  const targetVersion = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? AND status = 'draft' ORDER BY version_number DESC LIMIT 1
-  `).get(quizId) as QuizVersion | null;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 AND status = 'draft' ORDER BY version_number DESC LIMIT 1
+  `, [quizId]);
+  const targetVersion = versionResult.rows[0] as QuizVersion | null;
 
   if (!targetVersion) {
     return null;
@@ -389,7 +346,6 @@ export function updateQuestion(quizId: string, questionId: string, data: UpdateQ
 
   const question = payload.questions[questionIndex];
 
-  // Update based on question type
   if (question.type === 'mcq') {
     const mcq = question as MCQQuestion;
     if (data.question !== undefined) mcq.question = data.question;
@@ -413,23 +369,20 @@ export function updateQuestion(quizId: string, questionId: string, data: UpdateQ
 
   payload.questions[questionIndex] = question;
 
-  db.prepare(`
-    UPDATE content_asset_versions SET payload_json = ? WHERE id = ?
-  `).run(JSON.stringify(payload), targetVersion.id);
+  await db.query(`
+    UPDATE content_asset_versions SET payload_json = $1 WHERE id = $2
+  `, [JSON.stringify(payload), targetVersion.id]);
 
   return question;
 }
 
-/**
- * Delete a question from the quiz
- */
-export function deleteQuestion(quizId: string, questionId: string): boolean {
+export async function deleteQuestion(quizId: string, questionId: string): Promise<boolean> {
   const db = getDb();
 
-  // Find the draft version for the specific quiz
-  const version = db.prepare(`
-    SELECT * FROM content_asset_versions WHERE asset_id = ? AND status = 'draft' ORDER BY version_number DESC LIMIT 1
-  `).get(quizId) as QuizVersion | null;
+  const versionResult = await db.query(`
+    SELECT * FROM content_asset_versions WHERE asset_id = $1 AND status = 'draft' ORDER BY version_number DESC LIMIT 1
+  `, [quizId]);
+  const version = versionResult.rows[0] as QuizVersion | null;
 
   if (!version) {
     return false;
@@ -442,27 +395,25 @@ export function deleteQuestion(quizId: string, questionId: string): boolean {
   }
 
   payload.questions.splice(idx, 1);
-  db.prepare(`
-    UPDATE content_asset_versions SET payload_json = ? WHERE id = ?
-  `).run(JSON.stringify(payload), version.id);
+  await db.query(`
+    UPDATE content_asset_versions SET payload_json = $1 WHERE id = $2
+  `, [JSON.stringify(payload), version.id]);
   return true;
 }
 
-/**
- * Get all quizzes for a teacher
- */
 export interface ListQuizzesFilters {
   status?: 'draft' | 'published';
 }
 
-export function getQuizzesForTeacher(teacherId: string, filters?: ListQuizzesFilters): (Quiz & { version: QuizVersion; questionCount: number })[] {
+export async function getQuizzesForTeacher(teacherId: string, filters?: ListQuizzesFilters): Promise<(Quiz & { version: QuizVersion; questionCount: number })[]> {
   const db = getDb();
 
-  const conditions: string[] = ['ca.owner_teacher_id = ?', 'ca.type = ?'];
-  const values: (string | number)[] = [teacherId, 'quiz'];
+  const conditions: string[] = ['ca.owner_teacher_id = $1', 'ca.type = $2'];
+  const values: (string | undefined)[] = [teacherId, 'quiz'];
+  let paramIndex = 3;
 
   if (filters?.status) {
-    conditions.push('cav.status = ?');
+    conditions.push(`cav.status = $${paramIndex++}`);
     values.push(filters.status);
   }
 
@@ -478,7 +429,8 @@ export function getQuizzesForTeacher(teacherId: string, filters?: ListQuizzesFil
     ORDER BY ca.created_at DESC
   `;
 
-  const rows = db.prepare(query).all(...values) as Array<{
+  const result = await db.query(query, values);
+  const rows = result.rows as Array<{
     id: string;
     owner_teacher_id: string;
     title: string;
@@ -523,11 +475,8 @@ export function getQuizzesForTeacher(teacherId: string, filters?: ListQuizzesFil
   });
 }
 
-/**
- * Get quiz by ID
- */
-export function getQuizById(id: string): Quiz | null {
+export async function getQuizById(id: string): Promise<Quiz | null> {
   const db = getDb();
-  const quiz = db.prepare('SELECT * FROM content_assets WHERE id = ? AND type = ?').get(id, 'quiz') as Quiz | undefined;
-  return quiz || null;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1 AND type = $2', [id, 'quiz']);
+  return (result.rows[0] as Quiz) || null;
 }

@@ -3,73 +3,88 @@ import { withRole } from '@/middleware';
 import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
 
-interface RouteContext {
-  params: Promise<{ classId: string }>;
-}
-
 // GET /api/teacher/classes/[classId] - Get single class with student count
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const classId = req.nextUrl.pathname.split('/').pop();
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
   const db = getDb();
 
-  const classData = db.prepare(`
+  const result = await db.query(`
     SELECT c.*,
            (SELECT COUNT(*) FROM class_memberships WHERE class_id = c.id) as student_count
     FROM classes c
-    WHERE c.id = ? AND c.teacher_id = ?
-  `).get(classId, ctx.user.id);
+    WHERE c.id = $1 AND c.teacher_id = $2
+  `, [classId, ctx.user.id]);
 
-  if (!classData) {
+  if (result.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ class: classData });
+  return NextResponse.json({ class: result.rows[0] });
 });
 
 // PATCH /api/teacher/classes/[classId] - Update class
-export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const classId = req.nextUrl.pathname.split('/').pop();
+export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
   const { name, subject, batch, peer_visibility_enabled } = await req.json();
   const db = getDb();
 
-  const existing = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
-  if (!existing) {
+  // Check class exists and belongs to teacher
+  const existingResult = await db.query(
+    'SELECT id FROM classes WHERE id = $1 AND teacher_id = $2',
+    [classId, ctx.user.id]
+  );
+  if (existingResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean)[] = [];
+  let paramIndex = 1;
 
-  if (name !== undefined) { updates.push('name = ?'); values.push(name.trim()); }
-  if (subject !== undefined) { updates.push('subject = ?'); values.push(subject.trim()); }
-  if (batch !== undefined) { updates.push('batch = ?'); values.push(batch.trim()); }
-  if (peer_visibility_enabled !== undefined) { updates.push('peer_visibility_enabled = ?'); values.push(peer_visibility_enabled ? 1 : 0); }
+  if (name !== undefined) {
+    updates.push(`name = $${paramIndex++}`);
+    values.push(name.trim());
+  }
+  if (subject !== undefined) {
+    updates.push(`subject = $${paramIndex++}`);
+    values.push(subject.trim());
+  }
+  if (batch !== undefined) {
+    updates.push(`batch = $${paramIndex++}`);
+    values.push(batch.trim());
+  }
+  if (peer_visibility_enabled !== undefined) {
+    updates.push(`peer_visibility_enabled = $${paramIndex++}`);
+    values.push(peer_visibility_enabled ? 1 : 0);
+  }
 
   if (updates.length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
   }
 
-  updates.push("updated_at = datetime('now')");
+  updates.push(`updated_at = NOW()`);
   values.push(classId);
 
-  db.prepare(`UPDATE classes SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+  const updateQuery = `UPDATE classes SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+  const updatedResult = await db.query(updateQuery, values);
 
-  const updated = db.prepare('SELECT * FROM classes WHERE id = ?').get(classId);
-
-  return NextResponse.json({ class: updated });
+  return NextResponse.json({ class: updatedResult.rows[0] });
 });
 
 // DELETE /api/teacher/classes/[classId] - Soft delete class
-export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const classId = req.nextUrl.pathname.split('/').pop();
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
   const db = getDb();
 
-  const existing = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
-  if (!existing) {
+  const existingResult = await db.query(
+    'SELECT id FROM classes WHERE id = $1 AND teacher_id = $2',
+    [classId, ctx.user.id]
+  );
+  if (existingResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  db.prepare(`UPDATE classes SET updated_at = datetime('now') WHERE id = ?`).run(classId);
+  await db.query(`UPDATE classes SET updated_at = NOW() WHERE id = $1`, [classId]);
 
   return NextResponse.json({ success: true });
 });
