@@ -4,6 +4,7 @@ import { getDb } from '@/lib/db';
 
 // POST /api/student/join-class
 // Body: { join_code: string }
+// Allows an already-authenticated student to join an additional class
 export const POST = async (request: NextRequest) => {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
@@ -19,36 +20,42 @@ export const POST = async (request: NextRequest) => {
 
   const db = getDb();
 
-  const classRow = db.prepare(`
-    SELECT c.*, u.name as teacher_name
-    FROM classes c
-    JOIN users u ON c.teacher_id = u.id
-    WHERE c.join_code = ?
-  `).get(join_code.toUpperCase()) as any;
+  // Find class by join code - get teacher_id for tenant context
+  const classResult = await db.query(
+    `SELECT c.*, u.tenant_id
+     FROM classes c
+     JOIN users u ON c.teacher_id = u.id
+     WHERE c.join_code = $1`,
+    [join_code.toUpperCase()]
+  );
+  const classRow = classResult.rows[0] as any;
 
   if (!classRow) {
     return NextResponse.json({ error: 'Invalid join code' }, { status: 400 });
   }
 
-  const existingMembership = db.prepare(`
-    SELECT * FROM class_memberships
-    WHERE class_id = ? AND student_id = ?
-  `).get(classRow.id, authResult.user.id);
+  const existingMembership = await db.query(
+    `SELECT * FROM class_memberships
+     WHERE class_id = $1 AND student_id = $2`,
+    [classRow.id, authResult.user.id]
+  );
 
-  if (existingMembership) {
+  if (existingMembership.rows.length > 0) {
     return NextResponse.json({
       class: classRow,
-      membership: existingMembership,
+      membership: existingMembership.rows[0],
       already_enrolled: true
     });
   }
 
-  const result = db.prepare(`
-    INSERT INTO class_memberships (class_id, student_id, source)
-    VALUES (?, ?, 'manual')
-  `).run(classRow.id, authResult.user.id);
+  const membershipResult = await db.query(
+    `INSERT INTO class_memberships (class_id, student_id, source)
+     VALUES ($1, $2, 'manual')
+     RETURNING *`,
+    [classRow.id, authResult.user.id]
+  );
 
-  const membership = db.prepare('SELECT * FROM class_memberships WHERE id = ?').get(result.lastInsertRowid);
+  const membership = membershipResult.rows[0];
 
   return NextResponse.json({ class: classRow, membership }, { status: 201 });
 };
