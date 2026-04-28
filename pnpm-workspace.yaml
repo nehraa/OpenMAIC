@@ -3,6 +3,7 @@ onlyBuiltDependencies:
 
 packages:
   - "packages/*"
+  - "app"
   - "teacher"
   - "student"
   - "shared"
