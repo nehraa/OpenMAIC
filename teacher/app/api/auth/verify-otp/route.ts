@@ -19,17 +19,25 @@ export async function POST(request: NextRequest) {
     const db = getDb();
 
     // Find or create user
-    let user = db.prepare('SELECT * FROM users WHERE phone_e164 = ?').get(phone) as any;
+    const existingUser = await db.query(
+      'SELECT * FROM users WHERE phone_e164 = $1',
+      [phone]
+    );
+    let user = existingUser.rows[0] as any;
 
     if (!user) {
-      // Create new user - use returning() clause for TEXT primary key safety
-      const insertResult = db.prepare(`
-        INSERT INTO users (role, phone_e164, name)
-        VALUES (?, ?, ?)
-      `).run(role, phone, name || '');
+      // Create new user
+      await db.query(
+        `INSERT INTO users (role, phone_e164, name) VALUES ($1, $2, $3)`,
+        [role, phone, name || '']
+      );
 
-      // For TEXT primary key, we must re-query since lastInsertRowid is numeric rowid
-      user = db.prepare('SELECT * FROM users WHERE phone_e164 = ?').get(phone) as any;
+      // Re-query to get the created user
+      const newUser = await db.query(
+        'SELECT * FROM users WHERE phone_e164 = $1',
+        [phone]
+      );
+      user = newUser.rows[0] as any;
     }
 
     // Create session

@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteSession } from '@/lib/auth/session';
 
 export async function POST(request: NextRequest) {
-  const sessionId = request.headers.get('x-session-id');
+  const response = NextResponse.json({ success: true });
 
-  if (!sessionId) {
-    return NextResponse.json({ error: 'No session provided' }, { status: 401 });
-  }
+  // Clear both access and refresh tokens by setting them to empty with expired maxAge
+  response.cookies.set('access_token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    domain: 'localhost',
+    path: '/',
+    maxAge: 0,
+  });
 
-  deleteSession(sessionId);
+  response.cookies.set('refresh_token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    domain: 'localhost',
+    path: '/',
+    maxAge: 0,
+  });
 
-  return NextResponse.json({ success: true });
+  return response;
 }
