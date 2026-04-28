@@ -3,6 +3,18 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { StatusBadge } from '@/lib/components/status-badge';
+import { CheckCircle, Circle, Clock, Users, FileText, PlayCircle } from 'lucide-react';
+
+interface Recipient {
+  student_id: string;
+  student_name: string;
+  visibility_status: string;
+  progress?: {
+    viewed_count: number;
+    total_slides: number;
+    is_complete: boolean;
+  };
+}
 
 interface Assignment {
   id: string;
@@ -14,7 +26,9 @@ interface Assignment {
   release_at: string | null;
   due_at: string | null;
   created_at: string;
-  recipients?: Array<{ student_id: string; student_name: string; visibility_status: string }>;
+  slide_asset_version_id: string | null;
+  recipient_count?: number;
+  recipients?: Recipient[];
 }
 
 interface PageProps {
@@ -28,7 +42,22 @@ export default function AssignmentDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchAssignment();
+    fetchRecipients();
   }, [assignmentId]);
+
+  async function fetchRecipients() {
+    try {
+      const res = await fetch(`/api/teacher/assignments/${assignmentId}/recipients`, {
+        headers: { 'x-session-id': getSessionId() }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAssignment(prev => prev ? { ...prev, recipients: data.recipients } : null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recipients:', error);
+    }
+  }
 
   async function fetchAssignment() {
     try {
@@ -113,14 +142,53 @@ export default function AssignmentDetailPage({ params }: PageProps) {
 
         {assignment.recipients && assignment.recipients.length > 0 && (
           <div className="border rounded-lg p-6">
-            <h2 className="font-medium mb-4">Recipients ({assignment.recipients.length})</h2>
+            <h2 className="font-medium mb-4 flex items-center gap-2">
+              <Users size={20} />
+              Recipients ({assignment.recipients.length})
+            </h2>
             <ul className="divide-y">
-              {assignment.recipients.map((r) => (
-                <li key={r.student_id} className="py-2 flex justify-between">
-                  <span>{r.student_name}</span>
-                  <StatusBadge status={r.visibility_status === 'visible' ? 'released' : 'draft'} />
-                </li>
-              ))}
+              {assignment.recipients.map((r) => {
+                const isVisible = r.visibility_status === 'visible' || r.visibility_status === 'completed';
+                const isComplete = r.progress?.is_complete;
+                return (
+                  <li key={r.student_id} className="py-3 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        isComplete
+                          ? 'bg-green-100 text-green-700'
+                          : isVisible
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {isComplete ? <CheckCircle size={16} /> : isVisible ? <Circle size={16} /> : <Clock size={16} />}
+                      </div>
+                      <div>
+                        <span className="font-medium">{r.student_name}</span>
+                        {r.progress && (
+                          <span className="text-sm text-muted-foreground ml-2">
+                            {r.progress.viewed_count}/{r.progress.total_slides} slides
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isComplete ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                          Completed
+                        </span>
+                      ) : isVisible ? (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                          In Progress
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                          Not Started
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
