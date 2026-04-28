@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
-import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
 import { endSession, getSessionById } from '@/lib/server/live-sessions';
 
 // POST /api/teacher/live-sessions/[sessionId]/end - End a live session
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const sessionId = req.nextUrl.pathname.split('/').filter(Boolean).at(-2);
-  if (!sessionId) {
-    return NextResponse.json({ error: 'Session ID required' }, { status: 400 });
-  }
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { sessionId } = await routeCtx.params;
 
-  const db = getDb();
-
-  // Get the session and verify ownership
-  const session = getSessionById(sessionId);
+  const session = await getSessionById(sessionId);
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
@@ -28,7 +21,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   try {
-    const updatedSession = endSession(sessionId);
+    const updatedSession = await endSession(sessionId);
     return NextResponse.json({ session: updatedSession });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to end session';

@@ -9,12 +9,10 @@ const AddRecipientsSchema = z.object({
 });
 
 // POST /api/teacher/assignments/[assignmentId]/recipients - Add recipients to assignment
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assignmentId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 2]; // /api/teacher/assignments/{assignmentId}/recipients
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -33,7 +31,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const recipients = addRecipients(assignmentId, parsed.data.studentIds);
+  const recipients = await addRecipients(assignmentId, parsed.data.studentIds);
 
   return NextResponse.json({ recipients }, { status: 201 });
 });

@@ -4,12 +4,10 @@ import type { AuthContext } from '@/middleware/auth';
 import { getAssignmentById, releaseAssignment } from '@/lib/server/assignments';
 
 // POST /api/teacher/assignments/[assignmentId]/release - Release an assignment
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assignmentId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 2]; // /api/teacher/assignments/{assignmentId}/release
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -19,7 +17,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   try {
-    const released = releaseAssignment(assignmentId);
+    const released = await releaseAssignment(assignmentId);
     if (!released) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }

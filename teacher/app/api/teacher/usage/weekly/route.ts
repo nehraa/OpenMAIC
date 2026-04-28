@@ -24,10 +24,8 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   }
 
   // Calculate the Monday and Sunday of the ISO week
-  // ISO week 1 is the week containing the first Thursday of the year
-  const jan4 = new Date(year, 0, 4); // Jan 4 is always in week 1
+  const jan4 = new Date(year, 0, 4);
   const jan4Day = jan4.getDay();
-  // Monday is day 1 (ISO day 1)
   const daysToMonday = jan4Day <= 4 ? jan4Day - 1 : 7 - jan4Day + 1;
   const mondayOfWeek1 = new Date(jan4);
   mondayOfWeek1.setDate(jan4.getDate() - daysToMonday);
@@ -42,28 +40,27 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   const sundayStr = sunday.toISOString().split('T')[0];
 
   // Get all class IDs for this teacher to include student usage
-  const teacherClasses = db.prepare(`
-    SELECT id FROM classes WHERE teacher_id = ?
-  `).all(ctx.user.id) as { id: string }[];
+  const teacherClassesResult = await db.query(`
+    SELECT id FROM classes WHERE teacher_id = $1
+  `, [ctx.user.id]);
 
-  const classIds = teacherClasses.map(c => c.id);
-  const teacherId = ctx.user.id;
+  const classIds = teacherClassesResult.rows.map((c: { id: string }) => c.id);
 
-  const placeholders = classIds.length > 0
-    ? classIds.map(() => '?').join(',')
-    : "'__no_classes__'";
+  // Build parameterized query
+  const params: (string | number)[] = [mondayStr, sundayStr, ctx.user.id, ...classIds];
+  const classIdParams = classIds.length > 0 ? classIds.map((_, i) => `$${i + 4}`).join(',') : "'__no_classes__'";
 
   const userCondition = `
     (
-      actor_user_id = ?
+      actor_user_id = $3
       OR actor_user_id IN (
-        SELECT student_id FROM class_memberships WHERE class_id IN (${placeholders})
+        SELECT student_id FROM class_memberships WHERE class_id IN (${classIdParams})
       )
     )
   `;
 
   // Aggregate totals for the week
-  const totals = db.prepare(`
+  const totalsResult = await db.query(`
     SELECT
       COALESCE(SUM(input_tokens), 0) as total_input_tokens,
       COALESCE(SUM(output_tokens), 0) as total_output_tokens,
@@ -71,10 +68,12 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       COALESCE(SUM(reasoning_tokens), 0) as total_reasoning_tokens,
       COALESCE(SUM(cost_usd), 0) as total_cost
     FROM llm_usage_events
-    WHERE date(timestamp) >= ?
-      AND date(timestamp) <= ?
+    WHERE date(timestamp) >= $1
+      AND date(timestamp) <= $2
       AND ${userCondition}
-  `).get(mondayStr, sundayStr, teacherId, ...classIds) as {
+  `, params);
+
+  const totals = totalsResult.rows[0] as {
     total_input_tokens: number;
     total_output_tokens: number;
     total_cached_tokens: number;
@@ -89,7 +88,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     totals.total_reasoning_tokens;
 
   // Get daily breakdown
-  const dailyRows = db.prepare(`
+  const dailyResult = await db.query(`
     SELECT
       date(timestamp) as day,
       COALESCE(SUM(input_tokens), 0) as input_tokens,
@@ -98,21 +97,14 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       COALESCE(SUM(reasoning_tokens), 0) as reasoning_tokens,
       COALESCE(SUM(cost_usd), 0) as cost
     FROM llm_usage_events
-    WHERE date(timestamp) >= ?
-      AND date(timestamp) <= ?
+    WHERE date(timestamp) >= $1
+      AND date(timestamp) <= $2
       AND ${userCondition}
     GROUP BY date(timestamp)
     ORDER BY date(timestamp) ASC
-  `).all(mondayStr, sundayStr, teacherId, ...classIds) as Array<{
-    day: string;
-    input_tokens: number;
-    output_tokens: number;
-    cached_tokens: number;
-    reasoning_tokens: number;
-    cost: number;
-  }>;
+  `, params);
 
-  const daily_breakdown = dailyRows.map(row => ({
+  const daily_breakdown = dailyResult.rows.map((row: any) => ({
     date: row.day,
     total_tokens:
       row.input_tokens +
@@ -123,7 +115,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   }));
 
   // Get breakdown by model
-  const byModelRows = db.prepare(`
+  const byModelResult = await db.query(`
     SELECT
       model,
       provider,
@@ -133,19 +125,11 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       COALESCE(SUM(reasoning_tokens), 0) as reasoning_tokens,
       COALESCE(SUM(cost_usd), 0) as cost
     FROM llm_usage_events
-    WHERE date(timestamp) >= ?
-      AND date(timestamp) <= ?
+    WHERE date(timestamp) >= $1
+      AND date(timestamp) <= $2
       AND ${userCondition}
     GROUP BY model, provider
-  `).all(mondayStr, sundayStr, teacherId, ...classIds) as Array<{
-    model: string;
-    provider: string;
-    input_tokens: number;
-    output_tokens: number;
-    cached_tokens: number;
-    reasoning_tokens: number;
-    cost: number;
-  }>;
+  `, params);
 
   const by_model: Record<string, {
     input_tokens: number;
@@ -155,7 +139,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     cost: number;
   }> = {};
 
-  for (const row of byModelRows) {
+  for (const row of byModelResult.rows) {
     by_model[row.model] = {
       input_tokens: row.input_tokens,
       output_tokens: row.output_tokens,

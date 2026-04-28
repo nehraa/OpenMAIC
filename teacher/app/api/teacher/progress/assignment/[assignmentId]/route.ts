@@ -5,20 +5,18 @@ import { getAssignmentProgress } from '@/lib/server/progress';
 import { getDb } from '@/lib/db';
 
 // GET /api/teacher/progress/assignment/[assignmentId] - Get progress for a specific assignment
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assignmentId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 1];
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
   // Verify assignment belongs to the teacher
   const db = getDb();
-  const assignment = db.prepare(`
+  const assignmentResult = await db.query(`
     SELECT a.id FROM assignments a
     INNER JOIN classes c ON c.id = a.class_id
-    WHERE a.id = ? AND c.teacher_id = ?
-  `).get(assignmentId, ctx.user.id);
+    WHERE a.id = $1 AND c.teacher_id = $2
+  `, [assignmentId, ctx.user.id]);
 
-  if (!assignment) {
+  if (assignmentResult.rows.length === 0) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 

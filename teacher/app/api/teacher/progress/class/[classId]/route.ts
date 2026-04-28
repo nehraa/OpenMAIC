@@ -5,15 +5,13 @@ import { getClassProgress, type ProgressFilters } from '@/lib/server/progress';
 import { getDb } from '@/lib/db';
 
 // GET /api/teacher/progress/class/[classId] - Get progress for all students in a class
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract classId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const classId = pathParts[pathParts.length - 1];
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
 
   // Verify class belongs to the teacher
   const db = getDb();
-  const classRecord = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
-  if (!classRecord) {
+  const classResult = await db.query('SELECT id FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
+  if (classResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 

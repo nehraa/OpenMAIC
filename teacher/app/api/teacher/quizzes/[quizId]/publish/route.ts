@@ -3,18 +3,11 @@ import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
 import { getQuizById, publishQuiz } from '@/lib/server/quizzes';
 
-// Helper to extract quizId from path
-function extractQuizId(req: NextRequest): string {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  // /api/teacher/quizzes/{quizId}/publish
-  return pathParts[pathParts.length - 2] || ''; // Get second to last
-}
-
 // POST /api/teacher/quizzes/[quizId]/publish - Publish quiz
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const quizId = extractQuizId(req);
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId } = await routeCtx.params;
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -24,7 +17,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   try {
-    const updated = publishQuiz(quizId);
+    const updated = await publishQuiz(quizId);
     if (!updated) {
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
     }

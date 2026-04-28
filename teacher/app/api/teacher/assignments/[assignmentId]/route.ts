@@ -15,18 +15,15 @@ const UpdateAssignmentSchema = z.object({
 });
 
 // GET /api/teacher/assignments/[assignmentId] - Get single assignment
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assignmentId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 1]; // /api/teacher/assignments/{assignmentId}
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
 
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 
-  // Verify teacher owns this assignment
   if (assignment.teacher_id !== ctx.user.id) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
@@ -35,12 +32,10 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
 });
 
 // PATCH /api/teacher/assignments/[assignmentId] - Update assignment
-export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assignmentId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 1]; // /api/teacher/assignments/{assignmentId}
+export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -55,7 +50,6 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  // Convert null to undefined for fields that can be null in DB but undefined in update
   const updateData = {
     title: parsed.data.title,
     description: parsed.data.description,
@@ -67,7 +61,7 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
   };
 
   try {
-    const updated = updateAssignment(assignmentId, updateData);
+    const updated = await updateAssignment(assignmentId, updateData);
     if (!updated) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
@@ -81,12 +75,10 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
 });
 
 // DELETE /api/teacher/assignments/[assignmentId] - Delete assignment
-export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assignmentId from URL path
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 1]; // /api/teacher/assignments/{assignmentId}
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -96,7 +88,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
   }
 
   try {
-    deleteAssignment(assignmentId);
+    await deleteAssignment(assignmentId);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     if (error instanceof Error) {

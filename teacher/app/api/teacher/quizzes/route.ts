@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
 import { createQuiz, getQuizzesForTeacher } from '@/lib/server/quizzes';
-import { getDb } from '@/lib/db';
 import { z } from 'zod';
 
 const CreateQuizSchema = z.object({
@@ -12,11 +11,10 @@ const CreateQuizSchema = z.object({
 
 // GET /api/teacher/quizzes - List quizzes for teacher
 export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const db = getDb();
   const url = new URL(req.url);
   const status = url.searchParams.get('status') as 'draft' | 'published' | undefined;
 
-  const quizzes = getQuizzesForTeacher(ctx.user.id, { status });
+  const quizzes = await getQuizzesForTeacher(ctx.user.id, { status });
 
   return NextResponse.json({ quizzes });
 });
@@ -30,7 +28,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  const quiz = createQuiz({
+  const quiz = await createQuiz({
     title: parsed.data.title,
     teacherId: ctx.user.id,
     subjectTag: parsed.data.subjectTag

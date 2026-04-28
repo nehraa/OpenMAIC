@@ -13,18 +13,11 @@ const AddQuestionSchema = z.object({
   points: z.number().int().positive().default(1)
 });
 
-// Helper to extract quizId from path
-function extractQuizId(req: NextRequest): string {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  // /api/teacher/quizzes/{quizId}/questions
-  return pathParts[pathParts.length - 2] || '';
-}
-
 // POST /api/teacher/quizzes/[quizId]/questions - Add question to quiz
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const quizId = extractQuizId(req);
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId } = await routeCtx.params;
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -39,7 +32,6 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  // Validate MCQ-specific fields
   if (parsed.data.type === 'mcq') {
     if (!parsed.data.options || parsed.data.options.length < 2) {
       return NextResponse.json({ error: 'MCQ must have at least 2 options' }, { status: 400 });
@@ -50,7 +42,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   try {
-    const question = addQuestion(quizId, {
+    const question = await addQuestion(quizId, {
       type: parsed.data.type,
       question: parsed.data.question,
       options: parsed.data.options,

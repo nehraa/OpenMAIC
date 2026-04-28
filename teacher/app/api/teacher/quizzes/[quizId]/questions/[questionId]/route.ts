@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
-import { updateQuestion, deleteQuestion } from '@/lib/server/quizzes';
+import { getQuizById, updateQuestion, deleteQuestion } from '@/lib/server/quizzes';
 import { z } from 'zod';
 
 const UpdateQuestionSchema = z.object({
@@ -12,22 +12,11 @@ const UpdateQuestionSchema = z.object({
   points: z.number().int().positive().optional()
 });
 
-// Helper to extract IDs from path
-function extractQuizAndQuestionId(req: NextRequest): { quizId: string; questionId: string } {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  // /api/teacher/quizzes/{quizId}/questions/{questionId}
-  const questionId = pathParts[pathParts.length - 1] || '';
-  const quizId = pathParts[pathParts.length - 3] || '';
-  return { quizId, questionId };
-}
-
 // PATCH /api/teacher/quizzes/[quizId]/questions/[questionId] - Update question
-export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const { quizId, questionId } = extractQuizAndQuestionId(req);
+export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId, questionId } = await routeCtx.params;
 
-  // Verify quiz ownership
-  const { getQuizById } = await import('@/lib/server/quizzes');
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -42,7 +31,7 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
   }
 
   try {
-    const updated = updateQuestion(quizId, questionId, {
+    const updated = await updateQuestion(quizId, questionId, {
       question: parsed.data.question,
       options: parsed.data.options,
       correctIndex: parsed.data.correctIndex,
@@ -62,12 +51,10 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
 });
 
 // DELETE /api/teacher/quizzes/[quizId]/questions/[questionId] - Delete question
-export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const { quizId, questionId } = extractQuizAndQuestionId(req);
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId, questionId } = await routeCtx.params;
 
-  // Verify quiz ownership
-  const { getQuizById } = await import('@/lib/server/quizzes');
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -75,7 +62,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  const deleted = deleteQuestion(quizId, questionId);
+  const deleted = await deleteQuestion(quizId, questionId);
   if (!deleted) {
     return NextResponse.json({ error: 'Question not found' }, { status: 404 });
   }

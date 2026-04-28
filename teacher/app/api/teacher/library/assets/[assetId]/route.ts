@@ -10,16 +10,15 @@ const UpdateAssetSchema = z.object({
 });
 
 // GET /api/teacher/library/assets/[assetId] - Get asset with versions
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const assetId = req.nextUrl.pathname.split('/').filter(Boolean).pop() || '';
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assetId } = await routeCtx.params;
 
-  const assetWithVersions = getAssetWithVersions(assetId);
+  const assetWithVersions = await getAssetWithVersions(assetId);
 
   if (!assetWithVersions) {
     return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
   }
 
-  // Verify ownership
   if (assetWithVersions.owner_teacher_id !== ctx.user.id) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
@@ -28,8 +27,8 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
 });
 
 // PATCH /api/teacher/library/assets/[assetId] - Update asset title or subject tag
-export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const assetId = req.nextUrl.pathname.split('/').filter(Boolean).pop() || '';
+export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assetId } = await routeCtx.params;
   const body = await req.json();
 
   const parsed = UpdateAssetSchema.safeParse(body);
@@ -39,9 +38,9 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
 
   let asset;
   if (parsed.data.subjectTag !== undefined) {
-    asset = tagAsset(ctx.user.id, { assetId, subjectTag: parsed.data.subjectTag });
+    asset = await tagAsset(ctx.user.id, { assetId, subjectTag: parsed.data.subjectTag });
   } else if (parsed.data.title !== undefined) {
-    asset = updateAssetTitle(ctx.user.id, assetId, parsed.data.title);
+    asset = await updateAssetTitle(ctx.user.id, assetId, parsed.data.title);
   }
 
   if (!asset) {

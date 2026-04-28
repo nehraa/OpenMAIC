@@ -9,11 +9,10 @@ import {
 import { getAssignmentById } from '@/lib/server/assignments';
 
 // POST /api/teacher/assignments/[assignmentId]/schedule - Create or update schedule
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 2];
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -37,13 +36,12 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
       return NextResponse.json({ error: 'releaseAt is required' }, { status: 400 });
     }
 
-    // Validate ISO8601 date
     const releaseDate = new Date(releaseAt);
     if (isNaN(releaseDate.getTime())) {
       return NextResponse.json({ error: 'Invalid releaseAt date format' }, { status: 400 });
     }
 
-    const job = updateSchedule(assignmentId, releaseAt);
+    const job = await updateSchedule(assignmentId, releaseAt);
 
     return NextResponse.json({
       scheduled: true,
@@ -59,11 +57,10 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
 });
 
 // GET /api/teacher/assignments/[assignmentId]/schedule - Get schedule
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 2];
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -72,7 +69,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  const schedule = getSchedule(assignmentId);
+  const schedule = await getSchedule(assignmentId);
 
   if (!schedule) {
     return NextResponse.json({ scheduled: false, releaseAt: null });
