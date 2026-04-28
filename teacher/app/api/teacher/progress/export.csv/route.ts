@@ -13,14 +13,14 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     return NextResponse.json({ error: 'classId is required' }, { status: 400 });
   }
 
-  // Verify class belongs to the teacher
   const db = getDb();
-  const classRecord = db.prepare('SELECT id, name FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
-  if (!classRecord) {
+  const classResult = await db.query('SELECT id, name FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
+  if (classResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  // Parse filters
+  const classRecord = classResult.rows[0] as { id: string; name: string };
+
   const filters: ProgressFilters = {};
 
   const assignmentId = url.searchParams.get('assignmentId');
@@ -43,14 +43,13 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     filters.dateTo = dateTo;
   }
 
-  const csv = exportToCSV(classId, filters);
+  const csv = await exportToCSV(classId, filters);
 
   if (!csv) {
     return NextResponse.json({ error: 'Failed to generate CSV' }, { status: 500 });
   }
 
-  const classInfo = classRecord as { id: string; name: string };
-  const filename = `progress-${classInfo.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+  const filename = `progress-${classRecord.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
 
   return new NextResponse(csv, {
     status: 200,

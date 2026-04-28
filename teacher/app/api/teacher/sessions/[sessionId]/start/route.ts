@@ -4,21 +4,23 @@ import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
 
 // POST /api/teacher/sessions/[sessionId]/start - Change status to 'live', sets started_at
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const sessionId = req.nextUrl.pathname.split('/').filter(Boolean).at(-2);
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { sessionId } = await routeCtx.params;
   const db = getDb();
 
   // Get the session and verify ownership
-  const session = db.prepare(`
+  const sessionResult = await db.query(`
     SELECT cs.*, c.teacher_id as class_teacher_id
     FROM classroom_sessions cs
     JOIN classes c ON cs.class_id = c.id
-    WHERE cs.id = ?
-  `).get(sessionId) as any;
+    WHERE cs.id = $1
+  `, [sessionId]);
 
-  if (!session) {
+  if (sessionResult.rows.length === 0) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
+
+  const session = sessionResult.rows[0] as any;
 
   if (session.class_teacher_id !== ctx.user.id) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -30,23 +32,23 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   // Check for other live sessions in the same class
-  const liveSession = db.prepare(`
+  const liveSessionResult = await db.query(`
     SELECT id FROM classroom_sessions
-    WHERE class_id = ? AND status = 'live'
-  `).get(session.class_id) as any;
+    WHERE class_id = $1 AND status = 'live'
+  `, [session.class_id]);
 
-  if (liveSession) {
+  if (liveSessionResult.rows.length > 0) {
     return NextResponse.json({ error: 'Another session is already live for this class' }, { status: 409 });
   }
 
   // Start the session
-  db.prepare(`
+  await db.query(`
     UPDATE classroom_sessions
-    SET status = 'live', started_at = datetime('now')
-    WHERE id = ?
-  `).run(sessionId);
+    SET status = 'live', started_at = NOW()
+    WHERE id = $1
+  `, [sessionId]);
 
-  const updatedSession = db.prepare('SELECT * FROM classroom_sessions WHERE id = ?').get(sessionId);
+  const updatedResult = await db.query('SELECT * FROM classroom_sessions WHERE id = $1', [sessionId]);
 
-  return NextResponse.json({ session: updatedSession });
+  return NextResponse.json({ session: updatedResult.rows[0] });
 });

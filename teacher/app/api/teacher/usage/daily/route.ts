@@ -16,21 +16,27 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   }
 
   // Get all class IDs for this teacher to include student usage
-  const teacherClasses = db.prepare(`
-    SELECT id FROM classes WHERE teacher_id = ?
-  `).all(ctx.user.id) as { id: string }[];
+  const teacherClassesResult = await db.query(`
+    SELECT id FROM classes WHERE teacher_id = $1
+  `, [ctx.user.id]);
 
-  const classIds = teacherClasses.map(c => c.id);
-  const teacherId = ctx.user.id;
+  const classIds = teacherClassesResult.rows.map((c: { id: string }) => c.id);
 
-  // Build query that includes teacher and students from teacher's classes
-  // actor_user_id matches teacher OR actor is a student in one of teacher's classes
-  const placeholders = classIds.length > 0
-    ? classIds.map(() => '?').join(',')
-    : "'__no_classes__'";
+  // Build parameterized query
+  const params: (string | number)[] = [date, ctx.user.id, ...classIds];
+  const classIdParams = classIds.length > 0 ? classIds.map((_, i) => `$${i + 3}`).join(',') : "'__no_classes__'";
+
+  const userCondition = `
+    (
+      actor_user_id = $2
+      OR actor_user_id IN (
+        SELECT student_id FROM class_memberships WHERE class_id IN (${classIdParams})
+      )
+    )
+  `;
 
   // Aggregate totals
-  const totals = db.prepare(`
+  const totalsResult = await db.query(`
     SELECT
       COALESCE(SUM(input_tokens), 0) as total_input_tokens,
       COALESCE(SUM(output_tokens), 0) as total_output_tokens,
@@ -38,14 +44,11 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       COALESCE(SUM(reasoning_tokens), 0) as total_reasoning_tokens,
       COALESCE(SUM(cost_usd), 0) as total_cost
     FROM llm_usage_events
-    WHERE date(timestamp) = ?
-      AND (
-        actor_user_id = ?
-        OR actor_user_id IN (
-          SELECT student_id FROM class_memberships WHERE class_id IN (${placeholders})
-        )
-      )
-  `).get(date, teacherId, ...classIds) as {
+    WHERE date(timestamp) = $1
+      AND ${userCondition}
+  `, params);
+
+  const totals = totalsResult.rows[0] as {
     total_input_tokens: number;
     total_output_tokens: number;
     total_cached_tokens: number;
@@ -60,7 +63,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     totals.total_reasoning_tokens;
 
   // Get breakdown by model
-  const byModelRows = db.prepare(`
+  const byModelResult = await db.query(`
     SELECT
       model,
       provider,
@@ -70,23 +73,10 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       COALESCE(SUM(reasoning_tokens), 0) as reasoning_tokens,
       COALESCE(SUM(cost_usd), 0) as cost
     FROM llm_usage_events
-    WHERE date(timestamp) = ?
-      AND (
-        actor_user_id = ?
-        OR actor_user_id IN (
-          SELECT student_id FROM class_memberships WHERE class_id IN (${placeholders})
-        )
-      )
+    WHERE date(timestamp) = $1
+      AND ${userCondition}
     GROUP BY model, provider
-  `).all(date, teacherId, ...classIds) as Array<{
-    model: string;
-    provider: string;
-    input_tokens: number;
-    output_tokens: number;
-    cached_tokens: number;
-    reasoning_tokens: number;
-    cost: number;
-  }>;
+  `, params);
 
   const by_model: Record<string, {
     input_tokens: number;
@@ -96,7 +86,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     cost: number;
   }> = {};
 
-  for (const row of byModelRows) {
+  for (const row of byModelResult.rows) {
     by_model[row.model] = {
       input_tokens: row.input_tokens,
       output_tokens: row.output_tokens,
@@ -107,7 +97,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   }
 
   // Get breakdown by role
-  const byRoleRows = db.prepare(`
+  const byRoleResult = await db.query(`
     SELECT
       actor_role,
       COALESCE(SUM(input_tokens), 0) as input_tokens,
@@ -116,22 +106,10 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       COALESCE(SUM(reasoning_tokens), 0) as reasoning_tokens,
       COALESCE(SUM(cost_usd), 0) as cost
     FROM llm_usage_events
-    WHERE date(timestamp) = ?
-      AND (
-        actor_user_id = ?
-        OR actor_user_id IN (
-          SELECT student_id FROM class_memberships WHERE class_id IN (${placeholders})
-        )
-      )
+    WHERE date(timestamp) = $1
+      AND ${userCondition}
     GROUP BY actor_role
-  `).all(date, teacherId, ...classIds) as Array<{
-    actor_role: string;
-    input_tokens: number;
-    output_tokens: number;
-    cached_tokens: number;
-    reasoning_tokens: number;
-    cost: number;
-  }>;
+  `, params);
 
   const by_role: Record<string, {
     input_tokens: number;
@@ -141,7 +119,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     cost: number;
   }> = {};
 
-  for (const row of byRoleRows) {
+  for (const row of byRoleResult.rows) {
     by_role[row.actor_role] = {
       input_tokens: row.input_tokens,
       output_tokens: row.output_tokens,

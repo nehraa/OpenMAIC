@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
-import { getQuizById, updateQuiz } from '@/lib/server/quizzes';
+import { getQuizById, getQuizWithVersion, updateQuiz } from '@/lib/server/quizzes';
 import { getDb } from '@/lib/db';
 import { z } from 'zod';
 
@@ -10,31 +10,21 @@ const UpdateQuizSchema = z.object({
   subjectTag: z.string().optional()
 });
 
-// Helper to extract quizId from path
-function extractQuizId(req: NextRequest): string {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  // /api/teacher/quizzes/{quizId}
-  return pathParts[pathParts.length - 1] || '';
-}
-
 // GET /api/teacher/quizzes/[quizId] - Get single quiz
-export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const quizId = extractQuizId(req);
+export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId } = await routeCtx.params;
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
 
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
 
-  // Verify teacher owns this quiz
   if (quiz.owner_teacher_id !== ctx.user.id) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  // Get quiz with version
-  const { getQuizWithVersion } = await import('@/lib/server/quizzes');
-  const quizWithVersion = getQuizWithVersion(quizId);
+  const quizWithVersion = await getQuizWithVersion(quizId);
 
   if (!quizWithVersion) {
     return NextResponse.json({ error: 'Quiz version not found' }, { status: 404 });
@@ -48,10 +38,10 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
 });
 
 // PATCH /api/teacher/quizzes/[quizId] - Update quiz
-export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const quizId = extractQuizId(req);
+export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId } = await routeCtx.params;
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -67,7 +57,7 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
   }
 
   try {
-    const updated = updateQuiz(quizId, {
+    const updated = await updateQuiz(quizId, {
       title: parsed.data.title,
       subjectTag: parsed.data.subjectTag
     });
@@ -84,10 +74,10 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
 });
 
 // DELETE /api/teacher/quizzes/[quizId] - Delete quiz (only draft)
-export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const quizId = extractQuizId(req);
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId } = await routeCtx.params;
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -96,8 +86,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  const { getQuizWithVersion } = await import('@/lib/server/quizzes');
-  const quizWithVersion = getQuizWithVersion(quizId);
+  const quizWithVersion = await getQuizWithVersion(quizId);
 
   if (!quizWithVersion) {
     return NextResponse.json({ error: 'Quiz version not found' }, { status: 404 });
@@ -108,7 +97,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
   }
 
   const db = getDb();
-  db.prepare('DELETE FROM content_assets WHERE id = ?').run(quizId);
+  await db.query('DELETE FROM content_assets WHERE id = $1', [quizId]);
 
   return new NextResponse(null, { status: 204 });
 });

@@ -3,18 +3,11 @@ import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
 import { getQuizById, duplicateQuiz } from '@/lib/server/quizzes';
 
-// Helper to extract quizId from path
-function extractQuizId(req: NextRequest): string {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  // /api/teacher/quizzes/{quizId}/duplicate
-  return pathParts[pathParts.length - 2] || ''; // Get second to last
-}
-
 // POST /api/teacher/quizzes/[quizId]/duplicate - Duplicate quiz to new draft
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const quizId = extractQuizId(req);
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { quizId } = await routeCtx.params;
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz) {
     return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
   }
@@ -24,7 +17,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   try {
-    const duplicated = duplicateQuiz(quizId);
+    const duplicated = await duplicateQuiz(quizId);
     if (!duplicated) {
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
     }

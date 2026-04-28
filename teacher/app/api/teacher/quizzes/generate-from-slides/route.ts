@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
-import { generateQuizFromSlides, createQuiz } from '@/lib/server/quizzes';
+import { generateQuizFromSlides, createQuiz, addQuestion } from '@/lib/server/quizzes';
 import { z } from 'zod';
 
 const GenerateFromSlidesSchema = z.object({
@@ -18,21 +18,17 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
-  // Generate questions from slides
-  const questions = generateQuizFromSlides(parsed.data.slideAssetVersionId);
+  const questions = await generateQuizFromSlides(parsed.data.slideAssetVersionId);
 
-  // Create a quiz with the generated questions
   const quizTitle = parsed.data.title || `Quiz from slides (${new Date().toLocaleDateString()})`;
-  const quiz = createQuiz({
+  const quiz = await createQuiz({
     title: quizTitle,
     teacherId: ctx.user.id,
     subjectTag: 'auto-generated'
   });
 
-  // Add generated questions to the quiz
-  const { addQuestion } = await import('@/lib/server/quizzes');
   for (const question of questions) {
-    addQuestion(quiz.id, {
+    await addQuestion(quiz.id, {
       type: question.type,
       question: question.question,
       options: question.options,

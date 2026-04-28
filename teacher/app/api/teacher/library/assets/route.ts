@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
-import { getLibraryAssets, saveGeneratedContent, getAssetById } from '@/lib/server/library';
+import { getLibraryAssets, saveGeneratedContent } from '@/lib/server/library';
 import type { AuthContext } from '@/middleware/auth';
 import { z } from 'zod';
 
@@ -25,7 +25,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     offset: url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : undefined
   };
 
-  const result = getLibraryAssets(ctx.user.id, filters);
+  const result = await getLibraryAssets(ctx.user.id, filters);
 
   return NextResponse.json({
     assets: result.assets,
@@ -46,7 +46,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
 
   const data = parsed.data;
 
-  const asset = saveGeneratedContent({
+  const asset = await saveGeneratedContent({
     teacherId: ctx.user.id,
     type: data.type,
     title: data.title,

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
-import { reuseAsset } from '@/lib/server/library';
-import type { AuthContext } from '@/middleware/auth';
 import { getDb } from '@/lib/db';
+import type { AuthContext } from '@/middleware/auth';
+import { reuseAsset } from '@/lib/server/library';
 import { z } from 'zod';
 
 const ReuseAssetSchema = z.object({
@@ -13,10 +13,8 @@ const ReuseAssetSchema = z.object({
 });
 
 // POST /api/teacher/library/assets/[assetId]/reuse - Create assignment from asset
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  // Extract assetId from URL path: /api/teacher/library/assets/{assetId}/reuse
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assetId = pathParts[pathParts.length - 2]; // Second to last is the assetId
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assetId } = await routeCtx.params;
 
   const body = await req.json();
 
@@ -29,8 +27,8 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
 
   // Verify class belongs to teacher
   const db = getDb();
-  const classRecord = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(data.classId, ctx.user.id);
-  if (!classRecord) {
+  const classResult = await db.query('SELECT id FROM classes WHERE id = $1 AND teacher_id = $2', [data.classId, ctx.user.id]);
+  if (classResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 

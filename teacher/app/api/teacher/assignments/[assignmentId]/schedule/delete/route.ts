@@ -5,11 +5,10 @@ import { cancelScheduleJob } from '@/lib/server/scheduler';
 import { getAssignmentById } from '@/lib/server/assignments';
 
 // DELETE /api/teacher/assignments/[assignmentId]/schedule - Cancel schedule
-export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const assignmentId = pathParts[pathParts.length - 2];
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { assignmentId } = await routeCtx.params;
 
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   if (!assignment) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
@@ -19,7 +18,7 @@ export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthCo
   }
 
   try {
-    const job = cancelScheduleJob(assignmentId);
+    const job = await cancelScheduleJob(assignmentId);
 
     if (!job) {
       return NextResponse.json({ error: 'No pending schedule found' }, { status: 404 });
