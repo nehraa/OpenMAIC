@@ -24,30 +24,29 @@ export interface AssetWithVersions extends ContentAsset {
   currentVersion: ContentAssetVersion | null;
 }
 
-export function saveGeneratedContent(data: SaveAssetData): ContentAsset {
+export async function saveGeneratedContent(data: SaveAssetData): Promise<ContentAsset> {
   const db = getDb();
 
-  // Create the asset
-  const asset = db.prepare(`
+  const assetResult = await db.query(`
     INSERT INTO content_assets (owner_teacher_id, type, title, subject_tag, source_kind, source_ref)
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
-  `).get(
+  `, [
     data.teacherId,
     data.type,
     data.title,
     data.subjectTag || '',
     data.sourceKind || 'ai_generated',
     data.sourceRef || ''
-  ) as ContentAsset;
+  ]);
 
+  const asset = assetResult.rows[0] as ContentAsset;
   const assetId = asset.id;
 
-  // Create the first version
-  db.prepare(`
+  await db.query(`
     INSERT INTO content_asset_versions (asset_id, version_number, payload_json, status)
-    VALUES (?, 1, ?, 'published')
-  `).run(assetId, JSON.stringify(data.payload));
+    VALUES ($1, 1, $2, 'published')
+  `, [assetId, JSON.stringify(data.payload)]);
 
   return asset;
 }
@@ -57,35 +56,35 @@ export interface LibraryAsset extends ContentAsset {
   latest_version_id: string | null;
 }
 
-export function getLibraryAssets(teacherId: string, filters?: LibraryFilters): { assets: LibraryAsset[]; total: number } {
+export async function getLibraryAssets(teacherId: string, filters?: LibraryFilters): Promise<{ assets: LibraryAsset[]; total: number }> {
   const db = getDb();
 
-  const conditions: string[] = ['owner_teacher_id = ?'];
+  const conditions: string[] = ['owner_teacher_id = $1'];
   const values: (string | number)[] = [teacherId];
+  let paramIndex = 2;
 
   if (filters?.type) {
-    conditions.push('type = ?');
+    conditions.push(`type = $${paramIndex++}`);
     values.push(filters.type);
   }
 
   if (filters?.subject) {
-    conditions.push('subject_tag = ?');
+    conditions.push(`subject_tag = $${paramIndex++}`);
     values.push(filters.subject);
   }
 
   if (filters?.search) {
-    conditions.push('title LIKE ?');
+    conditions.push(`title LIKE $${paramIndex++}`);
     values.push(`%${filters.search}%`);
   }
 
   const limit = filters?.limit || 50;
   const offset = filters?.offset || 0;
 
-  // Get total count
   const countQuery = `SELECT COUNT(*) as count FROM content_assets WHERE ${conditions.join(' AND ')}`;
-  const countResult = db.prepare(countQuery).get(...values) as { count: number };
+  const countResult = await db.query(countQuery, values);
+  const total = countResult.rows[0].count as number;
 
-  // Get assets with version counts
   const assetsQuery = `
     SELECT ca.*,
       (SELECT COUNT(*) FROM content_asset_versions WHERE asset_id = ca.id) as version_count,
@@ -93,28 +92,31 @@ export function getLibraryAssets(teacherId: string, filters?: LibraryFilters): {
     FROM content_assets ca
     WHERE ${conditions.join(' AND ')}
     ORDER BY ca.created_at DESC
-    LIMIT ? OFFSET ?
+    LIMIT $${paramIndex++} OFFSET $${paramIndex}
   `;
 
-  const assets = db.prepare(assetsQuery).all(...values, limit, offset) as LibraryAsset[];
+  values.push(limit, offset);
+  const assetsResult = await db.query(assetsQuery, values);
 
-  return { assets, total: countResult.count };
+  return { assets: assetsResult.rows as LibraryAsset[], total };
 }
 
-export function getAssetWithVersions(assetId: string): AssetWithVersions | null {
+export async function getAssetWithVersions(assetId: string): Promise<AssetWithVersions | null> {
   const db = getDb();
 
-  const asset = db.prepare('SELECT * FROM content_assets WHERE id = ?').get(assetId) as ContentAsset | undefined;
+  const assetResult = await db.query('SELECT * FROM content_assets WHERE id = $1', [assetId]);
+  const asset = assetResult.rows[0] as ContentAsset | undefined;
   if (!asset) {
     return null;
   }
 
-  const versions = db.prepare(`
+  const versionsResult = await db.query(`
     SELECT * FROM content_asset_versions
-    WHERE asset_id = ?
+    WHERE asset_id = $1
     ORDER BY version_number DESC
-  `).all(assetId) as ContentAssetVersion[];
+  `, [assetId]);
 
+  const versions = versionsResult.rows as ContentAssetVersion[];
   const currentVersion = versions.length > 0 ? versions[0] : null;
 
   return {
@@ -132,35 +134,35 @@ export interface ReuseAssetData {
   dueAt?: string;
 }
 
-export function reuseAsset(teacherId: string, data: ReuseAssetData): import('@shared/types/assignment').Assignment {
+export async function reuseAsset(teacherId: string, data: ReuseAssetData): Promise<import('@shared/types/assignment').Assignment> {
   const db = getDb();
 
-  // Verify the asset belongs to the teacher
-  const asset = db.prepare('SELECT * FROM content_assets WHERE id = ? AND owner_teacher_id = ?').get(data.assetId, teacherId) as ContentAsset | undefined;
+  const assetResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND owner_teacher_id = $2', [data.assetId, teacherId]);
+  const asset = assetResult.rows[0] as ContentAsset | undefined;
   if (!asset) {
     throw new Error('Asset not found or access denied');
   }
 
-  // Get the current (latest) version
-  const currentVersion = db.prepare(`
+  const versionResult = await db.query(`
     SELECT * FROM content_asset_versions
-    WHERE asset_id = ?
+    WHERE asset_id = $1
     ORDER BY version_number DESC
     LIMIT 1
-  `).get(data.assetId) as ContentAssetVersion | undefined;
+  `, [data.assetId]);
+
+  const currentVersion = versionResult.rows[0] as ContentAssetVersion | undefined;
 
   if (!currentVersion) {
     throw new Error('No version found for asset');
   }
 
-  // Create assignment referencing the asset version
   const assignmentTitle = data.title || asset.title;
 
-  const assignment = db.prepare(`
+  const assignmentResult = await db.query(`
     INSERT INTO assignments (class_id, teacher_id, title, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')
+    VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')
     RETURNING *
-  `).get(
+  `, [
     data.targetClassId,
     teacherId,
     assignmentTitle,
@@ -168,8 +170,9 @@ export function reuseAsset(teacherId: string, data: ReuseAssetData): import('@sh
     asset.type === 'quiz' ? currentVersion.id : null,
     data.releaseAt || null,
     data.dueAt || null
-  ) as import('@shared/types/assignment').Assignment;
-  return assignment;
+  ]);
+
+  return assignmentResult.rows[0] as import('@shared/types/assignment').Assignment;
 }
 
 export interface TagAssetData {
@@ -177,40 +180,42 @@ export interface TagAssetData {
   subjectTag: string;
 }
 
-export function tagAsset(teacherId: string, data: TagAssetData): ContentAsset | null {
+export async function tagAsset(teacherId: string, data: TagAssetData): Promise<ContentAsset | null> {
   const db = getDb();
 
-  // Verify asset belongs to teacher
-  const asset = db.prepare('SELECT * FROM content_assets WHERE id = ? AND owner_teacher_id = ?').get(data.assetId, teacherId) as ContentAsset | undefined;
+  const assetResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND owner_teacher_id = $2', [data.assetId, teacherId]);
+  const asset = assetResult.rows[0] as ContentAsset | undefined;
   if (!asset) {
     return null;
   }
 
-  db.prepare(`
-    UPDATE content_assets SET subject_tag = ?, updated_at = datetime('now') WHERE id = ?
-  `).run(data.subjectTag, data.assetId);
+  await db.query(`
+    UPDATE content_assets SET subject_tag = $1, updated_at = NOW() WHERE id = $2
+  `, [data.subjectTag, data.assetId]);
 
-  return db.prepare('SELECT * FROM content_assets WHERE id = ?').get(data.assetId) as ContentAsset;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [data.assetId]);
+  return result.rows[0] as ContentAsset;
 }
 
-export function updateAssetTitle(teacherId: string, assetId: string, title: string): ContentAsset | null {
+export async function updateAssetTitle(teacherId: string, assetId: string, title: string): Promise<ContentAsset | null> {
   const db = getDb();
 
-  // Verify asset belongs to teacher
-  const asset = db.prepare('SELECT * FROM content_assets WHERE id = ? AND owner_teacher_id = ?').get(assetId, teacherId) as ContentAsset | undefined;
+  const assetResult = await db.query('SELECT * FROM content_assets WHERE id = $1 AND owner_teacher_id = $2', [assetId, teacherId]);
+  const asset = assetResult.rows[0] as ContentAsset | undefined;
   if (!asset) {
     return null;
   }
 
-  db.prepare(`
-    UPDATE content_assets SET title = ?, updated_at = datetime('now') WHERE id = ?
-  `).run(title, assetId);
+  await db.query(`
+    UPDATE content_assets SET title = $1, updated_at = NOW() WHERE id = $2
+  `, [title, assetId]);
 
-  return db.prepare('SELECT * FROM content_assets WHERE id = ?').get(assetId) as ContentAsset;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [assetId]);
+  return result.rows[0] as ContentAsset;
 }
 
-export function getAssetById(assetId: string): ContentAsset | null {
+export async function getAssetById(assetId: string): Promise<ContentAsset | null> {
   const db = getDb();
-  const asset = db.prepare('SELECT * FROM content_assets WHERE id = ?').get(assetId) as ContentAsset | undefined;
-  return asset || null;
+  const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [assetId]);
+  return (result.rows[0] as ContentAsset) || null;
 }

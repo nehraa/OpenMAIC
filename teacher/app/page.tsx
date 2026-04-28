@@ -7,46 +7,49 @@ import { GraduationCap, BookOpen, ClipboardList, BarChart3, Library, Users } fro
 interface Class {
   id: string;
   name: string;
+  subject: string;
+  batch: string;
   student_count: number;
+  join_code: string;
 }
 
 interface Assignment {
   id: string;
   title: string;
   status: string;
-}
-
-interface Quiz {
-  id: string;
-  title: string;
-  status: string;
-}
-
-interface LiveSession {
-  id: string;
-  assignment_title: string;
-  status: 'live' | 'ended';
-  started_at: string;
+  class_name?: string;
 }
 
 export default function TeacherDashboard() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [recentAssignments, setRecentAssignments] = useState<Assignment[]>([]);
-  const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [classesError, setClassesError] = useState(false);
 
   useEffect(() => {
     // Fetch dashboard data
     Promise.all([
-      fetch('/api/teacher/classes').then(r => r.json()).catch(() => ({ classes: [] })),
-      fetch('/api/teacher/assignments').then(r => r.json()).catch(() => ({ assignments: [] })),
-      fetch('/api/teacher/live-sessions').then(r => r.json()).catch(() => ({ sessions: [] })),
-    ]).then(([classesData, assignmentsData, sessionsData]) => {
-      setClasses(classesData.classes?.slice(0, 3) || []);
+      fetch('/api/teacher/classes', {
+        headers: { 'x-session-id': getSessionId() }
+      }).then(r => r.json()).catch(() => ({ classes: [] })),
+      fetch('/api/teacher/assignments', {
+        headers: { 'x-session-id': getSessionId() }
+      }).then(r => r.json()).catch(() => ({ assignments: [] })),
+    ]).then(([classesData, assignmentsData]) => {
+      if (classesData.classes) {
+        setClasses(classesData.classes.slice(0, 3));
+        setClassesError(false);
+      } else {
+        setClassesError(true);
+      }
       setRecentAssignments(assignmentsData.assignments?.slice(0, 5) || []);
-      setLiveSessions(sessionsData.sessions?.filter((s: LiveSession) => s.status === 'live').slice(0, 3) || []);
     }).finally(() => setLoading(false));
   }, []);
+
+  function getSessionId() {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('session_id') || '';
+  }
 
   const navItems = [
     { href: '/teacher/assignments', label: 'Assignments', icon: ClipboardList, desc: 'Create and manage assignments' },
@@ -73,23 +76,6 @@ export default function TeacherDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Live Sessions Alert */}
-        {liveSessions.length > 0 && (
-          <div className="mb-8 bg-green-50 border border-green-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-              <span className="font-semibold text-green-800">{liveSessions.length} Live Session{liveSessions.length > 1 ? 's' : ''} Active</span>
-            </div>
-            <div className="flex gap-4">
-              {liveSessions.map(session => (
-                <Link key={session.id} href={`/teacher/sessions/${session.id}`} className="text-green-700 hover:underline text-sm">
-                  {session.assignment_title}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Quick Nav Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {navItems.map(item => (
@@ -113,6 +99,13 @@ export default function TeacherDashboard() {
             </div>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : classesError ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="mb-2">Unable to load classes</p>
+                <button onClick={() => window.location.reload()} className="text-primary hover:underline text-sm">
+                  Retry
+                </button>
+              </div>
             ) : classes.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p className="mb-2">No classes yet</p>
@@ -122,8 +115,11 @@ export default function TeacherDashboard() {
               <div className="space-y-3">
                 {classes.map(c => (
                   <Link key={c.id} href={`/teacher/classes/${c.id}`} className="flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors">
-                    <span className="font-medium">{c.name}</span>
-                    <span className="text-sm text-muted-foreground">{c.student_count} students</span>
+                    <div>
+                      <span className="font-medium">{c.name}</span>
+                      {c.subject && <span className="text-sm text-muted-foreground ml-2">({c.subject})</span>}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{c.student_count} student{c.student_count !== 1 ? 's' : ''}</span>
                   </Link>
                 ))}
               </div>
@@ -149,9 +145,13 @@ export default function TeacherDashboard() {
               <div className="space-y-3">
                 {recentAssignments.map(a => (
                   <Link key={a.id} href={`/teacher/assignments/${a.id}`} className="flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors">
-                    <span className="font-medium">{a.title}</span>
+                    <div>
+                      <span className="font-medium">{a.title}</span>
+                      {a.class_name && <span className="text-sm text-muted-foreground ml-2">({a.class_name})</span>}
+                    </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       a.status === 'released' ? 'bg-green-100 text-green-700' :
+                      a.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
                       a.status === 'draft' ? 'bg-gray-100 text-gray-600' :
                       'bg-yellow-100 text-yellow-700'
                     }`}>{a.status}</span>
@@ -160,6 +160,32 @@ export default function TeacherDashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link href="/teacher/classes" className="bg-white rounded-xl border p-5 hover:border-primary/40 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <GraduationCap size={20} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Manage Classes</h3>
+                <p className="text-sm text-muted-foreground">Add students, view enrollments</p>
+              </div>
+            </div>
+          </Link>
+          <Link href="/teacher/students" className="bg-white rounded-xl border p-5 hover:border-primary/40 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Users size={20} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Manage Students</h3>
+                <p className="text-sm text-muted-foreground">View all students across classes</p>
+              </div>
+            </div>
+          </Link>
         </div>
       </main>
     </div>

@@ -4,14 +4,13 @@ import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
 
 // POST /api/teacher/classes/[classId]/sessions - Create a new session in 'draft' status
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const classId = pathParts[pathParts.length - 2];
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
   const db = getDb();
 
   // Verify teacher owns the class
-  const classData = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
-  if (!classData) {
+  const classResult = await db.query('SELECT id FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
+  if (classResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
@@ -24,12 +23,11 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: 'max_duration_minutes must be between 1 and 180' }, { status: 400 });
   }
 
-  const result = db.prepare(`
+  const sessionResult = await db.query(`
     INSERT INTO classroom_sessions (class_id, teacher_id, title, max_duration_minutes, status)
-    VALUES (?, ?, ?, ?, 'draft')
-  `).run(classId, ctx.user.id, sessionTitle, maxDuration);
+    VALUES ($1, $2, $3, $4, 'draft')
+    RETURNING *
+  `, [classId, ctx.user.id, sessionTitle, maxDuration]);
 
-  const session = db.prepare('SELECT * FROM classroom_sessions WHERE id = ?').get(result.lastInsertRowid);
-
-  return NextResponse.json({ session }, { status: 201 });
+  return NextResponse.json({ session: sessionResult.rows[0] }, { status: 201 });
 });

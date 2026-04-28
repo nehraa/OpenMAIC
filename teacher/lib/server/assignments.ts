@@ -26,14 +26,14 @@ export interface AssignmentWithRecipients extends Assignment {
   recipients: AssignmentRecipient[];
 }
 
-export function createAssignment(data: CreateAssignmentData): Assignment {
+export async function createAssignment(data: CreateAssignmentData): Promise<Assignment> {
   const db = getDb();
 
-  const assignment = db.prepare(`
+  const result = await db.query(`
     INSERT INTO assignments (class_id, teacher_id, title, description, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')
     RETURNING *
-  `).get(
+  `, [
     data.classId,
     data.teacherId,
     data.title,
@@ -42,15 +42,17 @@ export function createAssignment(data: CreateAssignmentData): Assignment {
     data.quizAssetVersionId || null,
     data.releaseAt || null,
     data.dueAt || null
-  ) as Assignment;
-  return assignment;
+  ]);
+
+  return result.rows[0] as Assignment;
 }
 
-export function updateAssignment(id: string, data: UpdateAssignmentData): Assignment | null {
+export async function updateAssignment(id: string, data: UpdateAssignmentData): Promise<Assignment | null> {
   const db = getDb();
 
   // First get the current assignment to check status
-  const current = db.prepare('SELECT status FROM assignments WHERE id = ?').get(id) as { status: string } | undefined;
+  const currentResult = await db.query('SELECT status FROM assignments WHERE id = $1', [id]);
+  const current = currentResult.rows[0] as { status: string } | undefined;
   if (!current) {
     return null;
   }
@@ -62,76 +64,81 @@ export function updateAssignment(id: string, data: UpdateAssignmentData): Assign
 
   const fields: string[] = [];
   const values: (string | null)[] = [];
+  let paramIndex = 1;
 
   if (data.title !== undefined) {
-    fields.push('title = ?');
+    fields.push(`title = $${paramIndex++}`);
     values.push(data.title);
   }
   if (data.description !== undefined) {
-    fields.push('description = ?');
+    fields.push(`description = $${paramIndex++}`);
     values.push(data.description);
   }
   if (data.slideAssetVersionId !== undefined) {
-    fields.push('slide_asset_version_id = ?');
+    fields.push(`slide_asset_version_id = $${paramIndex++}`);
     values.push(data.slideAssetVersionId || null);
   }
   if (data.quizAssetVersionId !== undefined) {
-    fields.push('quiz_asset_version_id = ?');
+    fields.push(`quiz_asset_version_id = $${paramIndex++}`);
     values.push(data.quizAssetVersionId || null);
   }
   if (data.releaseAt !== undefined) {
-    fields.push('release_at = ?');
+    fields.push(`release_at = $${paramIndex++}`);
     values.push(data.releaseAt || null);
   }
   if (data.dueAt !== undefined) {
-    fields.push('due_at = ?');
+    fields.push(`due_at = $${paramIndex++}`);
     values.push(data.dueAt || null);
   }
   if (data.status !== undefined) {
-    fields.push('status = ?');
+    fields.push(`status = $${paramIndex++}`);
     values.push(data.status);
   }
 
   if (fields.length === 0) {
-    return db.prepare('SELECT * FROM assignments WHERE id = ?').get(id) as Assignment;
+    const result = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
+    return result.rows[0] as Assignment;
   }
 
-  fields.push("updated_at = datetime('now')");
+  fields.push(`updated_at = NOW()`);
   values.push(id);
 
-  db.prepare(`UPDATE assignments SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  await db.query(`UPDATE assignments SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
 
-  return db.prepare('SELECT * FROM assignments WHERE id = ?').get(id) as Assignment;
+  const result = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
+  return result.rows[0] as Assignment;
 }
 
-export function addRecipients(assignmentId: string, studentIds: string[]): AssignmentRecipient[] {
+export async function addRecipients(assignmentId: string, studentIds: string[]): Promise<AssignmentRecipient[]> {
   const db = getDb();
   const insertedRecipients: AssignmentRecipient[] = [];
 
-  const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO assignment_recipients (assignment_id, student_id, visibility_status)
-    VALUES (?, ?, 'hidden')
-    RETURNING *
-  `);
+  for (const studentId of studentIds) {
+    try {
+      const result = await db.query(`
+        INSERT INTO assignment_recipients (assignment_id, student_id, visibility_status)
+        VALUES ($1, $2, 'hidden')
+        ON CONFLICT DO NOTHING
+        RETURNING *
+      `, [assignmentId, studentId]);
 
-  const insertMany = db.transaction((ids: string[]) => {
-    for (const studentId of ids) {
-      const recipient = insertStmt.get(assignmentId, studentId) as AssignmentRecipient | undefined;
-      if (recipient) {
-        insertedRecipients.push(recipient);
+      if (result.rows.length > 0) {
+        insertedRecipients.push(result.rows[0] as AssignmentRecipient);
       }
+    } catch (error) {
+      // Ignore conflicts
     }
-  });
+  }
 
-  insertMany(studentIds);
   return insertedRecipients;
 }
 
-export function releaseAssignment(id: string): Assignment | null {
+export async function releaseAssignment(id: string): Promise<Assignment | null> {
   const db = getDb();
 
   // Get current assignment
-  const assignment = db.prepare('SELECT * FROM assignments WHERE id = ?').get(id) as Assignment | undefined;
+  const assignmentResult = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
+  const assignment = assignmentResult.rows[0] as Assignment | undefined;
   if (!assignment) {
     return null;
   }
@@ -141,27 +148,30 @@ export function releaseAssignment(id: string): Assignment | null {
   }
 
   // Update assignment status to released
-  db.prepare(`
-    UPDATE assignments SET status = 'released', updated_at = datetime('now') WHERE id = ?
-  `).run(id);
+  await db.query(`
+    UPDATE assignments SET status = 'released', updated_at = NOW() WHERE id = $1
+  `, [id]);
 
   // Update all recipients to visible
-  db.prepare(`
-    UPDATE assignment_recipients SET visibility_status = 'visible' WHERE assignment_id = ?
-  `).run(id);
+  await db.query(`
+    UPDATE assignment_recipients SET visibility_status = 'visible' WHERE assignment_id = $1
+  `, [id]);
 
-  return db.prepare('SELECT * FROM assignments WHERE id = ?').get(id) as Assignment;
+  const result = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
+  return result.rows[0] as Assignment;
 }
 
-export function getAssignmentWithRecipients(id: string): AssignmentWithRecipients | null {
+export async function getAssignmentWithRecipients(id: string): Promise<AssignmentWithRecipients | null> {
   const db = getDb();
 
-  const assignment = db.prepare('SELECT * FROM assignments WHERE id = ?').get(id) as Assignment | undefined;
+  const assignmentResult = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
+  const assignment = assignmentResult.rows[0] as Assignment | undefined;
   if (!assignment) {
     return null;
   }
 
-  const recipients = db.prepare('SELECT * FROM assignment_recipients WHERE assignment_id = ?').all(id) as AssignmentRecipient[];
+  const recipientsResult = await db.query('SELECT * FROM assignment_recipients WHERE assignment_id = $1', [id]);
+  const recipients = recipientsResult.rows as AssignmentRecipient[];
 
   return {
     ...assignment,
@@ -174,18 +184,19 @@ export interface ListAssignmentsFilters {
   status?: 'draft' | 'scheduled' | 'released' | 'closed';
 }
 
-export function getAssignmentsForTeacher(teacherId: string, filters?: ListAssignmentsFilters): Assignment[] {
+export async function getAssignmentsForTeacher(teacherId: string, filters?: ListAssignmentsFilters): Promise<Assignment[]> {
   const db = getDb();
 
-  const conditions: string[] = ['teacher_id = ?'];
-  const values: (string | number)[] = [teacherId];
+  const conditions: string[] = ['teacher_id = $1'];
+  const values: (string | undefined)[] = [teacherId];
+  let paramIndex = 2;
 
   if (filters?.classId) {
-    conditions.push('class_id = ?');
+    conditions.push(`class_id = $${paramIndex++}`);
     values.push(filters.classId);
   }
   if (filters?.status) {
-    conditions.push('status = ?');
+    conditions.push(`status = $${paramIndex++}`);
     values.push(filters.status);
   }
 
@@ -195,19 +206,21 @@ export function getAssignmentsForTeacher(teacherId: string, filters?: ListAssign
     ORDER BY created_at DESC
   `;
 
-  return db.prepare(query).all(...values) as Assignment[];
+  const result = await db.query(query, values);
+  return result.rows as Assignment[];
 }
 
-export function getAssignmentById(id: string): Assignment | null {
+export async function getAssignmentById(id: string): Promise<Assignment | null> {
   const db = getDb();
-  const assignment = db.prepare('SELECT * FROM assignments WHERE id = ?').get(id) as Assignment | undefined;
-  return assignment || null;
+  const result = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
+  return (result.rows[0] as Assignment) || null;
 }
 
-export function deleteAssignment(id: string): boolean {
+export async function deleteAssignment(id: string): Promise<boolean> {
   const db = getDb();
 
-  const assignment = db.prepare('SELECT status FROM assignments WHERE id = ?').get(id) as { status: string } | undefined;
+  const assignmentResult = await db.query('SELECT status FROM assignments WHERE id = $1', [id]);
+  const assignment = assignmentResult.rows[0] as { status: string } | undefined;
   if (!assignment) {
     return false;
   }
@@ -217,6 +230,6 @@ export function deleteAssignment(id: string): boolean {
     throw new Error(`Cannot delete assignment with status '${assignment.status}'`);
   }
 
-  db.prepare('DELETE FROM assignments WHERE id = ?').run(id);
+  await db.query('DELETE FROM assignments WHERE id = $1', [id]);
   return true;
 }

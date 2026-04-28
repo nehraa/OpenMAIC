@@ -42,43 +42,42 @@ export interface AssignmentProgressResult {
   students: StudentProgress[];
 }
 
-export function getClassProgress(classId: string, filters?: ProgressFilters): ClassProgressResult | null {
+export async function getClassProgress(classId: string, filters?: ProgressFilters): Promise<ClassProgressResult | null> {
   const db = getDb();
 
-  // Verify class exists and get its name
-  const classRecord = db.prepare('SELECT id, name FROM classes WHERE id = ?').get(classId) as { id: string; name: string } | undefined;
+  const classResult = await db.query('SELECT id, name FROM classes WHERE id = $1', [classId]);
+  const classRecord = classResult.rows[0] as { id: string; name: string } | undefined;
   if (!classRecord) {
     return null;
   }
 
-  // Get all students in the class
-  const studentQuery = `
+  const studentsResult = await db.query(`
     SELECT DISTINCT u.id as student_id, u.name as student_name, u.phone_e164 as student_phone
     FROM users u
     INNER JOIN class_memberships cm ON cm.student_id = u.id
-    WHERE cm.class_id = ?
-  `;
+    WHERE cm.class_id = $1
+  `, [classId]);
 
-  const students = db.prepare(studentQuery).all(classId) as Array<{
+  const students = studentsResult.rows as Array<{
     student_id: string;
     student_name: string;
     student_phone: string;
   }>;
 
-  // Get all assignments for this class
   let assignmentQuery = `
     SELECT a.id, a.title, a.slide_asset_version_id
     FROM assignments a
-    WHERE a.class_id = ? AND a.status = 'released'
+    WHERE a.class_id = $1 AND a.status = 'released'
   `;
   const assignmentParams: string[] = [classId];
 
   if (filters?.assignmentId) {
-    assignmentQuery += ' AND a.id = ?';
+    assignmentQuery += ' AND a.id = $2';
     assignmentParams.push(filters.assignmentId);
   }
 
-  const assignments = db.prepare(assignmentQuery).all(...assignmentParams) as Array<{
+  const assignmentsResult = await db.query(assignmentQuery, assignmentParams);
+  const assignments = assignmentsResult.rows as Array<{
     id: string;
     title: string;
     slide_asset_version_id: string | null;
@@ -99,31 +98,30 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
   }
 
   const assignmentIds = assignments.map((a) => a.id);
-  const placeholders = assignmentIds.map(() => '?').join(', ');
+  const placeholders = assignmentIds.map((_, i) => `$${i + 1}`).join(', ');
 
-  // Batch fetch slide progress for all students/assignments
-  const slideProgressRows = db.prepare(`
+  const slideProgressResult = await db.query(`
     SELECT assignment_id, student_id, COUNT(DISTINCT slide_id) as slides_viewed
     FROM assignment_slide_progress
     WHERE assignment_id IN (${placeholders})
     GROUP BY assignment_id, student_id
-  `).all(...assignmentIds) as Array<{ assignment_id: string; student_id: string; slides_viewed: number }>;
+  `, assignmentIds);
 
   const slideProgressMap = new Map<string, number>();
-  slideProgressRows.forEach((row) => {
+  slideProgressResult.rows.forEach((row: any) => {
     slideProgressMap.set(`${row.assignment_id}:${row.student_id}`, row.slides_viewed);
   });
 
-  // Compute total slides per assignment from payload_json
   const totalSlidesMap = new Map<string, number>();
   for (const assignment of assignments) {
     if (!assignment.slide_asset_version_id) {
       totalSlidesMap.set(assignment.id, 0);
       continue;
     }
-    const versionRow = db.prepare(`
-      SELECT payload_json FROM content_asset_versions WHERE id = ?
-    `).get(assignment.slide_asset_version_id) as { payload_json: string } | undefined;
+    const versionResult = await db.query(`
+      SELECT payload_json FROM content_asset_versions WHERE id = $1
+    `, [assignment.slide_asset_version_id]);
+    const versionRow = versionResult.rows[0] as { payload_json: string } | undefined;
     if (!versionRow) {
       totalSlidesMap.set(assignment.id, 0);
       continue;
@@ -137,38 +135,29 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
     }
   }
 
-  // Batch fetch attempts
-  const attemptRows = db.prepare(`
+  const attemptResult = await db.query(`
     SELECT assignment_id, student_id, score_percent, submitted_at, started_at
     FROM assignment_attempts
     WHERE assignment_id IN (${placeholders})
-  `).all(...assignmentIds) as Array<{
-    assignment_id: string;
-    student_id: string;
-    score_percent: number | null;
-    submitted_at: string | null;
-    started_at: string;
-  }>;
+  `, assignmentIds);
 
   const attemptMap = new Map<string, { score_percent: number | null; submitted_at: string | null; started_at: string }>();
-  attemptRows.forEach((row) => {
+  attemptResult.rows.forEach((row: any) => {
     attemptMap.set(`${row.assignment_id}:${row.student_id}`, row);
   });
 
-  // Batch fetch last slide view per student/assignment
-  const lastViewRows = db.prepare(`
+  const lastViewResult = await db.query(`
     SELECT assignment_id, student_id, MAX(viewed_at) as last_view
     FROM assignment_slide_progress
     WHERE assignment_id IN (${placeholders})
     GROUP BY assignment_id, student_id
-  `).all(...assignmentIds) as Array<{ assignment_id: string; student_id: string; last_view: string | null }>;
+  `, assignmentIds);
 
   const lastViewMap = new Map<string, string | null>();
-  lastViewRows.forEach((row) => {
+  lastViewResult.rows.forEach((row: any) => {
     lastViewMap.set(`${row.assignment_id}:${row.student_id}`, row.last_view);
   });
 
-  // Build progress data for each student
   const studentProgressList: StudentProgress[] = students.map((student) => {
     const assignmentProgressList: AssignmentProgress[] = assignments.map((assignment) => {
       const key = `${assignment.id}:${student.student_id}`;
@@ -211,7 +200,6 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
     };
   });
 
-  // Apply filters
   let filteredStudents = studentProgressList;
 
   if (filters?.status && filters.status !== 'all') {
@@ -256,50 +244,52 @@ export function getClassProgress(classId: string, filters?: ProgressFilters): Cl
   };
 }
 
-export function getAssignmentProgress(assignmentId: string): AssignmentProgressResult | null {
+export async function getAssignmentProgress(assignmentId: string): Promise<AssignmentProgressResult | null> {
   const db = getDb();
 
-  // Verify assignment exists and get title
-  const assignment = db.prepare(`
+  const assignmentResult = await db.query(`
     SELECT a.id, a.title, a.class_id
     FROM assignments a
-    WHERE a.id = ?
-  `).get(assignmentId) as { id: string; title: string; class_id: string } | undefined;
+    WHERE a.id = $1
+  `, [assignmentId]);
+
+  const assignment = assignmentResult.rows[0] as { id: string; title: string; class_id: string } | undefined;
 
   if (!assignment) {
     return null;
   }
 
-  // Get all students in the class
-  const students = db.prepare(`
+  const studentsResult = await db.query(`
     SELECT DISTINCT u.id as student_id, u.name as student_name, u.phone_e164 as student_phone
     FROM users u
     INNER JOIN class_memberships cm ON cm.student_id = u.id
-    WHERE cm.class_id = ?
-  `).all(assignment.class_id) as Array<{
+    WHERE cm.class_id = $1
+  `, [assignment.class_id]);
+
+  const students = studentsResult.rows as Array<{
     student_id: string;
     student_name: string;
     student_phone: string;
   }>;
 
-  // Get slide progress for this assignment
-  const slideProgressMap = new Map<string, number>();
-  const slideProgressRows = db.prepare(`
+  const slideProgressResult = await db.query(`
     SELECT student_id, COUNT(DISTINCT slide_id) as slides_viewed
     FROM assignment_slide_progress
-    WHERE assignment_id = ?
+    WHERE assignment_id = $1
     GROUP BY student_id
-  `).all(assignmentId) as Array<{ student_id: string; slides_viewed: number }>;
+  `, [assignmentId]);
 
-  slideProgressRows.forEach((row) => {
+  const slideProgressMap = new Map<string, number>();
+  slideProgressResult.rows.forEach((row: any) => {
     slideProgressMap.set(row.student_id, row.slides_viewed);
   });
 
-  // Get total slides from slide asset payload_json
   let totalSlides = 0;
-  const assignmentRow = db.prepare('SELECT slide_asset_version_id FROM assignments WHERE id = ?').get(assignmentId) as { slide_asset_version_id: string | null } | undefined;
+  const assignmentRowResult = await db.query('SELECT slide_asset_version_id FROM assignments WHERE id = $1', [assignmentId]);
+  const assignmentRow = assignmentRowResult.rows[0] as { slide_asset_version_id: string | null } | undefined;
   if (assignmentRow?.slide_asset_version_id) {
-    const versionRow = db.prepare('SELECT payload_json FROM content_asset_versions WHERE id = ?').get(assignmentRow.slide_asset_version_id) as { payload_json: string } | undefined;
+    const versionResult = await db.query('SELECT payload_json FROM content_asset_versions WHERE id = $1', [assignmentRow.slide_asset_version_id]);
+    const versionRow = versionResult.rows[0] as { payload_json: string } | undefined;
     if (versionRow) {
       try {
         const payload = JSON.parse(versionRow.payload_json);
@@ -310,20 +300,14 @@ export function getAssignmentProgress(assignmentId: string): AssignmentProgressR
     }
   }
 
-  // Get attempt data for all students
-  const attemptMap = new Map<string, { score_percent: number | null; submitted_at: string | null; started_at: string }>();
-  const attemptRows = db.prepare(`
+  const attemptResult = await db.query(`
     SELECT student_id, score_percent, submitted_at, started_at
     FROM assignment_attempts
-    WHERE assignment_id = ?
-  `).all(assignmentId) as Array<{
-    student_id: string;
-    score_percent: number | null;
-    submitted_at: string | null;
-    started_at: string;
-  }>;
+    WHERE assignment_id = $1
+  `, [assignmentId]);
 
-  attemptRows.forEach((row) => {
+  const attemptMap = new Map<string, { score_percent: number | null; submitted_at: string | null; started_at: string }>();
+  attemptResult.rows.forEach((row: any) => {
     attemptMap.set(row.student_id, row);
   });
 
@@ -343,7 +327,7 @@ export function getAssignmentProgress(assignmentId: string): AssignmentProgressR
       slidesCompleted: totalSlides > 0 && slidesViewed >= totalSlides,
       quizCompleted: !!attempt?.submitted_at,
       quizScorePercent: attempt?.score_percent ?? null,
-      totalTimeMinutes: 0, // Not calculated for single assignment view
+      totalTimeMinutes: 0,
       lastActivityAt: attempt?.started_at || null
     };
 
@@ -374,8 +358,8 @@ export function getAssignmentProgress(assignmentId: string): AssignmentProgressR
   };
 }
 
-export function exportToCSV(classId: string, filters?: ProgressFilters): string {
-  const progress = getClassProgress(classId, filters);
+export async function exportToCSV(classId: string, filters?: ProgressFilters): Promise<string> {
+  const progress = await getClassProgress(classId, filters);
 
   if (!progress) {
     return '';
@@ -409,7 +393,6 @@ export function exportToCSV(classId: string, filters?: ProgressFilters): string 
       rows.push(row.join(','));
     }
 
-    // If student has no assignments, still include a row for them
     if (student.assignments.length === 0) {
       const row = [
         escapeCSV(student.studentName),

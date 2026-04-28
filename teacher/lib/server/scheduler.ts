@@ -14,155 +14,131 @@ export interface SchedulerJob {
   updated_at: string;
 }
 
-// Retry intervals in milliseconds: 1min, 5min, 15min, 1hr
 const RETRY_INTERVALS = [60_000, 300_000, 900_000, 3_600_000];
 const MAX_RETRIES = 4;
 
-/**
- * Creates or updates a scheduler job for an assignment.
- * If a pending job already exists for the same assignment, it updates the existing job.
- * This ensures idempotency - multiple calls don't create duplicate jobs.
- */
-export function createScheduleJob(assignmentId: string, releaseAt: string): SchedulerJob {
+export async function createScheduleJob(assignmentId: string, releaseAt: string): Promise<SchedulerJob> {
   const db = getDb();
 
-  // Check if a pending job already exists for this assignment
-  const existingJob = db.prepare(`
+  const existingResult = await db.query(`
     SELECT * FROM scheduler_jobs
-    WHERE target_type = 'assignment' AND target_id = ? AND status = 'pending'
-  `).get(assignmentId) as SchedulerJob | undefined;
+    WHERE target_type = 'assignment' AND target_id = $1 AND status = 'pending'
+  `, [assignmentId]);
+
+  const existingJob = existingResult.rows[0] as SchedulerJob | undefined;
 
   if (existingJob) {
-    // Update existing job with new release time
-    db.prepare(`
+    await db.query(`
       UPDATE scheduler_jobs
-      SET run_at = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(releaseAt, existingJob.id);
+      SET run_at = $1, updated_at = NOW()
+      WHERE id = $2
+    `, [releaseAt, existingJob.id]);
 
-    // Update the assignment's release_at and status
-    db.prepare(`
-      UPDATE assignments SET release_at = ?, status = 'scheduled', updated_at = datetime('now')
-      WHERE id = ?
-    `).run(releaseAt, assignmentId);
+    await db.query(`
+      UPDATE assignments SET release_at = $1, status = 'scheduled', updated_at = NOW()
+      WHERE id = $2
+    `, [releaseAt, assignmentId]);
 
-    return db.prepare('SELECT * FROM scheduler_jobs WHERE id = ?').get(existingJob.id) as SchedulerJob;
+    const result = await db.query('SELECT * FROM scheduler_jobs WHERE id = $1', [existingJob.id]);
+    return result.rows[0] as SchedulerJob;
   }
 
-  // Create new job
-  const job = db.prepare(`
+  const jobResult = await db.query(`
     INSERT INTO scheduler_jobs (target_type, target_id, run_at, status)
-    VALUES ('assignment', ?, ?, 'pending')
+    VALUES ('assignment', $1, $2, 'pending')
     RETURNING *
-  `).get(assignmentId, releaseAt) as SchedulerJob;
+  `, [assignmentId, releaseAt]);
 
-  // Update assignment status to scheduled
-  db.prepare(`
-    UPDATE assignments SET release_at = ?, status = 'scheduled', updated_at = datetime('now')
-    WHERE id = ?
-  `).run(releaseAt, assignmentId);
+  const job = jobResult.rows[0] as SchedulerJob;
+
+  await db.query(`
+    UPDATE assignments SET release_at = $1, status = 'scheduled', updated_at = NOW()
+    WHERE id = $2
+  `, [releaseAt, assignmentId]);
 
   return job;
 }
 
-/**
- * Cancels a scheduled job by setting its status to 'failed' with a user-cancellation error.
- * Returns the updated job or null if no pending job was found.
- */
-export function cancelScheduleJob(assignmentId: string): SchedulerJob | null {
+export async function cancelScheduleJob(assignmentId: string): Promise<SchedulerJob | null> {
   const db = getDb();
 
-  const existingJob = db.prepare(`
+  const existingResult = await db.query(`
     SELECT * FROM scheduler_jobs
-    WHERE target_type = 'assignment' AND target_id = ? AND status = 'pending'
-  `).get(assignmentId) as SchedulerJob | undefined;
+    WHERE target_type = 'assignment' AND target_id = $1 AND status = 'pending'
+  `, [assignmentId]);
+
+  const existingJob = existingResult.rows[0] as SchedulerJob | undefined;
 
   if (!existingJob) {
     return null;
   }
 
-  db.prepare(`
-    UPDATE scheduler_jobs SET status = 'failed', last_error = 'Cancelled by user', updated_at = datetime('now')
-    WHERE id = ?
-  `).run(existingJob.id);
+  await db.query(`
+    UPDATE scheduler_jobs SET status = 'failed', last_error = 'Cancelled by user', updated_at = NOW()
+    WHERE id = $1
+  `, [existingJob.id]);
 
-  // Revert assignment status to draft
-  db.prepare(`
-    UPDATE assignments SET status = 'draft', updated_at = datetime('now')
-    WHERE id = ?
-  `).run(assignmentId);
+  await db.query(`
+    UPDATE assignments SET status = 'draft', updated_at = NOW()
+    WHERE id = $1
+  `, [assignmentId]);
 
-  return db.prepare('SELECT * FROM scheduler_jobs WHERE id = ?').get(existingJob.id) as SchedulerJob;
+  const result = await db.query('SELECT * FROM scheduler_jobs WHERE id = $1', [existingJob.id]);
+  return result.rows[0] as SchedulerJob;
 }
 
-/**
- * Updates an existing scheduled job with a new release time.
- * If no pending job exists, creates a new one.
- */
-export function updateSchedule(assignmentId: string, newReleaseAt: string): SchedulerJob {
+export async function updateSchedule(assignmentId: string, newReleaseAt: string): Promise<SchedulerJob> {
   return createScheduleJob(assignmentId, newReleaseAt);
 }
 
-/**
- * Gets the current schedule for an assignment.
- * Returns the pending job if one exists, or null.
- */
-export function getSchedule(assignmentId: string): SchedulerJob | null {
+export async function getSchedule(assignmentId: string): Promise<SchedulerJob | null> {
   const db = getDb();
 
-  const job = db.prepare(`
+  const result = await db.query(`
     SELECT * FROM scheduler_jobs
-    WHERE target_type = 'assignment' AND target_id = ? AND status = 'pending'
-  `).get(assignmentId) as SchedulerJob | undefined;
+    WHERE target_type = 'assignment' AND target_id = $1 AND status = 'pending'
+  `, [assignmentId]);
 
-  return job || null;
+  return result.rows[0] as SchedulerJob || null;
 }
 
-/**
- * Processes all pending jobs that are due to run.
- * Called by the cron/worker at regular intervals.
- * Uses exponential backoff for failed jobs.
- */
-export function runPendingJobs(): { processed: number; succeeded: number; failed: number } {
+export async function runPendingJobs(): Promise<{ processed: number; succeeded: number; failed: number }> {
   const db = getDb();
 
-  // Get all due pending jobs
-  const dueJobs = db.prepare(`
+  const dueJobsResult = await db.query(`
     SELECT * FROM scheduler_jobs
-    WHERE status = 'pending' AND run_at <= datetime('now')
-  `).all() as SchedulerJob[];
+    WHERE status = 'pending' AND run_at <= NOW()
+  `);
+
+  const dueJobs = dueJobsResult.rows as SchedulerJob[];
 
   let succeeded = 0;
   let failed = 0;
 
   for (const job of dueJobs) {
     try {
-      // Mark as running
-      db.prepare(`
-        UPDATE scheduler_jobs SET status = 'running', updated_at = datetime('now')
-        WHERE id = ?
-      `).run(job.id);
+      await db.query(`
+        UPDATE scheduler_jobs SET status = 'running', updated_at = NOW()
+        WHERE id = $1
+      `, [job.id]);
 
       if (job.target_type === 'assignment') {
-        // Release the assignment
-        const assignment = releaseAssignment(job.target_id);
+        const assignment = await releaseAssignment(job.target_id);
 
         if (assignment) {
-          // Mark as completed
-          db.prepare(`
-            UPDATE scheduler_jobs SET status = 'completed', updated_at = datetime('now')
-            WHERE id = ?
-          `).run(job.id);
+          await db.query(`
+            UPDATE scheduler_jobs SET status = 'completed', updated_at = NOW()
+            WHERE id = $1
+          `, [job.id]);
           succeeded++;
         } else {
-          // Assignment not found - mark as failed
-          handleJobFailure(db, job.id, 'Assignment not found');
+          await handleJobFailure(db, job.id, 'Assignment not found');
           failed++;
         }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      handleJobFailure(db, job.id, errorMessage);
+      await handleJobFailure(db, job.id, errorMessage);
       failed++;
     }
   }
@@ -174,37 +150,29 @@ export function runPendingJobs(): { processed: number; succeeded: number; failed
   };
 }
 
-/**
- * Handles job failure with exponential backoff retry.
- * After max retries, marks the job as permanently failed.
- */
-function handleJobFailure(db: ReturnType<typeof getDb>, jobId: string, errorMessage: string): void {
-  const job = db.prepare('SELECT * FROM scheduler_jobs WHERE id = ?').get(jobId) as SchedulerJob;
+async function handleJobFailure(db: ReturnType<typeof getDb>, jobId: string, errorMessage: string): Promise<void> {
+  const jobResult = await db.query('SELECT * FROM scheduler_jobs WHERE id = $1', [jobId]);
+  const job = jobResult.rows[0] as SchedulerJob;
 
   const newRetryCount = job.retry_count + 1;
 
   if (newRetryCount >= MAX_RETRIES) {
-    // Max retries reached - mark as permanently failed
-    db.prepare(`
+    await db.query(`
       UPDATE scheduler_jobs
-      SET status = 'failed', retry_count = ?, last_error = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(newRetryCount, errorMessage, jobId);
+      SET status = 'failed', retry_count = $1, last_error = $2, updated_at = NOW()
+      WHERE id = $3
+    `, [newRetryCount, errorMessage, jobId]);
   } else {
-    // Schedule retry with exponential backoff
     const nextRunAt = new Date(Date.now() + RETRY_INTERVALS[newRetryCount - 1]).toISOString();
 
-    db.prepare(`
+    await db.query(`
       UPDATE scheduler_jobs
-      SET status = 'pending', retry_count = ?, last_error = ?, run_at = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(newRetryCount, errorMessage, nextRunAt, jobId);
+      SET status = 'pending', retry_count = $1, last_error = $2, run_at = $3, updated_at = NOW()
+      WHERE id = $4
+    `, [newRetryCount, errorMessage, nextRunAt, jobId]);
   }
 }
 
-/**
- * Manually releases an assignment (same as automatic release via scheduler).
- */
-export function releaseAssignmentById(id: string): Assignment | null {
+export async function releaseAssignmentById(id: string): Promise<Assignment | null> {
   return releaseAssignment(id);
 }

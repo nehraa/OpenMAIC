@@ -4,13 +4,12 @@ import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
 
 // POST /api/teacher/classes/[classId]/students/import-csv - Import students from CSV
-export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext) => {
-  const pathParts = req.nextUrl.pathname.split('/').filter(Boolean);
-  const classId = pathParts[pathParts.length - 3];
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
   const db = getDb();
 
-  const classData = db.prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?').get(classId, ctx.user.id);
-  if (!classData) {
+  const classResult = await db.query('SELECT id FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
+  if (classResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
@@ -50,17 +49,29 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     }
 
     try {
-      let student = db.prepare('SELECT id FROM users WHERE phone_e164 = ?').get(phone) as any;
+      const existingStudentResult = await db.query('SELECT id FROM users WHERE phone_e164 = $1', [phone]);
+      let studentId: string;
 
-      if (!student) {
-        const result = db.prepare(`INSERT INTO users (role, phone_e164, name) VALUES ('student_classroom', ?, ?)`).run(phone, name);
-        student = { id: result.lastInsertRowid };
+      if (existingStudentResult.rows.length > 0) {
+        studentId = existingStudentResult.rows[0].id;
+      } else {
+        const insertResult = await db.query(
+          `INSERT INTO users (role, phone_e164, name) VALUES ($1, $2, $3) RETURNING id`,
+          ['student_classroom', phone, name]
+        );
+        studentId = insertResult.rows[0].id;
       }
 
-      const existing = db.prepare('SELECT id FROM class_memberships WHERE class_id = ? AND student_id = ?').get(classId, student.id);
+      const existingMembershipResult = await db.query(
+        'SELECT id FROM class_memberships WHERE class_id = $1 AND student_id = $2',
+        [classId, studentId]
+      );
 
-      if (!existing) {
-        db.prepare(`INSERT INTO class_memberships (class_id, student_id, source) VALUES (?, ?, 'csv')`).run(classId, student.id);
+      if (existingMembershipResult.rows.length === 0) {
+        await db.query(
+          `INSERT INTO class_memberships (class_id, student_id, source) VALUES ($1, $2, 'csv')`,
+          [classId, studentId]
+        );
       }
 
       results.success++;
