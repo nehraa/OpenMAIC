@@ -2,6 +2,7 @@ import { getDb } from '../db';
 import type { ContentAsset, ContentAssetVersion } from '@shared/types/assignment';
 
 export interface SaveAssetData {
+  tenantId: string;
   teacherId: string;
   type: 'slide_deck' | 'quiz';
   title: string;
@@ -28,10 +29,11 @@ export async function saveGeneratedContent(data: SaveAssetData): Promise<Content
   const db = getDb();
 
   const assetResult = await db.query(`
-    INSERT INTO content_assets (owner_teacher_id, type, title, subject_tag, source_kind, source_ref)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO content_assets (tenant_id, owner_teacher_id, type, title, subject_tag, source_kind, source_ref)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *
   `, [
+    data.tenantId,
     data.teacherId,
     data.type,
     data.title,
@@ -44,9 +46,9 @@ export async function saveGeneratedContent(data: SaveAssetData): Promise<Content
   const assetId = asset.id;
 
   await db.query(`
-    INSERT INTO content_asset_versions (asset_id, version_number, payload_json, status)
-    VALUES ($1, 1, $2, 'published')
-  `, [assetId, JSON.stringify(data.payload)]);
+    INSERT INTO content_asset_versions (tenant_id, asset_id, version_number, payload_json, status)
+    VALUES ($1, $2, 1, $3, 'published')
+  `, [data.tenantId, assetId, JSON.stringify(data.payload)]);
 
   return asset;
 }
@@ -159,10 +161,11 @@ export async function reuseAsset(teacherId: string, data: ReuseAssetData): Promi
   const assignmentTitle = data.title || asset.title;
 
   const assignmentResult = await db.query(`
-    INSERT INTO assignments (class_id, teacher_id, title, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')
+    INSERT INTO assignments (tenant_id, class_id, teacher_id, title, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')
     RETURNING *
   `, [
+    asset.tenant_id,
     data.targetClassId,
     teacherId,
     assignmentTitle,

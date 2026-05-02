@@ -19,6 +19,18 @@ interface TenantRow {
   id: string;
 }
 
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': 'http://localhost:3001',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -65,20 +77,26 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create user
-    const userId = crypto.randomUUID();
-    await db.query(
-      `INSERT INTO users (id, role, name, email, phone_e164, password_hash, status)
-       VALUES ($1, 'teacher', $2, $3, $4, $5, 'active')`,
-      [userId, name, email, phone, passwordHash]
-    );
-
-    // Create tenant for this teacher
+    // Create tenant first for this teacher (without owner_user_id initially)
     const tenantId = crypto.randomUUID();
     await db.query(
-      `INSERT INTO tenants (id, owner_user_id, name, type)
-       VALUES ($1, $2, $3, 'personal')`,
-      [tenantId, userId, `${name}'s Workspace`]
+      `INSERT INTO tenants (id, name, type)
+       VALUES ($1, $2, 'personal')`,
+      [tenantId, `${name}'s Workspace`]
+    );
+
+    // Create user with tenant_id
+    const userId = crypto.randomUUID();
+    await db.query(
+      `INSERT INTO users (id, tenant_id, role, name, email, phone_e164, password_hash, status)
+       VALUES ($1, $2, 'teacher', $3, $4, $5, $6, 'active')`,
+      [userId, tenantId, name, email, phone, passwordHash]
+    );
+
+    // Update tenant with correct owner_user_id
+    await db.query(
+      `UPDATE tenants SET owner_user_id = $1 WHERE id = $2`,
+      [userId, tenantId]
     );
 
     // Generate tokens
@@ -107,6 +125,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+
+    // Add CORS headers for cross-origin requests from app (port 3001)
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
 
     response.cookies.set('access_token', accessToken, {
       ...cookieOptions,

@@ -10,7 +10,7 @@
 - Students can see completion status signals for assigned peers (as configured by teacher/school policy).
 
 2. Student B2C Product (self-serve)
-- This keeps the current OpenMAIC behavior for students who purchase direct B2C access.
+- This keeps the current AIDU behavior for students who purchase direct B2C access.
 - B2C students can prompt, generate, and use full personal workflows.
 
 3. Repository Rule (non-negotiable)
@@ -38,7 +38,7 @@ TEACHER
 └── AI teaching suggestions per student
 
 STUDENT (B2C)
-├── Current OpenMAIC self-serve workflows
+├── Current AIDU self-serve workflows
 ├── Prompt and generate personal content
 └── Independent usage and quota tracking
 
@@ -53,9 +53,9 @@ PLATFORM
 
 ## Phase 1 — Core MVP (Weeks 1-2)
 
-### 1.1 OpenMAIC Deployment + Ollama Integration
+### 1.1 AIDU Deployment + Ollama Integration
 
-- [x] Clone OpenMAIC from GitHub
+- [x] Clone AIDU from GitHub
 - [x] Set up Ollama on local machine
 - [x] Connect Ollama as primary LLM (bypass API token costs)
 - [x] Configure MiniMax as fallback LLM
@@ -105,7 +105,7 @@ PLATFORM
 
 ### 2.1 Assignment Engine
 
-- [ ] Teacher uploads PDF → triggers OpenMAIC lesson generation
+- [ ] Teacher uploads PDF → triggers AIDU lesson generation
 - [ ] Teacher selects generated slides → assigns to entire class
 - [ ] Teacher selects generated quiz → assigns to entire class
 - [ ] Teacher can assign to individual students (not whole class)
@@ -174,7 +174,7 @@ PLATFORM
 
 ### 3.5 B2C Student Workspace
 
-- [ ] Preserve current OpenMAIC student prompting/generation capabilities for B2C users
+- [ ] Preserve current AIDU student prompting/generation capabilities for B2C users
 - [ ] Clear mode separation: classroom student (read-only) vs B2C student (self-serve)
 - [ ] Separate routing and auth guardrails for classroom and B2C surfaces
 
@@ -335,7 +335,7 @@ Note: Items in this phase are B2C-first by default. In classroom mode, these fea
 
 ### 7.5 Multi-Agent Classroom Upgrade
 
-- [ ] Integrate NotebookLM citations into OpenMAIC responses
+- [ ] Integrate NotebookLM citations into AIDU responses
 - [ ] AI Teacher cites source when explaining
 - [ ] AI Classmates debate using only source material (no hallucinations)
 - [ ] Source sidebar: student can see which pages AI is referencing
@@ -420,7 +420,7 @@ Note: Items in this phase are B2C-first by default. In classroom mode, these fea
 - [ ] Student receives WhatsApp notification for assigned homework
 - [ ] Student can reply to WhatsApp message to ask doubt
 - [ ] AI responds via WhatsApp with answer + citation
-- [ ] Integration via OpenClaw (built into OpenMAIC)
+- [ ] Integration via OpenClaw (built into AIDU)
 
 ---
 
@@ -474,7 +474,7 @@ YEAR 2: Phase 10 (Enterprise)
 
 | Phase | Estimated Time | Notes |
 |---|---|---|
-| Phase 1 | 1-2 weeks | OpenMAIC setup + basic views |
+| Phase 1 | 1-2 weeks | AIDU setup + basic views |
 | Phase 2 | 2 weeks | Teacher assignment engine |
 | Phase 3 | 1 week | Quotas + caching |
 | Phase 4 | 1-2 weeks | Payments + referrals |
@@ -493,8 +493,8 @@ YEAR 2: Phase 10 (Enterprise)
 ## Technical Stack
 
 ```
-Frontend:    Next.js + React + TypeScript (from OpenMAIC)
-Backend:     Node.js API (OpenMAIC backend) + SQLite (MVP)
+Frontend:    Next.js + React + TypeScript (from AIDU)
+Backend:     Node.js API (AIDU backend) + SQLite (MVP)
 LLM:         Ollama (local) + MiniMax (fallback/orchestration)
 Payments:    Razorpay or PhonePe
 SMS:         MSG91 or Twilio

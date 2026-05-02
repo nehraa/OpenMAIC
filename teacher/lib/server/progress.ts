@@ -12,6 +12,7 @@ export interface StudentProgress {
   studentName: string;
   studentPhone: string;
   assignments: AssignmentProgress[];
+  aiInsights?: string[];
 }
 
 export interface AssignmentProgress {
@@ -192,11 +193,30 @@ export async function getClassProgress(classId: string, filters?: ProgressFilter
       };
     });
 
+    // Generate mock AI insights for demo
+    const averageScore = assignmentProgressList
+      .filter(a => a.quizScorePercent !== null)
+      .reduce((acc, a) => acc + (a.quizScorePercent || 0), 0) / 
+      (assignmentProgressList.filter(a => a.quizScorePercent !== null).length || 1);
+
+    const insights: string[] = [];
+    if (averageScore < 60) {
+      insights.push('Requires urgent attention: Struggling with core concepts.');
+      insights.push('Recommendation: Assign remedial practice on foundational Algebra.');
+    } else if (averageScore < 80) {
+      insights.push('Showing steady progress but inconsistent in advanced topics.');
+      insights.push('Observation: Making minor errors in multi-step equations.');
+    } else {
+      insights.push('Excellent performance: Mastering the current curriculum.');
+      insights.push('Suggestion: Provide enrichment material on complex variables.');
+    }
+
     return {
       studentId: student.student_id,
       studentName: student.student_name,
       studentPhone: student.student_phone,
-      assignments: assignmentProgressList
+      assignments: assignmentProgressList,
+      aiInsights: insights
     };
   });
 

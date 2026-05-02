@@ -180,7 +180,7 @@ export default function StudentSessionPage({
 
   async function fetchSession() {
     try {
-      const response = await fetch(`/api/student/sessions/${sessionId}`);
+      const response = await fetch(`/student/api/student/sessions/${sessionId}`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -220,7 +220,7 @@ export default function StudentSessionPage({
 
   async function handleMarkComplete() {
     try {
-      const response = await fetch(`/api/student/sessions/${sessionId}/completion`, {
+      const response = await fetch(`/student/api/student/sessions/${sessionId}/completion`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -239,7 +239,7 @@ export default function StudentSessionPage({
   }
 
   async function handleAskQuestion(question: string) {
-    const response = await fetch(`/api/student/sessions/${sessionId}/questions`, {
+    const response = await fetch(`/student/api/student/sessions/${sessionId}/questions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

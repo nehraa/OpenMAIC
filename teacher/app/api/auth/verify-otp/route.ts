@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create session
-    const sessionId = createSession(user.id);
+    const sessionId = await createSession(user.id);
 
     return NextResponse.json(
       {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'x-session-id': sessionId,
         },
-      },
+      }
     );
   } catch (error) {
     console.error('Verify OTP error:', error);

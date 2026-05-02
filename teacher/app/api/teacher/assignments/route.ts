@@ -78,12 +78,13 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
 
   // Create assignment
   const insertResult = await db.query(`
-    INSERT INTO assignments (class_id, teacher_id, title, description, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')
+    INSERT INTO assignments (class_id, teacher_id, tenant_id, title, description, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft')
     RETURNING *
   `, [
     data.classId,
     ctx.user.id,
+    ctx.tenantId,
     data.title,
     data.description || '',
     data.slideAssetVersionId || null,

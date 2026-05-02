@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task.
 
-**Goal:** Transform OpenMAIC from a generation-first tool into a teacher operations product with full assignment workflow, quiz building, live sessions, scheduling, and content library.
+**Goal:** Transform AIDU from a generation-first tool into a teacher operations product with full assignment workflow, quiz building, live sessions, scheduling, and content library.
 
 **Architecture:** Copy-on-write from core into `teacher/` and `student/` folders. New domains: Assignment, Quiz Builder, Live Session, Scheduler, Content Library. SQLite via Prisma.
 
@@ -12,7 +12,7 @@
 
 ## Context
 
-Phase 2 transforms OpenMAIC from a generation-first tool into a teacher operations product. The key workflow is:
+Phase 2 transforms AIDU from a generation-first tool into a teacher operations product. The key workflow is:
 
 **Generate content → Create assignment → Track progress → Run live sessions → Schedule releases → Build content library**
 
@@ -287,7 +287,7 @@ student/
 You are implementing the Assignment Domain Foundation for Aidutech's Teacher Panel v1.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/
 - Tech stack: Next.js App Router, TypeScript, Prisma + SQLite
 - Phase 1 dependency: Must verify users, classes, class_memberships tables exist before proceeding
@@ -338,7 +338,7 @@ Write tests in teacher/lib/server/assignments.test.ts:
 - releaseAssignment changes status and visibility
 
 ## Verify
-Run: cd /Users/abhinavnehra/git/tools/OpenMAIC && npx prisma validate
+Run: cd /Users/abhinavnehra/git/tools/AIDU && npx prisma validate
 Run: cd teacher && npm test -- assignments.test.ts
 ```
 
@@ -354,7 +354,7 @@ Run: cd teacher && npm test -- assignments.test.ts
 You are building the Teacher Assignment UI Shell for Aidutech's Teacher Panel v1.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/
 - Existing: Next.js App Router, TypeScript, Tailwind CSS already configured in core
 
@@ -408,7 +408,7 @@ Run: cd teacher && npm run build (should have no errors)
 You are implementing Quiz Builder v1 for Aidutech's Teacher Panel.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/
 - Reuse from core: core/lib/quiz/grading.ts, core/app/api/quiz-grade/route.ts
 
@@ -476,7 +476,7 @@ Run: cd teacher && npm test -- quizzes.test.ts
 You are implementing Student Assignment Dashboard and Access Control for Aidutech.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: student/
 - Access rule: Students see ONLY assigned content they are recipients of
 
@@ -536,7 +536,7 @@ Run: cd student && npm run build
 You are implementing the Progress Tracker and CSV Export for Aidutech Teacher Panel.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/
 - This is read-only aggregation, no new tables needed
 
@@ -595,7 +595,7 @@ Run CSV export manually, verify row count matches student count
 You are implementing Live Collaborative Classroom Sessions for Aidutech Teacher Panel.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/ and student/
 - Strategy: Start with polling/optimistic updates (WebSocket only if needed)
 
@@ -664,7 +664,7 @@ Run: cd teacher && npm test -- live-sessions.test.ts
 You are implementing the Lesson Scheduler and Auto-Release for Aidutech Teacher Panel.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/
 - Scheduler jobs must be idempotent
 
@@ -727,7 +727,7 @@ Run: cd teacher && npm test -- scheduler.test.ts
 You are implementing the Content Library for Aidutech Teacher Panel.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Target folder: teacher/
 - Reuse: Copy assets from core generation output
 
@@ -781,7 +781,7 @@ Run: cd teacher && npm test -- library.test.ts
 You are creating the comprehensive E2E test suite for Phase 2.
 
 ## Context
-- Project: /Users/abhinavnehra/git/tools/OpenMAIC
+- Project: /Users/abhinavnehra/git/tools/AIDU
 - Test framework: Playwright
 - Target: All Phase 2 acceptance criteria
 

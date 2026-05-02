@@ -58,7 +58,7 @@ export default function TeacherLiveSessionPage() {
 
   const fetchSession = useCallback(async () => {
     try {
-      const res = await fetch(`/api/teacher/live-sessions/${sessionId}`);
+      const res = await fetch(`/teacher/api/teacher/live-sessions/${sessionId}`);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Failed to fetch session');
@@ -90,7 +90,7 @@ export default function TeacherLiveSessionPage() {
   const updateState = async (newSlideIndex: number) => {
     setUpdating(true);
     try {
-      const res = await fetch(`/api/teacher/live-sessions/${sessionId}/state`, {
+      const res = await fetch(`/teacher/api/teacher/live-sessions/${sessionId}/state`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,7 +132,7 @@ export default function TeacherLiveSessionPage() {
     }
 
     try {
-      const res = await fetch(`/api/teacher/live-sessions/${sessionId}/end`, {
+      const res = await fetch(`/teacher/api/teacher/live-sessions/${sessionId}/end`, {
         method: 'POST'
       });
 

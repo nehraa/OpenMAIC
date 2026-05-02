@@ -54,10 +54,10 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   if (existingStudentResult.rows.length > 0) {
     student = existingStudentResult.rows[0];
   } else {
-    // Create new student
+    // Create new student with explicit tenant_id (students join via phone, not email)
     const insertResult = await db.query(
-      `INSERT INTO users (role, phone_e164, name) VALUES ($1, $2, $3) RETURNING *`,
-      ['student_classroom', phone, name?.trim() || '']
+      `INSERT INTO users (tenant_id, role, phone_e164, name, email) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [ctx.tenantId, 'student_classroom', phone, name?.trim() || '', `${phone}@student.placeholder`]
     );
     student = insertResult.rows[0];
   }
@@ -71,10 +71,10 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: 'Student already enrolled' }, { status: 409 });
   }
 
-  // Create membership
+  // Create membership with tenant_id
   const membershipResult = await db.query(
-    `INSERT INTO class_memberships (class_id, student_id, source) VALUES ($1, $2, 'manual') RETURNING *`,
-    [classId, student.id]
+    `INSERT INTO class_memberships (tenant_id, class_id, student_id, source) VALUES ($1, $2, $3, 'manual') RETURNING *`,
+    [ctx.tenantId, classId, student.id]
   );
 
   return NextResponse.json({

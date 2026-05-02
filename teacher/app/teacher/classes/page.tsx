@@ -30,7 +30,7 @@ export default function ClassesPage() {
 
   async function fetchClasses() {
     try {
-      const res = await fetch('/api/teacher/classes', {
+      const res = await fetch('/teacher/api/teacher/classes', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -55,7 +55,7 @@ export default function ClassesPage() {
     setCreateLoading(true);
 
     try {
-      const res = await fetch('/api/teacher/classes', {
+      const res = await fetch('/teacher/api/teacher/classes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export default function ClassesPage() {
 
   async function handleDeleteClass(classId: string) {
     try {
-      const res = await fetch(`/api/teacher/classes/${classId}`, {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}`, {
         method: 'DELETE',
         headers: { 'x-session-id': getSessionId() }
       });

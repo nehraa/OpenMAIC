@@ -46,7 +46,7 @@ export default function SessionProgressPage() {
   useEffect(() => {
     async function fetchProgress() {
       try {
-        const res = await fetch(`/api/teacher/sessions/${sessionId}/progress`);
+        const res = await fetch(`/teacher/api/teacher/sessions/${sessionId}/progress`);
         if (res.ok) {
           const result = await res.json();
           setData(result);

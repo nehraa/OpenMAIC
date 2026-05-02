@@ -19,7 +19,7 @@ The system needs a unified entry point BEFORE implementing quotas:
 | Landing page | 3 buttons: **Teacher** / **Student** / **Individual** |
 | → Teacher | Login page (bypass) → Teacher panel |
 | → Student | Login page (bypass) → Student classroom mode |
-| → Individual | Login page (bypass) → OpenMAIC core (B2C self-serve) |
+| → Individual | Login page (bypass) → AIDU core (B2C self-serve) |
 
 **"Individual"** = B2C student (self-serve, pays, has quota)
 **"Student"** = Classroom student (invited by teacher, read-only assigned content)
@@ -56,7 +56,7 @@ TASK: Create 3 login pages (Teacher, Student, Individual)
 CONTEXT:
 - /login/teacher/page.tsx → Login form → redirect to /teacher/*
 - /login/student/page.tsx → Login form → redirect to /student/*
-- /login/individual/page.tsx → Login form → redirect to /core/* (OpenMAIC)
+- /login/individual/page.tsx → Login form → redirect to /core/* (AIDU)
 - For now: BYPASS LOGIN — any input just creates/sets session and redirects
 - Session: store role (teacher|student|individual) in cookie or localStorage
 - Auth: no password yet, no Redis yet — just role-based routing
@@ -109,7 +109,7 @@ TASKS:
 1. E2E: landing page shows 3 role options
 2. E2E: clicking Teacher → goes to /login/teacher → enters → sees teacher panel
 3. E2E: clicking Student → goes to /login/student → enters → sees student dashboard
-4. E2E: clicking Individual → goes to /login/individual → enters → sees OpenMAIC core
+4. E2E: clicking Individual → goes to /login/individual → enters → sees AIDU core
 5. E2E: direct URL to /teacher without teacher session → redirects to landing
 LOCATION: e2e/landing-role-selection.spec.ts
 ```
@@ -1134,7 +1134,7 @@ REQUIREMENTS:
    - On submit: store role in localStorage/sessionStorage + redirect:
      - Teacher → /teacher/dashboard
      - Student → /student/dashboard
-     - Individual → /core (the OpenMAIC app)
+     - Individual → /core (the AIDU app)
    - No real authentication — just role selection + simple identifier
 
 3. Design: consistent across 3 pages, clean, professional
@@ -1469,7 +1469,7 @@ test.describe('Quota Enforcement', () => {
     
     // 3. Ask 20 questions
     for (let i = 0; i < 20; i++) {
-      await page.goto('/core'); // OpenMAIC chat
+      await page.goto('/core'); // AIDU chat
       await page.fill('textarea', `Test question ${i + 1}`);
       await page.click('button[type="submit"]');
       await page.waitForResponse('**/quota/check-and-reserve');
@@ -1502,7 +1502,7 @@ test.describe('B2C/Classroom Separation', () => {
     await page.fill('[name="identifier"]', 'classroom-student');
     await page.click('button[type="submit"]');
     
-    // 2. Try to access OpenMAIC (B2C app)
+    // 2. Try to access AIDU (B2C app)
     await page.goto('/core');
     
     // 3. Should be redirected to landing or see access denied
