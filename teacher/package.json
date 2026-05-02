@@ -15,7 +15,9 @@
     "format": "prettier . --write"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "jose": "^6.2.3",
     "lucide-react": "^0.562.0",
     "next": "16.1.2",
     "pg": "^8.20.0",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.11.0",
     "@types/react": "^19",

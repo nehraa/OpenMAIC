@@ -45,10 +45,10 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   const db = getDb();
 
   const result = await db.query(`
-    INSERT INTO classes (teacher_id, name, subject, batch, join_code)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO classes (teacher_id, tenant_id, name, subject, batch, join_code)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
-  `, [ctx.user.id, name.trim(), subject?.trim() || '', batch?.trim() || '', joinCode]);
+  `, [ctx.user.id, ctx.tenantId, name.trim(), subject?.trim() || '', batch?.trim() || '', joinCode]);
 
   const newClass = result.rows[0];
 

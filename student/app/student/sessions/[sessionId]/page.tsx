@@ -41,7 +41,7 @@ export default function StudentLiveSessionPage() {
 
   const fetchSession = useCallback(async () => {
     try {
-      const res = await fetch(`/api/student/live-sessions/${sessionId}`);
+      const res = await fetch(`/student/api/student/live-sessions/${sessionId}`);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Failed to fetch session');
@@ -70,7 +70,7 @@ export default function StudentLiveSessionPage() {
 
   const handleJoin = async () => {
     try {
-      const res = await fetch(`/api/student/live-sessions/${sessionId}/join`, {
+      const res = await fetch(`/student/api/student/live-sessions/${sessionId}/join`, {
         method: 'POST'
       });
 
@@ -89,7 +89,7 @@ export default function StudentLiveSessionPage() {
 
   const handleMarkComplete = async () => {
     try {
-      const res = await fetch(`/api/student/live-sessions/${sessionId}/completion`, {
+      const res = await fetch(`/student/api/student/live-sessions/${sessionId}/completion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completion_state: 'completed' })
@@ -111,7 +111,7 @@ export default function StudentLiveSessionPage() {
 
     setSubmittingQuestion(true);
     try {
-      const res = await fetch(`/api/student/live-sessions/${sessionId}/questions`, {
+      const res = await fetch(`/student/api/student/live-sessions/${sessionId}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: questionText.trim() })

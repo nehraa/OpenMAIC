@@ -36,9 +36,9 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/student/classes').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch classes'))),
-      fetch('/api/student/assignments').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch assignments'))),
-      fetch('/api/student/live-sessions').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch live sessions'))),
+      fetch('/student/api/student/classes').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch classes'))),
+      fetch('/student/api/student/assignments').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch assignments'))),
+      fetch('/student/api/student/live-sessions').then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to fetch live sessions'))),
     ])
       .then(([classesData, assignmentsData, sessionsData]) => {
         setClasses(classesData.classes?.slice(0, 4) || []);

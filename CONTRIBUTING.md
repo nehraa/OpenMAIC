@@ -4,7 +4,7 @@ Thank you for your interest in contributing to the Aidutech Classroom product.
 
 ## Repository Rule (Phase 1)
 
-The `/core` directory is the sacred baseline from OpenMAIC and must remain untouched during Phase 1 development.
+The `/core` directory is the sacred baseline from AIDU and must remain untouched during Phase 1 development.
 
 **Why:** Phase 1 builds teacher and student products by copying/adapting code from core into `/teacher` and `/student`.
 

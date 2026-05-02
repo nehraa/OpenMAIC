@@ -23,6 +23,18 @@ interface TenantRow {
   id: string;
 }
 
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': 'http://localhost:3001',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -112,6 +124,12 @@ export async function POST(request: NextRequest) {
         status: user.status,
       },
     });
+
+    // Add CORS headers for cross-origin requests from app (port 3001)
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    response.headers.append('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.headers.append('Access-Control-Allow-Headers', 'Content-Type');
 
     response.cookies.set('access_token', accessToken, {
       ...cookieOptions,

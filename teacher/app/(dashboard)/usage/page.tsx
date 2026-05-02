@@ -30,8 +30,8 @@ export default function UsageDashboard() {
       const week = getISOWeek(new Date());
 
       const [dailyRes, weeklyRes] = await Promise.all([
-        fetch(`/api/teacher/usage/daily?date=${today}`),
-        fetch(`/api/teacher/usage/weekly?week=${week}`)
+        fetch(`/teacher/api/teacher/usage/daily?date=${today}`),
+        fetch(`/teacher/api/teacher/usage/weekly?week=${week}`)
       ]);
 
       if (dailyRes.ok) setDaily(await dailyRes.json());

@@ -37,7 +37,7 @@ export default function StudentsPage() {
 
   async function fetchStudents() {
     try {
-      const res = await fetch('/api/teacher/students', {
+      const res = await fetch('/teacher/api/teacher/students', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -53,7 +53,7 @@ export default function StudentsPage() {
 
   async function fetchClasses() {
     try {
-      const res = await fetch('/api/teacher/classes', {
+      const res = await fetch('/teacher/api/teacher/classes', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -76,7 +76,7 @@ export default function StudentsPage() {
     setAddLoading(true);
 
     try {
-      const res = await fetch('/api/teacher/students', {
+      const res = await fetch('/teacher/api/teacher/students', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,15 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { GraduationCap, ArrowLeft } from 'lucide-react';
+import { GraduationCap, ArrowLeft, Loader2 } from 'lucide-react';
 
 interface AuthError {
   message: string;
 }
 
+function GlassInput({
+  id,
+  label,
+  type,
+  value,
+  onChange,
+  placeholder,
+  required,
+  autoFocus,
+  minLength,
+}: {
+  id: string;
+  label: string;
+  type: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  required?: boolean;
+  autoFocus?: boolean;
+  minLength?: number;
+}) {
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium text-foreground/80">
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        autoFocus={autoFocus}
+        minLength={minLength}
+        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground/50"
+      />
+    </div>
+  );
+}
+
 export default function TeacherLoginPage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -18,13 +60,19 @@ export default function TeacherLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const endpoint = isSignup ? 'http://localhost:3001/api/auth/signup' : 'http://localhost:3001/api/auth/login';
+      const endpoint = isSignup 
+        ? 'http://localhost:3000/teacher/api/auth/signup' 
+        : 'http://localhost:3000/teacher/api/auth/login';
       const body = isSignup
         ? { name, email, phone, password }
         : { email, password };
@@ -41,9 +89,8 @@ export default function TeacherLoginPage() {
         throw new Error(data.error || 'Authentication failed');
       }
 
-      // Small delay for visual feedback before redirect
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push('http://localhost:3001/teacher');
+      router.push('http://localhost:3000/teacher');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
@@ -51,124 +98,147 @@ export default function TeacherLoginPage() {
     }
   };
 
+  const toggleMode = () => {
+    setIsSignup(!isSignup);
+    setError('');
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-8">
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden gradient-mesh p-8">
+      {/* Ambient background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-32 w-64 h-64 rounded-full bg-primary/5 blur-3xl animate-float" />
+        <div className="absolute bottom-1/3 -right-24 w-56 h-56 rounded-full bg-primary/4 blur-3xl animate-float" style={{ animationDelay: '0.5s' }} />
+      </div>
+
+      {/* Back button */}
       <button
         type="button"
         onClick={() => router.push('/')}
-        className="absolute left-8 top-8 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="absolute left-8 top-8 z-20 flex items-center gap-2 text-sm text-muted-foreground/60 hover:text-foreground transition-colors duration-200 group"
       >
-        <ArrowLeft size={16} />
-        Back to role selection
+        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform duration-200" />
+        <span>Back</span>
       </button>
 
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <GraduationCap size={28} />
+      {/* Form card */}
+      <div className={`relative z-10 w-full max-w-md ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} transition-all duration-500`}>
+        <div className="glass-surface rounded-3xl p-8 space-y-8">
+          {/* Header */}
+          <div className="text-center space-y-3">
+            <div className="relative inline-block mb-4">
+              <div className="absolute inset-0 rounded-xl bg-primary/15 blur-md" />
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-xl glass-surface mx-auto">
+                <GraduationCap size={28} className="text-primary/80" />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {isSignup ? 'Create Account' : 'Welcome Back'}
+            </h1>
+            <p className="text-sm text-muted-foreground/70">
+              {isSignup
+                ? 'Set up your teacher account to get started'
+                : 'Sign in to access your dashboard'}
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Teacher Login</h1>
-          <p className="text-center text-sm text-muted-foreground">
-            {isSignup ? 'Create your teacher account' : 'Sign in to access the Teacher Dashboard'}
+
+          {/* Error message */}
+          {error && (
+            <div className="glass-surface rounded-xl p-4 border-red-500/20 bg-red-500/5 animate-scale-in">
+              <p className="text-sm text-red-600/90 text-center">{error}</p>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignup && (
+              <div className="animate-fade-up" style={{ animationDelay: '50ms' }}>
+                <GlassInput
+                  id="name"
+                  label="Full Name"
+                  type="text"
+                  value={name}
+                  onChange={setName}
+                  placeholder="Enter your full name"
+                  required
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="animate-fade-up" style={{ animationDelay: isSignup ? '100ms' : '50ms' }}>
+              <GlassInput
+                id="email"
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="you@example.com"
+                required
+                autoFocus={!isSignup}
+              />
+            </div>
+
+            {isSignup && (
+              <div className="animate-fade-up" style={{ animationDelay: '150ms' }}>
+                <GlassInput
+                  id="phone"
+                  label="Phone Number"
+                  type="tel"
+                  value={phone}
+                  onChange={setPhone}
+                  placeholder="+1234567890"
+                  required
+                />
+              </div>
+            )}
+
+            <div className="animate-fade-up" style={{ animationDelay: isSignup ? '200ms' : '100ms' }}>
+              <GlassInput
+                id="password"
+                label="Password"
+                type="password"
+                value={password}
+                onChange={setPassword}
+                placeholder={isSignup ? 'Minimum 8 characters' : 'Enter your password'}
+                required
+                minLength={8}
+              />
+            </div>
+
+            {/* Submit button */}
+            <button
+              type="submit"
+              disabled={isLoading || !email.trim() || !password.trim() || (isSignup && (!name.trim() || !phone.trim()))}
+              className="btn-glow glass-surface relative w-full h-12 rounded-xl bg-primary/90 text-primary-foreground font-medium overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed animate-fade-up"
+              style={{ animationDelay: '250ms' }}
+            >
+              <span className={`flex items-center justify-center gap-2 transition-opacity duration-200 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+                {isSignup ? 'Create Account' : 'Sign In'}
+                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+              {isLoading && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </span>
+              )}
+            </button>
+          </form>
+
+          {/* Toggle mode */}
+          <p className="text-center text-sm text-muted-foreground/60 animate-fade-up" style={{ animationDelay: '300ms' }}>
+            {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={toggleMode}
+              className="text-primary/70 hover:text-primary font-medium transition-colors duration-200"
+            >
+              {isSignup ? 'Sign in' : 'Create one'}
+            </button>
           </p>
         </div>
-
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {isSignup && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Your Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your full name"
-                required
-                autoFocus
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              autoFocus={!isSignup}
-              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-
-          {isSignup && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="phone" className="text-sm font-medium">
-                Phone Number
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1234567890"
-                required
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimum 8 characters"
-              required
-              minLength={8}
-              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading || !email.trim() || !password.trim() || (isSignup && (!name.trim() || !phone.trim()))}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {isLoading ? 'Please wait...' : isSignup ? 'Create Account' : 'Sign In'}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignup(!isSignup);
-              setError('');
-            }}
-            className="text-primary hover:underline"
-          >
-            {isSignup ? 'Sign in' : 'Sign up'}
-          </button>
-        </p>
       </div>
     </main>
   );

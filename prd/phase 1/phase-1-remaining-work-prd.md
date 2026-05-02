@@ -1,4 +1,4 @@
-# Aidutech / OpenMAIC
+# Aidutech / AIDU
 # Phase 1 Remaining Work PRD + Design Doc
 
 ## 1. Document Control

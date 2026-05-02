@@ -28,7 +28,7 @@ export default function QuizzesPage() {
 
   async function fetchQuizzes() {
     try {
-      const res = await fetch('/api/teacher/quizzes', {
+      const res = await fetch('/teacher/api/teacher/quizzes', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -46,7 +46,7 @@ export default function QuizzesPage() {
     if (!newTitle.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/teacher/quizzes', {
+      const res = await fetch('/teacher/api/teacher/quizzes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-session-id': getSessionId() },
         body: JSON.stringify({ title: newTitle.trim() })

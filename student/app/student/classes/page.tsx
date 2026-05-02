@@ -19,7 +19,7 @@ export default function StudentClassesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/student/classes')
+    fetch('/student/api/student/classes')
       .then(r => {
         if (!r.ok) throw new Error('Failed to fetch classes');
         return r.json();

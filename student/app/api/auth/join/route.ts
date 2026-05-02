@@ -92,13 +92,13 @@ export const POST = async (request: NextRequest) => {
       // Student exists, use them
       student = existingUserResult.rows[0] as StudentRow;
     } else {
-      // Step 3: Create new student user
+      // Step 3: Create new student user with placeholder email
       isNewStudent = true;
       const newStudentResult = await db.query(
-        `INSERT INTO users (tenant_id, role, phone_e164, name)
-         VALUES ($1, 'student_classroom', $2, $3)
+        `INSERT INTO users (tenant_id, role, phone_e164, name, email)
+         VALUES ($1, 'student_classroom', $2, $3, $4)
          RETURNING id, role, phone_e164, name, status, created_at, updated_at`,
-        [classRow.tenant_id, normalizedPhone, name.trim()]
+        [classRow.tenant_id, normalizedPhone, name.trim(), `${normalizedPhone}@student.placeholder`]
       );
       student = newStudentResult.rows[0] as StudentRow;
     }
@@ -112,9 +112,9 @@ export const POST = async (request: NextRequest) => {
 
     if (existingMembershipResult.rows.length === 0) {
       await db.query(
-        `INSERT INTO class_memberships (class_id, student_id, source)
-         VALUES ($1, $2, 'manual')`,
-        [classRow.id, student.id]
+        `INSERT INTO class_memberships (tenant_id, class_id, student_id, source)
+         VALUES ($1, $2, $3, 'manual')`,
+        [classRow.tenant_id, classRow.id, student.id]
       );
     }
 
@@ -154,6 +154,12 @@ export const POST = async (request: NextRequest) => {
       },
     });
 
+    // Add CORS headers for cross-origin requests from app (port 3001)
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    response.headers.append('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.headers.append('Access-Control-Allow-Headers', 'Content-Type');
+
     response.cookies.set('access_token', accessToken, {
       ...cookieOptions,
       maxAge: 15 * 60, // 15 minutes
@@ -173,3 +179,15 @@ export const POST = async (request: NextRequest) => {
     );
   }
 };
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': 'http://localhost:3001',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  });
+}

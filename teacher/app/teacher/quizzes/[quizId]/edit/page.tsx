@@ -27,7 +27,7 @@ export default function QuizEditPage() {
 
   async function fetchQuiz() {
     try {
-      const res = await fetch(`/api/teacher/quizzes/${quizId}`, {
+      const res = await fetch(`/teacher/api/teacher/quizzes/${quizId}`, {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {

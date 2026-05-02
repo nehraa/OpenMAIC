@@ -35,7 +35,7 @@ export default function AssignmentsPage() {
 
   async function fetchAssignments() {
     try {
-      const res = await fetch('/api/teacher/assignments', {
+      const res = await fetch('/teacher/api/teacher/assignments', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -51,7 +51,7 @@ export default function AssignmentsPage() {
 
   async function fetchClasses() {
     try {
-      const res = await fetch('/api/teacher/classes', {
+      const res = await fetch('/teacher/api/teacher/classes', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {

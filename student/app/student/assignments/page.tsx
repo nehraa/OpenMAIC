@@ -20,7 +20,7 @@ export default function StudentAssignmentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/student/assignments')
+    fetch('/student/api/student/assignments')
       .then(r => {
         if (!r.ok) throw new Error('Failed to fetch assignments');
         return r.json();

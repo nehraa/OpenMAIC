@@ -47,7 +47,7 @@ export default function StudentAssignmentDetailPage() {
 
   const fetchAssignment = useCallback(async () => {
     try {
-      const res = await fetch(`/api/student/assignments/${assignmentId}`);
+      const res = await fetch(`/student/api/student/assignments/${assignmentId}`);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Failed to fetch assignment');
@@ -70,7 +70,7 @@ export default function StudentAssignmentDetailPage() {
 
   const handleSlideView = async (slideId: string) => {
     try {
-      const res = await fetch(`/api/student/assignments/${assignmentId}/progress`, {
+      const res = await fetch(`/student/api/student/assignments/${assignmentId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slideId })

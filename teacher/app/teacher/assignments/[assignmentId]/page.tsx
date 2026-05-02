@@ -47,7 +47,7 @@ export default function AssignmentDetailPage({ params }: PageProps) {
 
   async function fetchRecipients() {
     try {
-      const res = await fetch(`/api/teacher/assignments/${assignmentId}/recipients`, {
+      const res = await fetch(`/teacher/api/teacher/assignments/${assignmentId}/recipients`, {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -61,7 +61,7 @@ export default function AssignmentDetailPage({ params }: PageProps) {
 
   async function fetchAssignment() {
     try {
-      const res = await fetch(`/api/teacher/assignments/${assignmentId}`, {
+      const res = await fetch(`/teacher/api/teacher/assignments/${assignmentId}`, {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -78,7 +78,7 @@ export default function AssignmentDetailPage({ params }: PageProps) {
   async function handleRelease() {
     if (!confirm('Are you sure you want to release this assignment?')) return;
     try {
-      const res = await fetch(`/api/teacher/assignments/${assignmentId}/release`, {
+      const res = await fetch(`/teacher/api/teacher/assignments/${assignmentId}/release`, {
         method: 'POST',
         headers: { 'x-session-id': getSessionId() }
       });
@@ -93,7 +93,7 @@ export default function AssignmentDetailPage({ params }: PageProps) {
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this assignment?')) return;
     try {
-      const res = await fetch(`/api/teacher/assignments/${assignmentId}`, {
+      const res = await fetch(`/teacher/api/teacher/assignments/${assignmentId}`, {
         method: 'DELETE',
         headers: { 'x-session-id': getSessionId() }
       });

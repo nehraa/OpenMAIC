@@ -43,7 +43,7 @@ export default function ProgressPage() {
 
   async function fetchClasses() {
     try {
-      const res = await fetch('/api/teacher/classes', {
+      const res = await fetch('/teacher/api/teacher/classes', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -60,7 +60,7 @@ export default function ProgressPage() {
 
   async function fetchAssignments(classId: string) {
     try {
-      const res = await fetch('/api/teacher/assignments', {
+      const res = await fetch('/teacher/api/teacher/assignments', {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -86,7 +86,7 @@ export default function ProgressPage() {
         params.append('assignmentId', selectedAssignmentId);
       }
 
-      const res = await fetch(`/api/teacher/progress/class/${selectedClassId}?${params}`, {
+      const res = await fetch(`/teacher/api/teacher/progress/class/${selectedClassId}?${params}`, {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -120,7 +120,7 @@ export default function ProgressPage() {
       // Apply current filters if any
     }
 
-    const url = `/api/teacher/progress/export.csv?${params}`;
+    const url = `/teacher/api/teacher/progress/export.csv?${params}`;
     const sessionId = getSessionId();
 
     // Use fetch to get the CSV and download

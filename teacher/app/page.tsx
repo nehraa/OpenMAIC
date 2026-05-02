@@ -27,13 +27,13 @@ export default function TeacherDashboard() {
   const [classesError, setClassesError] = useState(false);
 
   useEffect(() => {
-    // Fetch dashboard data
+    // Fetch dashboard data using cookies for authentication
     Promise.all([
-      fetch('/api/teacher/classes', {
-        headers: { 'x-session-id': getSessionId() }
+      fetch('/teacher/api/teacher/classes', {
+        credentials: 'include'
       }).then(r => r.json()).catch(() => ({ classes: [] })),
-      fetch('/api/teacher/assignments', {
-        headers: { 'x-session-id': getSessionId() }
+      fetch('/teacher/api/teacher/assignments', {
+        credentials: 'include'
       }).then(r => r.json()).catch(() => ({ assignments: [] })),
     ]).then(([classesData, assignmentsData]) => {
       if (classesData.classes) {
@@ -45,11 +45,6 @@ export default function TeacherDashboard() {
       setRecentAssignments(assignmentsData.assignments?.slice(0, 5) || []);
     }).finally(() => setLoading(false));
   }, []);
-
-  function getSessionId() {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem('session_id') || '';
-  }
 
   const navItems = [
     { href: '/teacher/assignments', label: 'Assignments', icon: ClipboardList, desc: 'Create and manage assignments' },

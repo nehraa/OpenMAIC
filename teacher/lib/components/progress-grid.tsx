@@ -7,6 +7,7 @@ export interface StudentProgress {
   studentName: string;
   studentPhone: string;
   assignments: AssignmentProgress[];
+  aiInsights?: string[];
 }
 
 export interface AssignmentProgress {
@@ -44,20 +45,22 @@ export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: 
   // Calculate overall student scores for sorting
   const studentScores = useMemo(() => {
     const scores = new Map<string, { avgScore: number; completedCount: number; totalCount: number }>();
+    if (!students || !Array.isArray(students)) return scores;
+    
     students.forEach((student) => {
-      const assignmentScores = student.assignments
+      const assignmentScores = (student.assignments || [])
         .filter((a) => a.quizScorePercent !== null)
         .map((a) => a.quizScorePercent as number);
       const avgScore = assignmentScores.length > 0
         ? assignmentScores.reduce((sum, s) => sum + s, 0) / assignmentScores.length
         : 0;
-      const completedCount = student.assignments.filter(
+      const completedCount = (student.assignments || []).filter(
         (a) => a.slidesCompleted && a.quizCompleted
       ).length;
       scores.set(student.studentId, {
         avgScore,
         completedCount,
-        totalCount: student.assignments.length
+        totalCount: (student.assignments || []).length
       });
     });
     return scores;
@@ -65,6 +68,7 @@ export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: 
 
   // Filter and sort students
   const filteredAndSortedStudents = useMemo(() => {
+    if (!students || !Array.isArray(students)) return [];
     let result = [...students];
 
     // Apply filter
@@ -261,7 +265,22 @@ export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: 
                     {isExpanded && (
                       <tr key={`${student.studentId}-details`} className="bg-gray-50">
                         <td colSpan={5} className="px-4 py-3">
-                          <div className="pl-4 border-l-2 border-gray-200">
+                          <div className="pl-4 border-l-2 border-gray-200 space-y-4">
+                            {/* AI Insights */}
+                            {student.aiInsights && student.aiInsights.length > 0 && (
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <span className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></span>
+                                  AI Learning Insights
+                                </h4>
+                                <ul className="list-disc list-inside text-sm text-blue-900 space-y-1">
+                                  {student.aiInsights.map((insight, idx) => (
+                                    <li key={idx}>{insight}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
                             {student.assignments.length === 0 ? (
                               <p className="text-gray-500 text-sm">No assignments</p>
                             ) : (
