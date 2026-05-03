@@ -70,9 +70,9 @@ export default function TeacherLoginPage() {
     setError('');
 
     try {
-      const endpoint = isSignup 
-        ? 'http://localhost:3000/teacher/api/auth/signup' 
-        : 'http://localhost:3000/teacher/api/auth/login';
+      const endpoint = isSignup
+        ? 'http://localhost:3002/teacher/api/auth/signup'
+        : 'http://localhost:3002/teacher/api/auth/login';
       const body = isSignup
         ? { name, email, phone, password }
         : { email, password };
@@ -90,7 +90,7 @@ export default function TeacherLoginPage() {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push('http://localhost:3000/teacher');
+      router.push('http://localhost:3002/teacher');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
