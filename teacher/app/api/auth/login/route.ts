@@ -17,10 +17,7 @@ interface UserRow {
   phone_e164: string;
   status: string;
   password_hash: string;
-}
-
-interface TenantRow {
-  id: string;
+  tenant_id: string;
 }
 
 export async function OPTIONS(request: NextRequest) {
@@ -83,24 +80,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's tenant
-    const tenantResult = await db.query(
-      'SELECT id FROM tenants WHERE owner_user_id = $1',
-      [user.id]
-    );
-    const tenant = tenantResult.rows[0] as TenantRow | undefined;
-
-    if (!tenant) {
-      return NextResponse.json(
-        { error: 'No tenant found for user' },
-        { status: 500 }
-      );
-    }
+    // Get user's tenant (tenant_id is stored on the user record)
+    const tenantId = user.tenant_id;
 
     // Generate tokens
     const accessToken = await generateAccessToken(
       user.id,
-      tenant.id,
+      tenantId,
       user.role
     );
     const refreshToken = await generateRefreshToken(user.id);
