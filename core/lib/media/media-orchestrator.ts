@@ -84,7 +84,9 @@ export async function retryMediaTask(elementId: string): Promise<void> {
 
   // Remove persisted failure record from DB so a fresh result can be written
   const dbKey = mediaFileKey(task.stageId, elementId);
-  await db.mediaFiles.delete(dbKey).catch(() => {});
+  await db.mediaFiles.delete(dbKey).catch((error) => {
+    console.error('Failed to delete media file from IndexedDB:', error);
+  });
 
   store.markPendingForRetry(elementId);
   await generateSingleMedia(
@@ -178,7 +180,9 @@ async function generateSingleMedia(
           errorCode,
           createdAt: Date.now(),
         })
-        .catch(() => {}); // best-effort
+        .catch((error) => {
+          console.error('Failed to persist media failure to IndexedDB:', error);
+        });
     }
   }
 }

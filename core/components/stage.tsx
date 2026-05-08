@@ -294,8 +294,11 @@ export function Stage({
       await stageElement.requestFullscreen();
       // Lock Escape key so it doesn't auto-exit fullscreen (#255)
       // Escape is handled manually in our keydown handler instead
+      // Note: keyboard.lock is not supported in all browsers (e.g., Firefox) - gracefully ignore failure
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (navigator as any).keyboard?.lock?.(['Escape']).catch(() => {});
+      await (navigator as any).keyboard?.lock?.(['Escape']).catch((error) => {
+        console.warn('[Presentation] Keyboard lock failed — browser may not support this API:', error);
+      });
       setSidebarCollapsed(true);
       setChatAreaCollapsed(true);
     } catch {

@@ -4,10 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GraduationCap, ArrowLeft, Loader2 } from 'lucide-react';
 
-interface AuthError {
-  message: string;
-}
-
 function GlassInput({
   id,
   label,
@@ -18,6 +14,7 @@ function GlassInput({
   required,
   autoFocus,
   minLength,
+  autoComplete,
 }: {
   id: string;
   label: string;
@@ -28,6 +25,7 @@ function GlassInput({
   required?: boolean;
   autoFocus?: boolean;
   minLength?: number;
+  autoComplete?: string;
 }) {
   return (
     <div className="space-y-2">
@@ -43,7 +41,8 @@ function GlassInput({
         required={required}
         autoFocus={autoFocus}
         minLength={minLength}
-        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground/50"
+        autoComplete={autoComplete}
+        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground"
       />
     </div>
   );
@@ -71,8 +70,8 @@ export default function TeacherLoginPage() {
 
     try {
       const endpoint = isSignup
-        ? 'http://localhost:3002/teacher/api/auth/signup'
-        : 'http://localhost:3002/teacher/api/auth/login';
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/signup`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`;
       const body = isSignup
         ? { name, email, phone, password }
         : { email, password };
@@ -90,7 +89,7 @@ export default function TeacherLoginPage() {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push('http://localhost:3002/teacher');
+      router.push(`${process.env.NEXT_PUBLIC_TEACHER_URL || 'http://localhost:3001'}/teacher`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
@@ -176,6 +175,7 @@ export default function TeacherLoginPage() {
                 placeholder="you@example.com"
                 required
                 autoFocus={!isSignup}
+                autoComplete="email"
               />
             </div>
 
@@ -203,6 +203,7 @@ export default function TeacherLoginPage() {
                 placeholder={isSignup ? 'Minimum 8 characters' : 'Enter your password'}
                 required
                 minLength={8}
+                autoComplete="current-password"
               />
             </div>
 

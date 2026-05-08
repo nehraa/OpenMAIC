@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const LANDING_URL = 'http://localhost:3001';
+const LANDING_URL = process.env.LANDING_URL || 'http://localhost:3001';
 
 /** Convert string to Uint8Array */
 function encode(str: string): Uint8Array {
