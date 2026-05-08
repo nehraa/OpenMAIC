@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Landing app middleware - allows all access since it's the public entry point
-// Role selection and login pages are intentionally public
+const SECURITY_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+} as const;
 
-export async function middleware(_request: NextRequest) {
-  return NextResponse.next();
+export async function middleware(request: NextRequest) {
+  // Only apply security headers to API routes
+  if (!request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  const response = NextResponse.next();
+
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+
+  return response;
 }
 
 export const config = {

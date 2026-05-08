@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, ArrowLeft, Loader2 } from 'lucide-react';
 
+const INDIVIDUAL_USER_ID_KEY = 'aidutech_individual_user_id';
+
 function GlassInput({
   id,
   label,
@@ -36,10 +38,21 @@ function GlassInput({
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}
-        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground/50"
+        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground"
       />
     </div>
   );
+}
+
+function getOrCreateUserId(): string {
+  if (typeof window === 'undefined') return '';
+
+  let userId = localStorage.getItem(INDIVIDUAL_USER_ID_KEY);
+  if (!userId) {
+    userId = crypto.randomUUID();
+    localStorage.setItem(INDIVIDUAL_USER_ID_KEY, userId);
+  }
+  return userId;
 }
 
 export default function IndividualLoginPage() {
@@ -47,6 +60,7 @@ export default function IndividualLoginPage() {
   const [mounted, setMounted] = useState(false);
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -56,12 +70,29 @@ export default function IndividualLoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Set role cookie and redirect to core app
-    document.cookie = `aidutech_role=individual; path=/; domain=localhost; max-age=${60 * 60 * 24 * 30}`;
-    document.cookie = `aidutech_name=${encodeURIComponent(name)}; path=/; domain=localhost; max-age=${60 * 60 * 24 * 30}`;
+    try {
+      const userId = getOrCreateUserId();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/individual-login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, userId }),
+          credentials: 'include',
+        }
+      );
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    router.push('http://localhost:3000/');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Login failed' }));
+        throw new Error(data.error || 'Login failed');
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      router.push('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -99,6 +130,13 @@ export default function IndividualLoginPage() {
               Enter your name to access your personal AI workspace
             </p>
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="glass-surface rounded-xl p-4 border-red-500/20 bg-red-500/5 animate-scale-in">
+              <p className="text-sm text-red-600/90 text-center">{error}</p>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">

@@ -36,7 +36,7 @@ function GlassInput({
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}
-        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground/50"
+        className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground"
       />
     </div>
   );
@@ -61,12 +61,15 @@ export default function StudentLoginPage() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3002/student/api/auth/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ joinCode, phone, name }),
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/join`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ joinCode, phone, name }),
+          credentials: 'include',
+        }
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Failed to join classroom' }));
@@ -74,7 +77,7 @@ export default function StudentLoginPage() {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push('http://localhost:3002/student');
+      router.push(`${process.env.NEXT_PUBLIC_STUDENT_URL || 'http://localhost:3002'}/student/`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join classroom');
     } finally {
