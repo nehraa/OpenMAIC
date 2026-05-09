@@ -47,8 +47,10 @@ export const GET = async (
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 
-  // Get slides from content_asset_versions if slide_asset_version_id exists
+  // Get slides - check if this is an OpenMAIC classroom reference
   let slides: Array<{ slide_id: string; title: string; content: string }> = [];
+  let openmaicUrl: string | null = null;
+
   if (assignmentRow.slide_asset_version_id) {
     const versionResult = db.query(`
       SELECT payload_json
@@ -60,7 +62,13 @@ export const GET = async (
     if (version?.payload_json) {
       try {
         const payload = JSON.parse(version.payload_json);
-        slides = payload.slides || [];
+        if (payload.openmaicClassroomId) {
+          // This is an OpenMAIC-generated classroom - use OpenMAIC URL
+          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL || 'http://localhost:3002';
+          openmaicUrl = `${baseUrl}/classroom/${payload.openmaicClassroomId}`;
+        } else {
+          slides = payload.slides || [];
+        }
       } catch {
         slides = [];
       }
@@ -106,7 +114,8 @@ export const GET = async (
       class_name: assignmentRow.class_name,
       due_at: assignmentRow.due_at,
       status: assignmentRow.status,
-      slide_asset_version_id: assignmentRow.slide_asset_version_id
+      slide_asset_version_id: assignmentRow.slide_asset_version_id,
+      openmaicUrl
     },
     slides: slidesWithStatus,
     progress: {

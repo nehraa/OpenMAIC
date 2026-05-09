@@ -1,0 +1,86 @@
+<h2>AIDU Color Treatment</h2>
+<p class="subtitle">How should coral, teal, and violet be used in the hero and primary UI?</p>
+
+<div class="options">
+  <div class="option" data-choice="atmospheric" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Atmospheric Glow</h3>
+      <p>Colors as ambient light sources. Aurora bands, depth fog, subtle glow halos. Text and UI elements stay white/light gray against the dark canvas.</p>
+      <ul style="margin-top:12px;font-size:13px;color:#94a3b8">
+        <li>• Maximum readability</li>
+        <li>• Colors feel like natural light</li>
+        <li>• Best for shader-heavy scenes</li>
+        <li>• More subtle, premium feel</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="option" data-choice="gradient" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Gradient Harmony</h3>
+      <p>Colors blend into rich multi-stop gradients. Used in backgrounds, card fills, buttons, and dividers. High visual impact and energy.</p>
+      <ul style="margin-top:12px;font-size:13px;color:#94a3b8">
+        <li>• Bold, energetic feel</li>
+        <li>• More "typical AI startup"</li>
+        <li>• Can reduce text contrast</li>
+        <li>• Works well on cards/CTAs</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="option" data-choice="precision" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Precision Accents</h3>
+      <p>Colors as sharp, intentional signals. Borders, icon fills, active states, hover glows, and progress indicators. Clean and functional.</p>
+      <ul style="margin-top:12px;font-size:13px;color:#94a3b8">
+        <li>• Most legible and accessible</li>
+        <li>• Clean, tool-like feel</li>
+        <li>• Colors feel more "expensive"</li>
+        <li>• Good for dashboard/UI</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="split" style="margin-top:32px">
+  <div class="mockup">
+    <div class="mockup-header">A: Atmospheric Glow</div>
+    <div class="mockup-body" style="background:linear-gradient(135deg,#070b18,#111038);padding:32px;text-align:center">
+      <div style="background:radial-gradient(ellipse at 50% 30%,rgba(0,212,170,0.4),transparent 60%);padding:40px 20px;border-radius:12px">
+        <div style="color:white;font-size:28px;font-weight:700;margin-bottom:12px;text-shadow:0 2px 20px rgba(0,0,0,0.5)">Learn Beyond Limits</div>
+        <div style="color:#94a3b8;font-size:14px;margin-bottom:20px">White text on dark with ambient glow</div>
+        <button style="background:linear-gradient(135deg,#ff6b4a,#ff9a7f);color:white;border:none;border-radius:8px;padding:12px 24px;font-weight:600">Start Learning</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B: Gradient Harmony</div>
+    <div class="mockup-body" style="background:linear-gradient(135deg,#1e1b4b,#312e81);padding:32px;text-align:center">
+      <div style="background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(0,212,170,0.3));padding:40px 20px;border-radius:12px">
+        <div style="background:linear-gradient(90deg,#00d4aa,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:28px;font-weight:700;margin-bottom:12px">Learn Beyond Limits</div>
+        <div style="color:#e2e8f0;font-size:14px;margin-bottom:20px">Gradient headline + blended backgrounds</div>
+        <button style="background:linear-gradient(135deg,#ff6b4a,#7c3aed);color:white;border:none;border-radius:8px;padding:12px 24px;font-weight:600">Start Learning</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">C: Precision Accents</div>
+  <div class="mockup-body" style="background:#070b18;padding:32px;text-align:center">
+    <div style="padding:40px 20px">
+      <div style="color:white;font-size:28px;font-weight:700;margin-bottom:12px">Learn Beyond Limits</div>
+      <div style="color:#94a3b8;font-size:14px;margin-bottom:20px">White text with teal accent border</div>
+      <button style="background:#ff6b4a;color:white;border:none;border-radius:8px;padding:12px 24px;font-weight:600;box-shadow:0 0 20px rgba(255,107,74,0.4)">Start Learning</button>
+      <div style="display:flex;justify-content:center;gap:16px;margin-top:16px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#00d4aa;box-shadow:0 0 8px #00d4aa"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#ff6b4a;box-shadow:0 0 8px #ff6b4a"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#7c3aed;box-shadow:0 0 8px #7c3aed"></div>
+      </div>
+    </div>
+  </div>
+</div>

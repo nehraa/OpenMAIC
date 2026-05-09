@@ -31,18 +31,21 @@ export default function TeacherDashboard() {
     Promise.all([
       fetch('/teacher/api/teacher/classes', {
         credentials: 'include'
-      }).then(r => r.json()).catch(() => ({ classes: [] })),
+      }).then(res => {
+        if (!res.ok) throw new Error(`Failed to fetch classes: ${res.status}`);
+        return res.json();
+      }).then(data => data.classes || []).catch(() => []),
       fetch('/teacher/api/teacher/assignments', {
         credentials: 'include'
-      }).then(r => r.json()).catch(() => ({ assignments: [] })),
-    ]).then(([classesData, assignmentsData]) => {
-      if (classesData.classes) {
-        setClasses(classesData.classes.slice(0, 3));
-        setClassesError(false);
-      } else {
-        setClassesError(true);
-      }
-      setRecentAssignments(assignmentsData.assignments?.slice(0, 5) || []);
+      }).then(res => {
+        if (!res.ok) throw new Error(`Failed to fetch assignments: ${res.status}`);
+        return res.json();
+      }).then(data => data.assignments || []).catch(() => []),
+    ]).then(([classes, assignments]) => {
+      setClasses(classes.slice(0, 3));
+      setRecentAssignments(assignments.slice(0, 5));
+    }).catch(() => {
+      setClassesError(true);
     }).finally(() => setLoading(false));
   }, []);
 

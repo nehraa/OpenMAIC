@@ -1,0 +1,29 @@
+- generic [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e70] [cursor=pointer]:
+    - img [ref=e71]
+  - alert [ref=e74]
+  - main [ref=e75]:
+    - button "Back" [ref=e76]:
+      - img [ref=e77]
+      - generic [ref=e79]: Back
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - img [ref=e86]
+        - heading "Welcome Back" [level=1] [ref=e89]
+        - paragraph [ref=e90]: Sign in to access your dashboard
+      - generic [ref=e91]:
+        - generic [ref=e93]:
+          - text: Email Address
+          - textbox "Email Address" [active] [ref=e94]:
+            - /placeholder: you@example.com
+        - generic [ref=e96]:
+          - text: Password
+          - textbox "Password" [ref=e97]:
+            - /placeholder: Enter your password
+        - button "Sign In" [disabled] [ref=e98]:
+          - generic [ref=e99]:
+            - text: Sign In
+            - img [ref=e100]
+      - paragraph [ref=e102]:
+        - text: Don't have an account?
+        - button "Create one" [ref=e103]

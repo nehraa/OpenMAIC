@@ -1,2 +1,2 @@
 // Re-export from db/index.ts which has schema initialization
-export { getDb } from './db/index';
+export { getDb, setCurrentTenant, getDbWithTenant } from './db/index';

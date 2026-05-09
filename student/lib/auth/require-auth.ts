@@ -7,16 +7,7 @@ export interface AuthResult {
   tenantId: string;
 }
 
-interface TokenPayload {
-  userId: string;
-  tenantId: string;
-  role: string;
-}
-
-/**
- * Extract and validate auth from request using JWT in httpOnly cookies.
- * Sets current_tenant_id from student record's teacher_id.
- */
+// Extract and validate auth from request using JWT in httpOnly cookies
 export async function requireAuth(
   request: NextRequest
 ): Promise<AuthResult | NextResponse> {
@@ -32,14 +23,6 @@ export async function requireAuth(
   try {
     const payload = await verifyAccessToken(accessToken);
 
-    // Students must have student_classroom role
-    if (payload.role !== 'student_classroom') {
-      return NextResponse.json(
-        { error: 'Access denied. Student account required.' },
-        { status: 403 }
-      );
-    }
-
     return {
       user: {
         id: payload.userId,
@@ -50,7 +33,7 @@ export async function requireAuth(
         created_at: '',
         updated_at: '',
       },
-      tenantId: payload.tenantId, // This is the teacherId for students
+      tenantId: payload.tenantId,
     };
   } catch {
     return NextResponse.json(
@@ -60,9 +43,7 @@ export async function requireAuth(
   }
 }
 
-/**
- * Require specific roles - call after requireAuth.
- */
+// Require specific roles - call after requireAuth
 export function requireRole(
   user: User,
   allowedRoles: string[]

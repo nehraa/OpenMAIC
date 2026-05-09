@@ -24,9 +24,9 @@ interface Class {
 
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [_classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [_showCreate, _setShowCreate] = useState(false);
 
   useEffect(() => {
     fetchAssignments();

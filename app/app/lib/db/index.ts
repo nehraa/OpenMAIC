@@ -1,0 +1,40 @@
+import { Pool, PoolConfig, PoolClient } from 'pg';
+
+const poolConfig: PoolConfig = {
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+};
+
+const pool = new Pool(poolConfig);
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client', err);
+});
+
+export function getDb() {
+  return pool;
+}
+
+/**
+ * Set the current tenant context for RLS policies.
+ * This must be called before any tenant-scoped queries.
+ * Note: With connection pooling, call this at the start of each request,
+ * ideally using the same connection for all queries in that request.
+ */
+export async function setCurrentTenant(tenantId: string): Promise<void> {
+  await pool.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+}
+
+/**
+ * Get a db client with tenant context already set.
+ * Use this for operations that need consistent RLS within a request.
+ */
+export async function getDbWithTenant(tenantId: string): Promise<PoolClient> {
+  const client = await pool.connect();
+  await client.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+  return client;
+}
+
+export default { getDb, setCurrentTenant, getDbWithTenant };

@@ -1,0 +1,63 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e7]
+        - generic [ref=e10]:
+          - heading "Teacher Dashboard" [level=1] [ref=e11]
+          - paragraph [ref=e12]: Manage your classroom
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - link "Assignments Create and manage assignments" [ref=e15] [cursor=pointer]:
+          - /url: /teacher/teacher/assignments
+          - img [ref=e16]
+          - heading "Assignments" [level=3] [ref=e19]
+          - paragraph [ref=e20]: Create and manage assignments
+        - link "Quizzes Build AI-powered quizzes" [ref=e21] [cursor=pointer]:
+          - /url: /teacher/teacher/quizzes
+          - img [ref=e22]
+          - heading "Quizzes" [level=3] [ref=e24]
+          - paragraph [ref=e25]: Build AI-powered quizzes
+        - link "Library Content assets and resources" [ref=e26] [cursor=pointer]:
+          - /url: /teacher/teacher/library
+          - img [ref=e27]
+          - heading "Library" [level=3] [ref=e29]
+          - paragraph [ref=e30]: Content assets and resources
+        - link "Progress Student progress analytics" [ref=e31] [cursor=pointer]:
+          - /url: /teacher/teacher/progress
+          - img [ref=e32]
+          - heading "Progress" [level=3] [ref=e34]
+          - paragraph [ref=e35]: Student progress analytics
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - heading "Your Classes" [level=2] [ref=e39]:
+              - img [ref=e40]
+              - text: Your Classes
+            - link "View all" [ref=e45] [cursor=pointer]:
+              - /url: /teacher/teacher/classes
+          - generic [ref=e46]: Loading...
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - heading "Recent Assignments" [level=2] [ref=e49]:
+              - img [ref=e50]
+              - text: Recent Assignments
+            - link "View all" [ref=e53] [cursor=pointer]:
+              - /url: /teacher/teacher/assignments
+          - generic [ref=e54]: Loading...
+      - generic [ref=e55]:
+        - link "Manage Classes Add students, view enrollments" [ref=e56] [cursor=pointer]:
+          - /url: /teacher/teacher/classes
+          - generic [ref=e57]:
+            - img [ref=e59]
+            - generic [ref=e62]:
+              - heading "Manage Classes" [level=3] [ref=e63]
+              - paragraph [ref=e64]: Add students, view enrollments
+        - link "Manage Students View all students across classes" [ref=e65] [cursor=pointer]:
+          - /url: /teacher/teacher/students
+          - generic [ref=e66]:
+            - img [ref=e68]
+            - generic [ref=e73]:
+              - heading "Manage Students" [level=3] [ref=e74]
+              - paragraph [ref=e75]: View all students across classes
+  - alert [ref=e76]

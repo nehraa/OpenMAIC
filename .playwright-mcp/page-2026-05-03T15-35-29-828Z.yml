@@ -1,0 +1,30 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - button "Back" [ref=e3]:
+      - img [ref=e4]
+      - generic [ref=e6]: Back
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - img [ref=e13]
+        - heading "Join Your Class" [level=1] [ref=e18]
+        - paragraph [ref=e19]: Enter your join code to access your classroom
+      - generic [ref=e20]:
+        - generic [ref=e22]:
+          - text: Join Code
+          - textbox "Join Code" [ref=e23]:
+            - /placeholder: e.g. ABC123
+        - generic [ref=e25]:
+          - text: Phone Number
+          - textbox "Phone Number" [ref=e26]:
+            - /placeholder: "+1234567890"
+        - generic [ref=e28]:
+          - text: Your Name
+          - textbox "Your Name" [ref=e29]:
+            - /placeholder: Enter your full name
+        - button "Join Classroom" [disabled] [ref=e30]:
+          - generic [ref=e31]:
+            - text: Join Classroom
+            - img [ref=e32]
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - img [ref=e40]
+  - alert [ref=e43]

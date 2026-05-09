@@ -97,7 +97,7 @@ export default function StudentsPage() {
       setShowAdd(false);
       setAddForm({ name: '', phone: '', classId: '' });
       setAddedStudentCode(data.student.join_code);
-    } catch (error) {
+    } catch {
       setAddError('Failed to add student');
     } finally {
       setAddLoading(false);
@@ -279,7 +279,7 @@ export default function StudentsPage() {
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                               <span className="text-primary text-sm font-medium">
-                                {student.name.charAt(0).toUpperCase()}
+                                {student.name?.charAt(0)?.toUpperCase() ?? '?'}
                               </span>
                             </div>
                             <div>
@@ -324,7 +324,7 @@ export default function StudentsPage() {
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-primary text-sm font-medium">
-                          {student.name.charAt(0).toUpperCase()}
+                          {student.name?.charAt(0)?.toUpperCase() ?? '?'}
                         </span>
                       </div>
                       <div>
@@ -345,7 +345,7 @@ export default function StudentsPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-gray-600 text-sm">
-                    {new Date(student.enrolled_at).toLocaleDateString()}
+                    {student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : '—'}
                   </td>
                 </tr>
               ))}

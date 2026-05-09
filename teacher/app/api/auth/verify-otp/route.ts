@@ -26,10 +26,17 @@ export async function POST(request: NextRequest) {
     let user = existingUser.rows[0] as any;
 
     if (!user) {
-      // Create new user
+      // Create tenant for OTP user
+      const tenantId = crypto.randomUUID();
       await db.query(
-        `INSERT INTO users (role, phone_e164, name) VALUES ($1, $2, $3)`,
-        [role, phone, name || '']
+        `INSERT INTO tenants (id, name) VALUES ($1, $2)`,
+        [tenantId, `${phone}'s Workspace`]
+      );
+
+      // Create new user - OTP users don't have passwords
+      await db.query(
+        `INSERT INTO users (tenant_id, role, phone_e164, name, password_hash, status) VALUES ($1, $2, $3, $4, $5, 'active')`,
+        [tenantId, role, phone, name || '', 'otp_no_password']
       );
 
       // Re-query to get the created user

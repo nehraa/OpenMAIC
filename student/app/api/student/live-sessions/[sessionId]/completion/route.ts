@@ -22,9 +22,11 @@ export const POST = async (
 
   const db = getDb();
 
-  const session = db.prepare(`
-    SELECT id, status, assignment_id FROM live_sessions WHERE id = ?
-  `).get(sessionId) as { id: string; status: string; assignment_id: string } | undefined;
+  const sessionResult = await db.query(`
+    SELECT id, status, assignment_id FROM live_sessions WHERE id = $1
+  `, [sessionId]);
+
+  const session = sessionResult.rows[0] as { id: string; status: string; assignment_id: string } | undefined;
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -35,36 +37,41 @@ export const POST = async (
   }
 
   // Verify student is enrolled in the assignment's class and is a recipient of the assignment
-  const enrollment = db.prepare(`
+  const enrollmentResult = await db.query(`
     SELECT ar.id FROM assignment_recipients ar
     JOIN assignments a ON ar.assignment_id = a.id
     JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ar.assignment_id = ? AND cm.student_id = ? AND ar.student_id = ?
-  `).get(session.assignment_id, authResult.user.id, authResult.user.id);
+    WHERE ar.assignment_id = $1 AND cm.student_id = $2 AND ar.student_id = $3
+  `, [session.assignment_id, authResult.user.id, authResult.user.id]);
+
+  const enrollment = enrollmentResult.rows[0];
 
   if (!enrollment) {
     return NextResponse.json({ error: 'Not assigned to this session' }, { status: 403 });
   }
 
-  const existingParticipant = db.prepare(`
+  const existingParticipantResult = await db.query(`
     SELECT id, completion_state FROM live_session_participants
-    WHERE live_session_id = ? AND user_id = ?
-  `).get(sessionId, authResult.user.id) as { id: string; completion_state: string } | undefined;
+    WHERE live_session_id = $1 AND user_id = $2
+  `, [sessionId, authResult.user.id]);
+
+  const existingParticipant = existingParticipantResult.rows[0] as { id: string; completion_state: string } | undefined;
 
   if (existingParticipant) {
-    db.prepare(`
+    await db.query(`
       UPDATE live_session_participants
       SET completion_state = 'completed', left_at = datetime('now')
-      WHERE id = ?
-    `).run(existingParticipant.id);
+      WHERE id = $1
+    `, [existingParticipant.id]);
   } else {
-    db.prepare(`
+    await db.query(`
       INSERT INTO live_session_participants (live_session_id, user_id, completion_state, left_at)
-      VALUES (?, ?, 'completed', datetime('now'))
-    `).run(sessionId, authResult.user.id);
+      VALUES ($1, $2, 'completed', datetime('now'))
+    `, [sessionId, authResult.user.id]);
   }
 
-  const participant = db.prepare('SELECT * FROM live_session_participants WHERE live_session_id = ? AND user_id = ?').get(sessionId, authResult.user.id);
+  const participantResult = await db.query('SELECT * FROM live_session_participants WHERE live_session_id = $1 AND user_id = $2', [sessionId, authResult.user.id]);
+  const participant = participantResult.rows[0];
 
   return NextResponse.json({ success: true, participant });
 };
@@ -84,10 +91,12 @@ export const GET = async (
 
   const db = getDb();
 
-  const participant = db.prepare(`
+  const participantResult = await db.query(`
     SELECT completion_state, left_at FROM live_session_participants
-    WHERE live_session_id = ? AND user_id = ?
-  `).get(sessionId, authResult.user.id) as { completion_state: string; left_at: string } | undefined;
+    WHERE live_session_id = $1 AND user_id = $2
+  `, [sessionId, authResult.user.id]);
+
+  const participant = participantResult.rows[0] as { completion_state: string; left_at: string } | undefined;
 
   return NextResponse.json({
     completed: participant?.completion_state === 'completed',

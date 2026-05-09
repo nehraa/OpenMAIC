@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth/jwt';
 import { getDb } from '@/lib/db';
-import type { User } from '@shared/types/roles';
 
 interface TokenPayload {
   userId: string;

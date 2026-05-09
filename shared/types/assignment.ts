@@ -1,5 +1,6 @@
 export interface ContentAsset {
   id: string;
+  tenant_id: string;
   owner_teacher_id: string;
   type: 'slide_deck' | 'quiz';
   title: string;
