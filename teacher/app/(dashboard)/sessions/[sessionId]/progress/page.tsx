@@ -97,7 +97,7 @@ export default function SessionProgressPage() {
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-500">Completion Rate</div>
-          <div className="text-3xl font-bold">{completion_stats.completion_rate.toFixed(0)}%</div>
+          <div className="text-3xl font-bold">{completion_stats.completion_rate != null ? completion_stats.completion_rate.toFixed(0) : '0'}%</div>
         </div>
       </div>
 

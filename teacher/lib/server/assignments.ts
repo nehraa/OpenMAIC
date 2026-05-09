@@ -1,5 +1,5 @@
 import { getDb } from '../db';
-import type { Assignment, AssignmentRecipient, AssignmentAttempt } from '@shared/types/assignment';
+import type { Assignment, AssignmentRecipient } from '@shared/types/assignment';
 
 export interface CreateAssignmentData {
   classId: string;
@@ -125,7 +125,7 @@ export async function addRecipients(assignmentId: string, studentIds: string[]):
       if (result.rows.length > 0) {
         insertedRecipients.push(result.rows[0] as AssignmentRecipient);
       }
-    } catch (error) {
+    } catch {
       // Ignore conflicts
     }
   }

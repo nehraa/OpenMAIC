@@ -1,5 +1,4 @@
 import { randomInt } from 'crypto';
-import { getDb } from '../db';
 
 // In-memory OTP store for MVP (use Redis in production)
 const otpStore = new Map<string, { otp: string; expiresAt: number }>();
@@ -11,7 +10,7 @@ const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_OTP_REQUESTS = 5;
 
-export function generateOtp(phone: string): string {
+export function generateOtp(_phone: string): string {
   // DEV MODE: Always return "123456"
   if (process.env.NODE_ENV === 'development') {
     return '123456';

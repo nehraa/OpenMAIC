@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         role: payload.role,
       },
     });
-  } catch (error) {
+  } catch {
     // Token is invalid or expired
     return NextResponse.json(
       { error: 'Invalid or expired token' },

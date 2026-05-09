@@ -20,11 +20,12 @@ interface UserRow {
   tenant_id: string;
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
+  const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': 'http://localhost:3001',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Allow-Credentials': 'true',
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Find user by email
     const userResult = await db.query(
-      `SELECT id, role, name, email, phone_e164, password_hash, status
+      `SELECT id, role, name, email, phone_e164, password_hash, status, tenant_id
        FROM users WHERE email = $1`,
       [email]
     );
@@ -91,12 +92,13 @@ export async function POST(request: NextRequest) {
     );
     const refreshToken = await generateRefreshToken(user.id);
 
-    // Set cookies with domain=localhost for cross-app sharing
+    // Set cookies - domain should be configurable for production
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: 'localhost',
+      domain: cookieDomain,
       path: '/',
     };
 
@@ -111,8 +113,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Add CORS headers for cross-origin requests from app (port 3001)
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    // Add CORS headers - use env for production
+    const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.append('Access-Control-Allow-Methods', 'POST, OPTIONS');
     response.headers.append('Access-Control-Allow-Headers', 'Content-Type');

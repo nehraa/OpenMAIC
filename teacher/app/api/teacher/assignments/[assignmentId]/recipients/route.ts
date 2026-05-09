@@ -22,7 +22,7 @@ export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthCont
   // Get all recipients with their student names and progress
   // If assignment has slide_asset_version_id, get total slides from content_asset_versions
   // Otherwise total_slides stays 0
-  const totalSlidesQuery = assignment.slide_asset_version_id
+  const _totalSlidesQuery = assignment.slide_asset_version_id
     ? `SELECT (payload_json::json->>'slides')::json->>'length' as slide_count FROM content_asset_versions WHERE id = $1`
     : `SELECT 0 as slide_count`;
 

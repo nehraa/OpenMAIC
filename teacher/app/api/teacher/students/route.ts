@@ -2,15 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
-import { randomBytes } from 'crypto';
 
 interface RouteContext {
   params: Promise<Record<string, string>>;
-}
-
-// Generate unique join code for student
-function generateStudentJoinCode(): string {
-  return randomBytes(4).toString('hex').toUpperCase();
 }
 
 // GET /api/teacher/students - List all students for teacher's classes
@@ -73,12 +67,11 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   } else {
     // Create new student
     isNewStudent = true;
-    const joinCode = generateStudentJoinCode();
     const insertResult = await db.query(`
-      INSERT INTO users (role, phone_e164, name, status)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (tenant_id, role, phone_e164, name, password_hash, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, ['student_classroom', phone.trim(), name.trim(), 'active']);
+    `, [ctx.tenantId, 'student_classroom', phone.trim(), name.trim(), 'manual_add_no_password', 'active']);
     studentId = insertResult.rows[0].id;
   }
 

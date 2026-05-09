@@ -1,0 +1,36 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e8]
+        - heading "Choose Your Path" [level=1] [ref=e11]
+        - paragraph [ref=e12]: Your AI-powered learning journey awaits. Select your role to begin.
+      - generic [ref=e13]:
+        - button "Teacher Create lessons, assign homework, and run live classroom sessions with AI assistance Get started" [ref=e14]:
+          - img [ref=e20]
+          - generic [ref=e23]:
+            - heading "Teacher" [level=2] [ref=e24]
+            - paragraph [ref=e25]: Create lessons, assign homework, and run live classroom sessions with AI assistance
+          - generic [ref=e26]:
+            - generic [ref=e27]: Get started
+            - img [ref=e28]
+        - button "Student Join your class, view lessons, take quizzes, and learn with AI-powered tools Get started" [ref=e30]:
+          - img [ref=e36]
+          - generic [ref=e41]:
+            - heading "Student" [level=2] [ref=e42]
+            - paragraph [ref=e43]: Join your class, view lessons, take quizzes, and learn with AI-powered tools
+          - generic [ref=e44]:
+            - generic [ref=e45]: Get started
+            - img [ref=e46]
+        - button "Individual Self-serve learning with full AI content generation and personal study tools Get started" [ref=e48]:
+          - img [ref=e54]
+          - generic [ref=e57]:
+            - heading "Individual" [level=2] [ref=e58]
+            - paragraph [ref=e59]: Self-serve learning with full AI content generation and personal study tools
+          - generic [ref=e60]:
+            - generic [ref=e61]: Get started
+            - img [ref=e62]
+      - paragraph [ref=e64]: By continuing, you agree to our Terms of Service and Privacy Policy
+  - button "Open Next.js Dev Tools" [ref=e70] [cursor=pointer]:
+    - img [ref=e71]
+  - alert [ref=e74]

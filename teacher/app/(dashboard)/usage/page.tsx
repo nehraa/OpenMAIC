@@ -1,168 +1,324 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
 
-interface DailyUsage {
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+
+interface UsageSummary {
+  totalTokens: number;
+  totalCost: number;
+  totalSessions: number;
+  activeStudents: number;
+  tokenChange: number;
+  costChange: number;
+  sessionChange: number;
+  studentChange: number;
+}
+
+interface ProviderData {
+  name: string;
+  value: number;
+}
+
+interface ClassData {
+  classId: string;
+  name: string;
+  tokens: number;
+  cost: number;
+}
+
+interface FeatureData {
+  feature: string;
+  tokens: number;
+  cost: number;
+}
+
+interface TimelineData {
   date: string;
-  total_tokens: number;
-  total_cost: number;
-  by_model: Record<string, number>;
-  by_role: Record<string, number>;
+  tokens: number;
 }
 
-interface WeeklyUsage {
-  week: string;
-  total_tokens: number;
-  total_cost: number;
-  daily_breakdown: { date: string; tokens: number; cost: number }[];
-  by_model: Record<string, number>;
+interface UsageData {
+  summary: UsageSummary;
+  byProvider: ProviderData[];
+  byClass: ClassData[];
+  byFeature: FeatureData[];
+  tokenTimeline: TimelineData[];
 }
 
-export default function UsageDashboard() {
-  const [daily, setDaily] = useState<DailyUsage | null>(null);
-  const [weekly, setWeekly] = useState<WeeklyUsage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'daily' | 'weekly'>('daily');
+async function fetchTeacherUsage(): Promise<UsageData> {
+  const response = await fetch('/api/analytics/usage?range=month');
+  if (!response.ok) {
+    throw new Error('Failed to fetch usage data');
+  }
+  return response.json();
+}
 
-  useEffect(() => {
-    async function fetchUsage() {
-      const today = new Date().toISOString().split('T')[0];
-      const week = getISOWeek(new Date());
+function formatCurrency(value: number | undefined): string {
+  if (value === undefined || value === null) return '$0.00';
+  return `$${value.toFixed(2)}`;
+}
 
-      const [dailyRes, weeklyRes] = await Promise.all([
-        fetch(`/teacher/api/teacher/usage/daily?date=${today}`),
-        fetch(`/teacher/api/teacher/usage/weekly?week=${week}`)
-      ]);
+function formatNumber(value: number | undefined): string {
+  if (value === undefined || value === null) return '0';
+  return value.toLocaleString();
+}
 
-      if (dailyRes.ok) setDaily(await dailyRes.json());
-      if (weeklyRes.ok) setWeekly(await weeklyRes.json());
-      setLoading(false);
-    }
-    fetchUsage();
-  }, []);
+function TokensIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
 
-  if (loading) return <div className="p-8">Loading...</div>;
+function DollarIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+      <path d="M12 18V6" />
+    </svg>
+  );
+}
+
+function SessionsIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function StudentsIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c3 3 9 3 12 0v-5" />
+    </svg>
+  );
+}
+
+export default function UsagePage() {
+  const { data: usageData, isLoading } = useQuery({
+    queryKey: ['teacher-usage'],
+    queryFn: fetchTeacherUsage,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading usage analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Token Usage</h1>
-
-      {/* View Toggle */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setView('daily')}
-          className={`px-4 py-2 rounded ${view === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-        >
-          Daily
-        </button>
-        <button
-          onClick={() => setView('weekly')}
-          className={`px-4 py-2 rounded ${view === 'weekly' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-        >
-          Weekly
-        </button>
+    <div className="container py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Usage Analytics</h1>
+        <p className="text-muted-foreground">
+          Monitor AI usage and estimated costs
+        </p>
       </div>
 
-      {view === 'daily' && daily && (
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Total Tokens</div>
-              <div className="text-3xl font-bold">{daily.total_tokens.toLocaleString()}</div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Total Cost</div>
-              <div className="text-3xl font-bold">${daily.total_cost.toFixed(4)}</div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Date</div>
-              <div className="text-3xl font-bold">{daily.date}</div>
-            </div>
-          </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <UsageCard
+          title="Total Tokens"
+          value={formatNumber(usageData?.summary.totalTokens)}
+          change={usageData?.summary.tokenChange}
+          icon={<TokensIcon />}
+        />
+        <UsageCard
+          title="API Costs"
+          value={formatCurrency(usageData?.summary.totalCost)}
+          change={usageData?.summary.costChange}
+          icon={<DollarIcon />}
+        />
+        <UsageCard
+          title="Sessions"
+          value={formatNumber(usageData?.summary.totalSessions)}
+          change={usageData?.summary.sessionChange}
+          icon={<SessionsIcon />}
+        />
+        <UsageCard
+          title="Active Students"
+          value={formatNumber(usageData?.summary.activeStudents)}
+          change={usageData?.summary.studentChange}
+          icon={<StudentsIcon />}
+        />
+      </div>
 
-          {/* By Model */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">By Model</h2>
-            <div className="space-y-2">
-              {Object.entries(daily.by_model).map(([model, tokens]) => (
-                <div key={model} className="flex justify-between">
-                  <span>{model}</span>
-                  <span className="font-mono">{tokens.toLocaleString()}</span>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="byClass">By Class</TabsTrigger>
+          <TabsTrigger value="byFeature">By Feature</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Token Usage Over Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={usageData?.tokenTimeline || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="tokens" fill="#3B82F6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Usage by Provider</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center">
+                  <PieChart width={250} height={250}>
+                    <Pie
+                      data={usageData?.byProvider || []}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {(usageData?.byProvider || []).map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* By Role */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">By Role</h2>
-            <div className="space-y-2">
-              {Object.entries(daily.by_role).map(([role, tokens]) => (
-                <div key={role} className="flex justify-between">
-                  <span>{role}</span>
-                  <span className="font-mono">{tokens.toLocaleString()}</span>
+                <div className="mt-4 flex justify-center gap-4">
+                  {(usageData?.byProvider || []).map((provider, index) => (
+                    <div key={provider.name} className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-sm">{provider.name}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      )}
+        </TabsContent>
 
-      {view === 'weekly' && weekly && (
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Total Tokens</div>
-              <div className="text-3xl font-bold">{weekly.total_tokens.toLocaleString()}</div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Total Cost</div>
-              <div className="text-3xl font-bold">${weekly.total_cost.toFixed(4)}</div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="text-sm text-gray-500">Week</div>
-              <div className="text-3xl font-bold">{weekly.week}</div>
-            </div>
-          </div>
+        <TabsContent value="byClass">
+          <Card>
+            <CardHeader>
+              <CardTitle>Usage by Class</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UsageTable data={usageData?.byClass || []} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* Daily Breakdown */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">Daily Breakdown</h2>
-            <div className="space-y-2">
-              {weekly.daily_breakdown.map((day) => (
-                <div key={day.date} className="flex justify-between">
-                  <span>{day.date}</span>
-                  <span className="font-mono">{day.tokens.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* By Model */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">By Model</h2>
-            <div className="space-y-2">
-              {Object.entries(weekly.by_model).map(([model, tokens]) => (
-                <div key={model} className="flex justify-between">
-                  <span>{model}</span>
-                  <span className="font-mono">{tokens.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+        <TabsContent value="byFeature">
+          <Card>
+            <CardHeader>
+              <CardTitle>Usage by Feature</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UsageTable data={usageData?.byFeature || []} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
-function getISOWeek(date: Date): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  return `${d.getUTCFullYear()}-W${week.toString().padStart(2, '0')}`;
+function UsageCard({
+  title,
+  value,
+  change,
+  icon,
+}: {
+  title: string;
+  value: string | number;
+  change?: number;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold">{value}</p>
+            {change !== undefined && change !== 0 && (
+              <p className={`text-xs ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {change >= 0 ? '+' : ''}{change}% from last month
+              </p>
+            )}
+          </div>
+          <div className="text-muted-foreground">{icon}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UsageTable({ data }: { data: Array<{ name?: string; classId?: string; feature?: string; tokens: number; cost: number }> }) {
+  if (data.length === 0) {
+    return <p className="text-muted-foreground text-center py-8">No usage data available</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b">
+            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
+            <th className="text-right py-3 px-4 font-medium text-muted-foreground">Tokens</th>
+            <th className="text-right py-3 px-4 font-medium text-muted-foreground">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, index) => {
+            const name = row.name || row.classId || row.feature || `Item ${index + 1}`;
+            return (
+              <tr key={index} className="border-b">
+                <td className="py-3 px-4">{name}</td>
+                <td className="py-3 px-4 text-right font-mono">{row.tokens.toLocaleString()}</td>
+                <td className="py-3 px-4 text-right font-mono">${row.cost.toFixed(4)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }

@@ -35,7 +35,7 @@ type FilterStatus = 'all' | 'completed' | 'not_started' | 'low_score';
 
 const STUDENTS_PER_PAGE = 20;
 
-export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: ProgressGridProps) {
+export function ProgressGrid({ students, totalStudents: _totalStudents, onExportCSV, loading }: ProgressGridProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -80,37 +80,40 @@ export function ProgressGrid({ students, totalStudents, onExportCSV, loading }: 
         }
 
         switch (filterStatus) {
-          case 'completed':
+          case 'completed': {
             return data.completedCount === data.totalCount;
-          case 'not_started':
+          }
+          case 'not_started': {
             return data.completedCount === 0 && student.assignments.every((a) => a.slidesViewed === 0);
-          case 'low_score':
+          }
+          case 'low_score': {
             return data.avgScore > 0 && data.avgScore < 60;
-          default:
+          }
+          default: {
             return true;
+          }
         }
       });
     }
 
     // Apply sort
     result.sort((a, b) => {
-      let comparison = 0;
       switch (sortField) {
         case 'name':
-          comparison = a.studentName.localeCompare(b.studentName);
-          break;
-        case 'score':
+          return a.studentName.localeCompare(b.studentName);
+        case 'score': {
           const scoreA = studentScores.get(a.studentId)?.avgScore ?? -1;
           const scoreB = studentScores.get(b.studentId)?.avgScore ?? -1;
-          comparison = scoreA - scoreB;
-          break;
-        case 'completion':
+          return scoreA - scoreB;
+        }
+        case 'completion': {
           const compA = studentScores.get(a.studentId)?.completedCount ?? 0;
           const compB = studentScores.get(b.studentId)?.completedCount ?? 0;
-          comparison = compA - compB;
-          break;
+          return compA - compB;
+        }
+        default:
+          return 0;
       }
-      return sortOrder === 'asc' ? comparison : -comparison;
     });
 
     return result;

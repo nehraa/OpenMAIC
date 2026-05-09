@@ -21,7 +21,7 @@ export const GET = async (
 
   const db = getDb();
 
-  const session = db.prepare(`
+  const sessionResult = await db.query(`
     SELECT cs.*,
            c.name as class_name,
            c.join_code as class_join_code,
@@ -29,27 +29,33 @@ export const GET = async (
     FROM classroom_sessions cs
     JOIN classes c ON cs.class_id = c.id
     JOIN users u ON cs.teacher_id = u.id
-    WHERE cs.id = ?
-  `).get(sessionId) as any;
+    WHERE cs.id = $1
+  `, [sessionId]);
+
+  const session = sessionResult.rows[0] as any;
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
   // Verify student is enrolled in the class
-  const membership = db.prepare(`
+  const membershipResult = await db.query(`
     SELECT * FROM class_memberships
-    WHERE class_id = ? AND student_id = ?
-  `).get(session.class_id, authResult.user.id);
+    WHERE class_id = $1 AND student_id = $2
+  `, [session.class_id, authResult.user.id]);
+
+  const membership = membershipResult.rows[0];
 
   if (!membership) {
     return NextResponse.json({ error: 'You are not enrolled in this class' }, { status: 403 });
   }
 
-  const participation = db.prepare(`
+  const participationResult = await db.query(`
     SELECT * FROM session_participants
-    WHERE session_id = ? AND user_id = ?
-  `).get(sessionId, authResult.user.id);
+    WHERE session_id = $1 AND user_id = $2
+  `, [sessionId, authResult.user.id]);
 
-  return NextResponse.json({ session, participation: participation || null });
+  const participation = participationResult.rows[0] || null;
+
+  return NextResponse.json({ session, participation });
 };

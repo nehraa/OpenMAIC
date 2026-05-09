@@ -64,18 +64,18 @@ export default function ClassesPage() {
         body: JSON.stringify(createForm)
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setCreateError(data.error || 'Failed to create class');
+        const error = await res.json().catch(() => ({}));
+        setCreateError(error.error || 'Failed to create class');
         return;
       }
 
+      const data = await res.json();
       setClasses([data.class, ...classes]);
       setShowCreate(false);
       setCreateForm({ name: '', subject: '', batch: '' });
       setShowJoinCode(data.class.join_code);
-    } catch (error) {
+    } catch (err) {
       setCreateError('Failed to create class');
     } finally {
       setCreateLoading(false);

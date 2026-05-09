@@ -47,6 +47,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   const data = parsed.data;
 
   const asset = await saveGeneratedContent({
+    tenantId: ctx.tenantId,
     teacherId: ctx.user.id,
     type: data.type,
     title: data.title,

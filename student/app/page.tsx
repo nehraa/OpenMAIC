@@ -32,7 +32,7 @@ export default function StudentDashboard() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -78,7 +78,7 @@ export default function StudentDashboard() {
             </h2>
             <div className="grid gap-4">
               {liveSessions.map(session => (
-                <Link key={session.id} href={`/student/sessions/${session.id}`} className="bg-white rounded-xl border p-4 flex items-center justify-between hover:border-primary/40 transition-all">
+                <Link key={session.id} href={`/sessions/${session.id}`} className="bg-white rounded-xl border p-4 flex items-center justify-between hover:border-primary/40 transition-all">
                   <div>
                     <h3 className="font-semibold">{session.assignment_title}</h3>
                     <p className="text-sm text-muted-foreground">with {session.teacher_name}</p>
@@ -98,7 +98,7 @@ export default function StudentDashboard() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold">My Classes</h2>
-              <Link href="/student/classes" className="text-sm text-primary font-medium hover:underline">
+              <Link href="/classes" className="text-sm text-primary font-medium hover:underline">
                 View All
               </Link>
             </div>
@@ -118,22 +118,22 @@ export default function StudentDashboard() {
 
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Link href="/student/classes" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
+          <Link href="/classes" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
             <BookOpen className="h-8 w-8 text-primary mb-3" />
             <h3 className="font-semibold mb-1">My Classes</h3>
             <p className="text-sm text-muted-foreground">View enrolled classes</p>
           </Link>
-          <Link href="/student/lessons" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
+          <Link href="/lessons" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
             <BookOpen className="h-8 w-8 text-primary mb-3" />
             <h3 className="font-semibold mb-1">My Lessons</h3>
             <p className="text-sm text-muted-foreground">View assigned lessons</p>
           </Link>
-          <Link href="/student/assignments" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
+          <Link href="/assignments" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
             <ClipboardList className="h-8 w-8 text-primary mb-3" />
             <h3 className="font-semibold mb-1">Assignments</h3>
             <p className="text-sm text-muted-foreground">Track your homework</p>
           </Link>
-          <Link href="/student/questions" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
+          <Link href="/questions" className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all">
             <MessageSquare className="h-8 w-8 text-primary mb-3" />
             <h3 className="font-semibold mb-1">Ask a Question</h3>
             <p className="text-sm text-muted-foreground">Get help from your teacher</p>
