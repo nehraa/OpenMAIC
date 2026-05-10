@@ -4,6 +4,7 @@ import { saveGeneratedContent } from '../../../../lib/server/library';
 import type { AuthContext } from '../../../../middleware/auth';
 import { z } from 'zod';
 
+// Keep this endpoint within common serverless timeout windows; fallback content is returned on timeout.
 export const maxDuration = 60;
 
 const GenerateSchema = z.object({

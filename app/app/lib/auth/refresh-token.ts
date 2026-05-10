@@ -8,8 +8,9 @@ export function verifyRefreshTokenHash(token: string, hash: string): boolean {
   const tokenHash = hashRefreshToken(token);
   const tokenBuffer = Buffer.from(tokenHash, 'hex');
   const hashBuffer = Buffer.from(hash, 'hex');
-  if (tokenBuffer.length !== hashBuffer.length) {
+  try {
+    return timingSafeEqual(tokenBuffer, hashBuffer);
+  } catch {
     return false;
   }
-  return timingSafeEqual(tokenBuffer, hashBuffer);
 }

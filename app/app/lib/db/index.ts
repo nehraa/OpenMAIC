@@ -24,7 +24,7 @@ export function getDb() {
  */
 export async function setCurrentTenant(tenantId: string): Promise<void> {
   throw new Error(
-    `setCurrentTenant(${tenantId}) is not supported with pooled queries. Use getDbWithTenant() instead.`
+    `setCurrentTenant(${tenantId}) is not supported with pooled queries. Use a single PoolClient for all request-scoped queries.`
   );
 }
 

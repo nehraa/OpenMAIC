@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS content_assets (
   subject_tag TEXT NOT NULL DEFAULT '',
   source_kind TEXT NOT NULL DEFAULT 'manual' CHECK (source_kind IN ('manual', 'ai_generated', 'imported')),
   source_ref TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL DEFAULT (NOW()),
-  updated_at TEXT NOT NULL DEFAULT (NOW())
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Content asset versions for versioning
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS content_asset_versions (
   version_number INTEGER NOT NULL,
   payload_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-  created_at TEXT NOT NULL DEFAULT (NOW()),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(asset_id, version_number)
 );
 
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   release_at TEXT,
   due_at TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'released', 'closed')),
-  created_at TEXT NOT NULL DEFAULT (NOW()),
-  updated_at TEXT NOT NULL DEFAULT (NOW())
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Assignment recipients (which students receive which assignment)
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS assignment_recipients (
   assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
   visibility_status TEXT NOT NULL DEFAULT 'hidden' CHECK (visibility_status IN ('hidden', 'visible', 'completed')),
-  assigned_at TEXT NOT NULL DEFAULT (NOW()),
+  assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(assignment_id, student_id)
 );
 
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS assignment_attempts (
   id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
-  started_at TEXT NOT NULL DEFAULT (NOW()),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   submitted_at TEXT,
   score_percent REAL,
   answers_json TEXT,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS assignment_slide_progress (
   assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
   slide_id TEXT NOT NULL,
-  viewed_at TEXT NOT NULL DEFAULT (NOW()),
+  viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(assignment_id, student_id, slide_id)
 );
 
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS scheduler_jobs (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed')),
   retry_count INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,
-  created_at TEXT NOT NULL DEFAULT (NOW()),
-  updated_at TEXT NOT NULL DEFAULT (NOW())
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes for assignments
@@ -115,10 +115,10 @@ CREATE TABLE IF NOT EXISTS live_sessions (
   teacher_id TEXT NOT NULL REFERENCES users(id),
   state_snapshot_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('live', 'ended')),
-  started_at TEXT NOT NULL DEFAULT (NOW()),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ended_at TEXT,
-  created_at TEXT NOT NULL DEFAULT (NOW()),
-  updated_at TEXT NOT NULL DEFAULT (NOW())
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Live session participants (students who joined)
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS live_session_participants (
   id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   live_session_id TEXT NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id),
-  joined_at TEXT NOT NULL DEFAULT (NOW()),
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   left_at TEXT,
   completion_state TEXT NOT NULL DEFAULT 'pending' CHECK (completion_state IN ('pending', 'completed')),
   UNIQUE(live_session_id, user_id)
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS live_session_questions (
   student_id TEXT NOT NULL REFERENCES users(id),
   question_text TEXT NOT NULL,
   answer_text TEXT,
-  created_at TEXT NOT NULL DEFAULT (NOW()),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   answered_at TEXT
 );
 
