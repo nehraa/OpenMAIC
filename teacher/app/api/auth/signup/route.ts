@@ -15,15 +15,12 @@ interface UserRow {
   id: string;
 }
 
-interface TenantRow {
-  id: string;
-}
-
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
+  const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': 'http://localhost:3001',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Allow-Credentials': 'true',
@@ -77,11 +74,11 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create tenant first for this teacher (without owner_user_id initially)
+    // Create tenant first for this teacher
     const tenantId = crypto.randomUUID();
     await db.query(
-      `INSERT INTO tenants (id, name, type)
-       VALUES ($1, $2, 'personal')`,
+      `INSERT INTO tenants (id, name)
+       VALUES ($1, $2)`,
       [tenantId, `${name}'s Workspace`]
     );
 
@@ -93,22 +90,17 @@ export async function POST(request: NextRequest) {
       [userId, tenantId, name, email, phone, passwordHash]
     );
 
-    // Update tenant with correct owner_user_id
-    await db.query(
-      `UPDATE tenants SET owner_user_id = $1 WHERE id = $2`,
-      [userId, tenantId]
-    );
-
     // Generate tokens
     const accessToken = await generateAccessToken(userId, tenantId, 'teacher');
     const refreshToken = await generateRefreshToken(userId);
 
-    // Set cookies with domain=localhost for cross-app sharing
+    // Set cookies - domain should be configurable for production
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: 'localhost',
+      domain: cookieDomain,
       path: '/',
     };
 
@@ -126,8 +118,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
 
-    // Add CORS headers for cross-origin requests from app (port 3001)
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    // Add CORS headers - use env for production
+    const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
 
     response.cookies.set('access_token', accessToken, {

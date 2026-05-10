@@ -1,4 +1,4 @@
-import { Pool, PoolConfig } from 'pg';
+import { Pool, PoolConfig, PoolClient } from 'pg';
 
 const poolConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,
@@ -17,4 +17,21 @@ export function getDb() {
   return pool;
 }
 
-export default { getDb };
+/**
+ * Set the current tenant context for RLS policies.
+ * Must be called before any tenant-scoped queries.
+ */
+export async function setCurrentTenant(tenantId: string): Promise<void> {
+  await pool.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+}
+
+/**
+ * Get a db client with tenant context already set.
+ */
+export async function getDbWithTenant(tenantId: string): Promise<PoolClient> {
+  const client = await pool.connect();
+  await client.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+  return client;
+}
+
+export default { getDb, setCurrentTenant, getDbWithTenant };

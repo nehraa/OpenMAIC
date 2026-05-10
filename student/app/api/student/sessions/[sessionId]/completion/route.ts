@@ -22,9 +22,11 @@ export const POST = async (
 
   const db = getDb();
 
-  const sessionData = db.prepare(`
-    SELECT id, status, class_id FROM classroom_sessions WHERE id = ?
-  `).get(sessionId) as { id: string; status: string; class_id: string } | undefined;
+  const sessionResult = await db.query(`
+    SELECT id, status, class_id FROM classroom_sessions WHERE id = $1
+  `, [sessionId]);
+
+  const sessionData = sessionResult.rows[0] as { id: string; status: string; class_id: string } | undefined;
 
   if (!sessionData) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -34,33 +36,38 @@ export const POST = async (
     return NextResponse.json({ error: 'Cannot mark completion for ended session' }, { status: 400 });
   }
 
-  const membership = db.prepare(`
-    SELECT id FROM class_memberships WHERE class_id = ? AND student_id = ?
-  `).get(sessionData.class_id, authResult.user.id);
+  const membershipResult = await db.query(`
+    SELECT id FROM class_memberships WHERE class_id = $1 AND student_id = $2
+  `, [sessionData.class_id, authResult.user.id]);
+
+  const membership = membershipResult.rows[0];
 
   if (!membership) {
     return NextResponse.json({ error: 'You are not enrolled in this class' }, { status: 403 });
   }
 
-  const existingParticipant = db.prepare(`
+  const existingParticipantResult = await db.query(`
     SELECT id, completion_state FROM session_participants
-    WHERE session_id = ? AND user_id = ?
-  `).get(sessionId, authResult.user.id) as { id: string; completion_state: string } | undefined;
+    WHERE session_id = $1 AND user_id = $2
+  `, [sessionId, authResult.user.id]);
+
+  const existingParticipant = existingParticipantResult.rows[0] as { id: string; completion_state: string } | undefined;
 
   if (existingParticipant) {
-    db.prepare(`
+    await db.query(`
       UPDATE session_participants
       SET completion_state = 'completed', left_at = datetime('now')
-      WHERE id = ?
-    `).run(existingParticipant.id);
+      WHERE id = $1
+    `, [existingParticipant.id]);
   } else {
-    db.prepare(`
+    await db.query(`
       INSERT INTO session_participants (session_id, user_id, completion_state, left_at)
-      VALUES (?, ?, 'completed', datetime('now'))
-    `).run(sessionId, authResult.user.id);
+      VALUES ($1, $2, 'completed', datetime('now'))
+    `, [sessionId, authResult.user.id]);
   }
 
-  const participant = db.prepare('SELECT * FROM session_participants WHERE session_id = ? AND user_id = ?').get(sessionId, authResult.user.id);
+  const participantResult = await db.query('SELECT * FROM session_participants WHERE session_id = $1 AND user_id = $2', [sessionId, authResult.user.id]);
+  const participant = participantResult.rows[0];
 
   return NextResponse.json({ success: true, participant });
 };
@@ -80,10 +87,12 @@ export const GET = async (
 
   const db = getDb();
 
-  const participant = db.prepare(`
+  const participantResult = await db.query(`
     SELECT * FROM session_participants
-    WHERE session_id = ? AND user_id = ?
-  `).get(sessionId, authResult.user.id) as { completion_state: string; left_at: string } | undefined;
+    WHERE session_id = $1 AND user_id = $2
+  `, [sessionId, authResult.user.id]);
+
+  const participant = participantResult.rows[0] as { completion_state: string; left_at: string } | undefined;
 
   return NextResponse.json({
     completed: participant?.completion_state === 'completed',

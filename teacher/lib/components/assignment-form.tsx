@@ -26,7 +26,7 @@ export function AssignmentForm({ classes, onSubmit, loading }: AssignmentFormPro
   const [description, setDescription] = useState('');
   const [classId, setClassId] = useState('');
   const [dueAt, setDueAt] = useState('');
-  const [recipientStudentIds, setRecipientStudentIds] = useState<string[]>([]);
+  const [recipientStudentIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function validate(): boolean {

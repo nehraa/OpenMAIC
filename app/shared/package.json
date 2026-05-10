@@ -1,0 +1,12 @@
+{
+  "name": "@aidutech/shared",
+  "version": "0.1.0",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    "./types/roles": "./types/roles.ts",
+    "./types/classroom": "./types/classroom.ts",
+    "./types/usage": "./types/usage.ts",
+    "./constants": "./constants/index.ts"
+  }
+}

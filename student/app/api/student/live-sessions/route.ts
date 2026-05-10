@@ -15,7 +15,7 @@ export const GET = async (request: NextRequest) => {
   const studentId = authResult.user.id;
 
   // Get live sessions for assignments assigned to this student
-  const sessions = db.prepare(`
+  const sessionsResult = await db.query(`
     SELECT ls.id,
            a.title as assignment_title,
            u.name as teacher_name,
@@ -26,12 +26,12 @@ export const GET = async (request: NextRequest) => {
     JOIN assignments a ON ls.assignment_id = a.id
     JOIN users u ON ls.teacher_id = u.id
     JOIN assignment_recipients ar ON a.id = ar.assignment_id
-    WHERE ar.student_id = ?
+    WHERE ar.student_id = $1
       AND ls.status = 'live'
     ORDER BY ls.started_at DESC
-  `).all(studentId);
+  `, [studentId]);
 
-  const sessionsWithState = sessions.map((s: any) => ({
+  const sessionsWithState = sessionsResult.rows.map((s: any) => ({
     id: s.id,
     assignment_title: s.assignment_title,
     teacher_name: s.teacher_name,

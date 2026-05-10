@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { StatusBadge } from '@/lib/components/status-badge';
-import { CheckCircle, Circle, Clock, Users, FileText, PlayCircle } from 'lucide-react';
+import { CheckCircle, Circle, Clock, Users } from 'lucide-react';
 
 interface Recipient {
   student_id: string;

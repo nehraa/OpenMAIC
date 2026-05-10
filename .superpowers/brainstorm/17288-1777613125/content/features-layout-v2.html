@@ -1,0 +1,134 @@
+<h2>AIDU Feature World Layout</h2>
+<p class="subtitle">How should the 6 feature cards be arranged in the dark section?</p>
+
+<div class="options">
+  <div class="option" data-choice="grid" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>2x3 Grid</h3>
+      <p>Classic grid with all 6 cards visible at once. Maximum information density, easy comparison.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="carousel" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Horizontal Scroll Carousel</h3>
+      <p>Cards in a horizontal strip with snap scrolling. More cinematic, each card gets focus.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="stacked" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Expandable Stacks</h3>
+      <p>Vertical accordion. One feature expanded at a time with detailed micro-scene. Focus + depth.</p>
+    </div>
+  </div>
+</div>
+
+<div class="split" style="margin-top:32px">
+  <div class="mockup">
+    <div class="mockup-header">A: 2x3 Grid</div>
+    <div class="mockup-body" style="background:#111827;padding:24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#00d4aa;font-size:20px;margin-bottom:8px">🎓</div>
+          <div style="color:white;font-size:14px;font-weight:600">Socratic Engine</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px">Adaptive questions</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#7c3aed;font-size:20px;margin-bottom:8px">🤖</div>
+          <div style="color:white;font-size:14px;font-weight:600">Agentic Classmates</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px">Multi-perspective debate</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#ff6b4a;font-size:20px;margin-bottom:8px">✏️</div>
+          <div style="color:white;font-size:14px;font-weight:600">Whiteboard</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px">Live ink drawing</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#00d4aa;font-size:20px;margin-bottom:8px">🎤</div>
+          <div style="color:white;font-size:14px;font-weight:600">Spatial Voice</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px">3D audio positioning</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#7c3aed;font-size:20px;margin-bottom:8px">🔬</div>
+          <div style="color:white;font-size:14px;font-weight:600">3D Simulations</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px">Interactive models</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#ff6b4a;font-size:20px;margin-bottom:8px">⭐</div>
+          <div style="color:white;font-size:14px;font-weight:600">Shine Progression</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px">Mastery tracking</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B: Horizontal Carousel</div>
+    <div class="mockup-body" style="background:#111827;padding:24px;overflow:hidden">
+      <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px">
+        <div style="min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#00d4aa;font-size:24px;margin-bottom:12px">🎓</div>
+          <div style="color:white;font-size:14px;font-weight:600">Socratic Engine</div>
+        </div>
+        <div style="min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#7c3aed;font-size:24px;margin-bottom:12px">🤖</div>
+          <div style="color:white;font-size:14px;font-weight:600">Agentic Classmates</div>
+        </div>
+        <div style="min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#ff6b4a;font-size:24px;margin-bottom:12px">✏️</div>
+          <div style="color:white;font-size:14px;font-weight:600">Whiteboard</div>
+        </div>
+        <div style="min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
+          <div style="color:#00d4aa;font-size:24px;margin-bottom:12px">🎤</div>
+          <div style="color:white;font-size:14px;font-weight:600">Spatial Voice</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:12px;color:#64748b;font-size:11px">← Scroll horizontally →</div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">C: Expandable Stacks</div>
+  <div class="mockup-body" style="background:#111827;padding:24px">
+    <div style="max-width:500px;margin:0 auto">
+      <div style="background:linear-gradient(135deg,rgba(0,212,170,0.2),rgba(124,58,237,0.1));border:1px solid rgba(0,212,170,0.4);border-radius:12px;padding:20px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="color:#00d4aa;font-size:20px">🎓</div>
+            <div>
+              <div style="color:white;font-size:14px;font-weight:600">Socratic Engine</div>
+              <div style="color:#00d4aa;font-size:11px">▲ EXPANDED</div>
+            </div>
+          </div>
+          <div style="color:#64748b">▼</div>
+        </div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1);color:#94a3b8;font-size:12px">
+          Probes assumptions, challenges weak reasoning, adapts difficulty in real-time based on learner responses.
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="color:#7c3aed;font-size:16px">🤖</div>
+            <div style="color:white;font-size:13px">Agentic Classmates</div>
+          </div>
+          <div style="color:#64748b">▶</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="color:#ff6b4a;font-size:16px">✏️</div>
+            <div style="color:white;font-size:13px">Whiteboard</div>
+          </div>
+          <div style="color:#64748b">▶</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

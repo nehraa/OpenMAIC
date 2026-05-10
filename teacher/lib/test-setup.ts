@@ -16,7 +16,7 @@ vi.mock('better-sqlite3', () => {
   const MockDatabase = vi.fn().mockImplementation(() => {
     return {
       pragma: vi.fn(),
-      prepare: vi.fn().mockImplementation((sql: string) => createMockStatement()),
+      prepare: vi.fn().mockImplementation((_sql: string) => createMockStatement()),
       exec: vi.fn(),
       transaction: vi.fn((fn: Function) => {
         return function(this: any, ...args: any[]) {

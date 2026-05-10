@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth/jwt';
-import type { User } from '@shared/types/roles';
 
 const joinSchema = z.object({
   joinCode: z.string().min(1, 'Join code is required'),
@@ -180,7 +179,7 @@ export const POST = async (request: NextRequest) => {
   }
 };
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return new NextResponse(null, {
     status: 204,
     headers: {
