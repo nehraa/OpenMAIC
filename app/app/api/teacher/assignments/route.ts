@@ -1,0 +1,159 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { withRole } from '../../../middleware';
+import { getDb } from '../../../lib/db';
+import type { AuthContext } from '../../../middleware/auth';
+import { z } from 'zod';
+
+const CreateAssignmentSchema = z.object({
+  classId: z.string().min(1),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
+  slideAssetVersionId: z.string().optional(),
+  quizAssetVersionId: z.string().optional(),
+  releaseAt: z.string().optional(),
+  dueAt: z.string().optional()
+});
+
+interface RouteContext {
+  params: Promise<Record<string, string>>;
+}
+
+// GET /api/teacher/assignments - List assignments for teacher
+export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthContext, _routeCtx: RouteContext) => {
+  const db = getDb();
+
+  const url = new URL(_req.url);
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '20', 10) || 20, 1), 100);
+  const cursor = url.searchParams.get('cursor');
+  const cursorCreatedAt = cursor ? new Date(cursor) : null;
+  const classId = url.searchParams.get('classId') || undefined;
+  const status = url.searchParams.get('status') as 'draft' | 'scheduled' | 'released' | 'closed' | undefined;
+
+  const conditions: string[] = ['a.teacher_id = $1'];
+  const values: (string | undefined | Date | null)[] = [ctx.user.id];
+  let paramIndex = 2;
+
+  if (classId) {
+    conditions.push(`a.class_id = $${paramIndex++}`);
+    values.push(classId);
+  }
+  if (status) {
+    conditions.push(`a.status = $${paramIndex++}`);
+    values.push(status);
+  }
+
+  // Build main query with pagination
+  let query: string;
+  if (cursorCreatedAt) {
+    conditions.push(`a.created_at < $${paramIndex++}`);
+    values.push(cursorCreatedAt);
+    query = `
+      SELECT a.*, c.name as class_name,
+             (SELECT COUNT(*) FROM assignment_recipients WHERE assignment_id = a.id) as recipient_count
+      FROM assignments a
+      JOIN classes c ON a.class_id = c.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY a.created_at DESC, a.id DESC
+      LIMIT ${limit + 1}
+    `;
+  } else {
+    query = `
+      SELECT a.*, c.name as class_name,
+             (SELECT COUNT(*) FROM assignment_recipients WHERE assignment_id = a.id) as recipient_count
+      FROM assignments a
+      JOIN classes c ON a.class_id = c.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY a.created_at DESC, a.id DESC
+      LIMIT ${limit + 1}
+    `;
+  }
+
+  const result = await db.query(query, values);
+
+  // Get total count
+  const countConditions: string[] = ['a.teacher_id = $1'];
+  const countValues: (string | undefined)[] = [ctx.user.id];
+  let countParamIndex = 2;
+  if (classId) {
+    countConditions.push(`a.class_id = $${countParamIndex++}`);
+    countValues.push(classId);
+  }
+  if (status) {
+    countConditions.push(`a.status = $${countParamIndex++}`);
+    countValues.push(status);
+  }
+
+  const countResult = await db.query(`
+    SELECT COUNT(*) as total
+    FROM assignments a
+    WHERE ${countConditions.join(' AND ')}
+  `, countValues);
+
+  const total = parseInt(countResult.rows[0].total, 10);
+  const hasMore = result.rows.length > limit;
+  if (hasMore) {
+    result.rows.pop();
+  }
+  const nextCursor = hasMore && result.rows.length > 0
+    ? result.rows[result.rows.length - 1].created_at.toISOString()
+    : null;
+
+  return NextResponse.json({
+    assignments: result.rows,
+    total,
+    hasMore,
+    nextCursor
+  });
+});
+
+// POST /api/teacher/assignments - Create a new assignment
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, _routeCtx: RouteContext) => {
+  const body = await req.json();
+
+  const parsed = CreateAssignmentSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+  }
+
+  const data = parsed.data;
+
+  const db = getDb();
+
+  // Verify class belongs to teacher
+  const classResult = await db.query(
+    'SELECT id FROM classes WHERE id = $1 AND teacher_id = $2',
+    [data.classId, ctx.user.id]
+  );
+  if (classResult.rows.length === 0) {
+    return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+  }
+
+  // Create assignment
+  const insertResult = await db.query(`
+    INSERT INTO assignments (class_id, teacher_id, tenant_id, title, description, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft')
+    RETURNING *
+  `, [
+    data.classId,
+    ctx.user.id,
+    ctx.tenantId,
+    data.title,
+    data.description || '',
+    data.slideAssetVersionId || null,
+    data.quizAssetVersionId || null,
+    data.releaseAt || null,
+    data.dueAt || null
+  ]);
+
+  const assignment = insertResult.rows[0];
+
+  // Get class name for response
+  const classResult2 = await db.query('SELECT name FROM classes WHERE id = $1', [data.classId]);
+
+  return NextResponse.json({
+    assignment: {
+      ...assignment,
+      class_name: classResult2.rows[0]?.name
+    }
+  }, { status: 201 });
+});

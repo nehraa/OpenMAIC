@@ -29,9 +29,11 @@ export const POST = async (
   const db = getDb();
 
   // Get the live session and verify it exists and is live
-  const session = db.prepare(`
-    SELECT id, status, assignment_id FROM live_sessions WHERE id = ?
-  `).get(sessionId) as { id: string; status: string; assignment_id: string } | undefined;
+  const sessionResult = await db.query(`
+    SELECT id, status, assignment_id FROM live_sessions WHERE id = $1
+  `, [sessionId]);
+
+  const session = sessionResult.rows[0] as { id: string; status: string; assignment_id: string } | undefined;
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -42,12 +44,14 @@ export const POST = async (
   }
 
   // Verify student is enrolled in the assignment's class and is a recipient of the assignment
-  const enrollment = db.prepare(`
+  const enrollmentResult = await db.query(`
     SELECT ar.id FROM assignment_recipients ar
     JOIN assignments a ON ar.assignment_id = a.id
     JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ar.assignment_id = ? AND ar.student_id = ? AND cm.student_id = ?
-  `).get(session.assignment_id, authResult.user.id, authResult.user.id);
+    WHERE ar.assignment_id = $1 AND ar.student_id = $2 AND cm.student_id = $3
+  `, [session.assignment_id, authResult.user.id, authResult.user.id]);
+
+  const enrollment = enrollmentResult.rows[0];
 
   if (!enrollment) {
     return NextResponse.json({ error: 'Not enrolled in this class' }, { status: 403 });
@@ -56,21 +60,23 @@ export const POST = async (
   // Rate limit check
   const oneMinuteAgo = new Date(Date.now() - QUESTION_RATE_LIMIT_MINUTES * 60 * 1000).toISOString();
 
-  const recentQuestion = db.prepare(`
+  const recentQuestionResult = await db.query(`
     SELECT id FROM live_session_questions
-    WHERE session_id = ? AND student_id = ? AND created_at > ?
+    WHERE session_id = $1 AND student_id = $2 AND created_at > $3
     ORDER BY created_at DESC LIMIT 1
-  `).get(sessionId, authResult.user.id, oneMinuteAgo);
+  `, [sessionId, authResult.user.id, oneMinuteAgo]);
 
-  if (recentQuestion) {
+  if (recentQuestionResult.rows.length > 0) {
     return NextResponse.json({ error: 'Please wait before asking another question' }, { status: 429 });
   }
 
-  const createdQuestion = db.prepare(`
+  const insertResult = await db.query(`
     INSERT INTO live_session_questions (session_id, student_id, question_text)
-    VALUES (?, ?, ?)
+    VALUES ($1, $2, $3)
     RETURNING *
-  `).get(sessionId, authResult.user.id, trimmedQuestion);
+  `, [sessionId, authResult.user.id, trimmedQuestion]);
+
+  const createdQuestion = insertResult.rows[0];
 
   return NextResponse.json({ question: createdQuestion }, { status: 201 });
 };
@@ -91,25 +97,27 @@ export const GET = async (
   const db = getDb();
 
   // Get the live session and verify enrollment
-  const session = db.prepare(`
+  const sessionResult = await db.query(`
     SELECT ls.assignment_id FROM live_sessions ls
     JOIN assignment_recipients ar ON ar.assignment_id = ls.assignment_id
     JOIN assignments a ON a.id = ls.assignment_id
     JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ls.id = ? AND ar.student_id = ? AND cm.student_id = ?
-  `).get(sessionId, authResult.user.id, authResult.user.id) as { assignment_id: string } | undefined;
+    WHERE ls.id = $1 AND ar.student_id = $2 AND cm.student_id = $3
+  `, [sessionId, authResult.user.id, authResult.user.id]);
+
+  const session = sessionResult.rows[0] as { assignment_id: string } | undefined;
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found or not enrolled' }, { status: 404 });
   }
 
-  const questions = db.prepare(`
+  const questionsResult = await db.query(`
     SELECT ls_q.id, ls_q.session_id, ls_q.student_id, ls_q.question_text, ls_q.answer_text, ls_q.created_at, ls_q.answered_at, u.name as student_name
     FROM live_session_questions ls_q
     JOIN users u ON ls_q.student_id = u.id
-    WHERE ls_q.session_id = ?
+    WHERE ls_q.session_id = $1
     ORDER BY ls_q.created_at ASC
-  `).all(sessionId);
+  `, [sessionId]);
 
-  return NextResponse.json({ questions });
+  return NextResponse.json({ questions: questionsResult.rows });
 };

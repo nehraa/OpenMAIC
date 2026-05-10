@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { withRole } from '../../../../../../middleware';
+import { getDb } from '../../../../../../lib/db';
+import type { AuthContext } from '../../../../../../middleware/auth';
+
+function parseCsvRow(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+// POST /api/teacher/classes/[classId]/students/import-csv - Import students from CSV
+export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
+  const { classId } = await routeCtx.params;
+  const db = getDb();
+
+  const classResult = await db.query('SELECT id, tenant_id FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
+  if (classResult.rows.length === 0) {
+    return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+  }
+  const tenantId = classResult.rows[0].tenant_id;
+
+  const { csv } = await req.json();
+  if (!csv || typeof csv !== 'string') {
+    return NextResponse.json({ error: 'CSV content required' }, { status: 400 });
+  }
+
+  const lines = csv.trim().split('\n');
+  if (lines.length < 2) {
+    return NextResponse.json({ error: 'CSV must have header row and at least one data row' }, { status: 400 });
+  }
+
+  const header = parseCsvRow(lines[0]).map(h => h.toLowerCase());
+  const phoneIdx = header.indexOf('phone');
+  const nameIdx = header.indexOf('name');
+
+  if (phoneIdx === -1) {
+    return NextResponse.json({ error: 'CSV must have a "phone" column' }, { status: 400 });
+  }
+
+  const results = { success: 0, errors: [] as { row: number; phone: string; error: string }[] };
+
+  for (let i = 1; i < lines.length && i <= 1000; i++) {
+    const cols = parseCsvRow(lines[i]);
+    const phone = cols[phoneIdx] || '';
+    const name = nameIdx >= 0 ? cols[nameIdx] || '' : '';
+
+    if (!phone) {
+      results.errors.push({ row: i + 1, phone: '', error: 'Empty phone' });
+      continue;
+    }
+
+    if (!/^\+[1-9]\d{1,14}$/.test(phone)) {
+      results.errors.push({ row: i + 1, phone, error: 'Invalid E.164 format' });
+      continue;
+    }
+
+    try {
+      const existingStudentResult = await db.query('SELECT id FROM users WHERE phone_e164 = $1', [phone]);
+      let studentId: string;
+
+      if (existingStudentResult.rows.length > 0) {
+        studentId = existingStudentResult.rows[0].id;
+      } else {
+        const insertResult = await db.query(
+          `INSERT INTO users (tenant_id, role, phone_e164, name, password_hash, status) VALUES ($1, $2, $3, $4, $5, 'active') RETURNING id`,
+          [tenantId, 'student_classroom', phone, name, 'csv_import_no_password']
+        );
+        studentId = insertResult.rows[0].id;
+      }
+
+      const existingMembershipResult = await db.query(
+        'SELECT id FROM class_memberships WHERE class_id = $1 AND student_id = $2',
+        [classId, studentId]
+      );
+
+      if (existingMembershipResult.rows.length === 0) {
+        await db.query(
+          `INSERT INTO class_memberships (tenant_id, class_id, student_id, source) VALUES ($1, $2, $3, 'csv')`,
+          [tenantId, classId, studentId]
+        );
+      }
+
+      results.success++;
+    } catch (err: any) {
+      results.errors.push({ row: i + 1, phone, error: err.message || 'Unknown error' });
+    }
+  }
+
+  return NextResponse.json(results);
+});

@@ -66,7 +66,6 @@ export async function generateQuizFromSlides(slideAssetVersionId: string): Promi
 
   for (const slide of slides) {
     const text = slide.content || slide.text || '';
-    const title = slide.title || '';
 
     if (text.length > 20) {
       const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);

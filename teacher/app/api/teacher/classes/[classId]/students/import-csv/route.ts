@@ -8,10 +8,11 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   const { classId } = await routeCtx.params;
   const db = getDb();
 
-  const classResult = await db.query('SELECT id FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
+  const classResult = await db.query('SELECT id, tenant_id FROM classes WHERE id = $1 AND teacher_id = $2', [classId, ctx.user.id]);
   if (classResult.rows.length === 0) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
+  const tenantId = classResult.rows[0].tenant_id;
 
   const { csv } = await req.json();
   if (!csv || typeof csv !== 'string') {
@@ -56,8 +57,8 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
         studentId = existingStudentResult.rows[0].id;
       } else {
         const insertResult = await db.query(
-          `INSERT INTO users (role, phone_e164, name) VALUES ($1, $2, $3) RETURNING id`,
-          ['student_classroom', phone, name]
+          `INSERT INTO users (tenant_id, role, phone_e164, name, password_hash, status) VALUES ($1, $2, $3, $4, $5, 'active') RETURNING id`,
+          [tenantId, 'student_classroom', phone, name, 'csv_import_no_password']
         );
         studentId = insertResult.rows[0].id;
       }

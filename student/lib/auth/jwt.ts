@@ -19,7 +19,7 @@ function getJwtSecret(): Uint8Array {
 }
 
 /**
- * Generate an access token (15 min expiry) containing userId, tenantId (teacherId), and role.
+ * Generate an access token (15 min expiry) containing userId, tenantId, and role.
  */
 export async function generateAccessToken(
   userId: string,

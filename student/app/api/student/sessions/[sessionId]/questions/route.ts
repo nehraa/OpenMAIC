@@ -28,9 +28,11 @@ export const POST = async (
 
   const db = getDb();
 
-  const sessionData = db.prepare(`
-    SELECT id, status FROM classroom_sessions WHERE id = ?
-  `).get(sessionId) as { id: string; status: string } | undefined;
+  const sessionResult = await db.query(`
+    SELECT id, status FROM classroom_sessions WHERE id = $1
+  `, [sessionId]);
+
+  const sessionData = sessionResult.rows[0] as { id: string; status: string } | undefined;
 
   if (!sessionData) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -43,22 +45,23 @@ export const POST = async (
   // Rate limit check
   const oneMinuteAgo = new Date(Date.now() - QUESTION_RATE_LIMIT_MINUTES * 60 * 1000).toISOString();
 
-  const recentQuestion = db.prepare(`
+  const recentQuestionResult = await db.query(`
     SELECT id FROM question_messages
-    WHERE session_id = ? AND student_id = ? AND created_at > ?
+    WHERE session_id = $1 AND student_id = $2 AND created_at > $3
     ORDER BY created_at DESC LIMIT 1
-  `).get(sessionId, authResult.user.id, oneMinuteAgo);
+  `, [sessionId, authResult.user.id, oneMinuteAgo]);
 
-  if (recentQuestion) {
+  if (recentQuestionResult.rows.length > 0) {
     return NextResponse.json({ error: 'Please wait before asking another question' }, { status: 429 });
   }
 
-  const result = db.prepare(`
+  const createdQuestionResult = await db.query(`
     INSERT INTO question_messages (session_id, student_id, question_text)
-    VALUES (?, ?, ?)
-  `).run(sessionId, authResult.user.id, trimmedQuestion);
+    VALUES ($1, $2, $3)
+    RETURNING *
+  `, [sessionId, authResult.user.id, trimmedQuestion]);
 
-  const createdQuestion = db.prepare('SELECT * FROM question_messages WHERE id = ?').get(result.lastInsertRowid);
+  const createdQuestion = createdQuestionResult.rows[0];
 
   return NextResponse.json({ question: createdQuestion }, { status: 201 });
 };
@@ -79,22 +82,24 @@ export const GET = async (
   const db = getDb();
 
   // Verify enrollment in the session's class before returning questions
-  const session = db.prepare(`
+  const sessionResult = await db.query(`
     SELECT cs.class_id FROM classroom_sessions cs
     JOIN class_memberships cm ON cm.class_id = cs.class_id
-    WHERE cs.id = ? AND cm.student_id = ?
-  `).get(sessionId, authResult.user.id) as { class_id: string } | undefined;
+    WHERE cs.id = $1 AND cm.student_id = $2
+  `, [sessionId, authResult.user.id]);
+
+  const session = sessionResult.rows[0] as { class_id: string } | undefined;
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found or not enrolled' }, { status: 404 });
   }
 
-  const questions = db.prepare(`
+  const questionsResult = await db.query(`
     SELECT id, session_id, student_id, question_text, answer_text, created_at, answered_at
     FROM question_messages
-    WHERE session_id = ?
+    WHERE session_id = $1
     ORDER BY created_at ASC
-  `).all(sessionId);
+  `, [sessionId]);
 
-  return NextResponse.json({ questions });
+  return NextResponse.json({ questions: questionsResult.rows });
 };

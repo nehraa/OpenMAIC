@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { QuizEditor } from '@/lib/components/quiz-editor';
-import type { Quiz, QuizVersion, QuizPayload, QuizQuestion } from '@shared/types/quiz';
+import type { Quiz, QuizVersion, QuizQuestion } from '@shared/types/quiz';
 
 function getSessionId() {
   if (typeof window === 'undefined') return '';
@@ -39,7 +39,7 @@ export default function QuizEditPage() {
         const data = await res.json();
         setError(data.error || 'Failed to load quiz');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load quiz');
     } finally {
       setLoading(false);

@@ -7,12 +7,6 @@ export interface AuthResult {
   tenantId: string;
 }
 
-interface TokenPayload {
-  userId: string;
-  tenantId: string;
-  role: string;
-}
-
 // Extract and validate auth from request using JWT in httpOnly cookies
 export async function requireAuth(
   request: NextRequest

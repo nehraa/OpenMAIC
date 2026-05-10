@@ -13,7 +13,7 @@ export const GET = async (request: NextRequest) => {
 
   const db = getDb();
 
-  const classes = db.prepare(`
+  const result = await db.query(`
     SELECT c.*,
            u.name as teacher_name,
            cm.enrolled_at,
@@ -21,9 +21,9 @@ export const GET = async (request: NextRequest) => {
     FROM classes c
     JOIN class_memberships cm ON c.id = cm.class_id
     JOIN users u ON c.teacher_id = u.id
-    WHERE cm.student_id = ?
+    WHERE cm.student_id = $1
     ORDER BY cm.enrolled_at DESC
-  `).all(authResult.user.id);
+  `, [authResult.user.id]);
 
-  return NextResponse.json({ classes });
+  return NextResponse.json({ classes: result.rows });
 };

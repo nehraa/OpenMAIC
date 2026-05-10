@@ -16,7 +16,7 @@ export const GET = async (request: NextRequest) => {
 
   // Get assignments that are assigned to this student via assignment_recipients
   // Also get their completion status from assignment_attempts
-  const assignments = db.prepare(`
+  const assignmentsResult = await db.query(`
     SELECT a.id,
            a.title,
            c.name as class_name,
@@ -29,7 +29,7 @@ export const GET = async (request: NextRequest) => {
     JOIN assignment_recipients ar ON a.id = ar.assignment_id
     JOIN classes c ON a.class_id = c.id
     LEFT JOIN assignment_attempts aa ON a.id = aa.assignment_id AND aa.student_id = ar.student_id
-    WHERE ar.student_id = ?
+    WHERE ar.student_id = $1
       AND a.status IN ('released', 'closed')
     ORDER BY
       CASE
@@ -40,7 +40,9 @@ export const GET = async (request: NextRequest) => {
         ELSE 3
       END,
       a.due_at ASC NULLS LAST
-  `).all(studentId);
+  `, [studentId]);
+
+  const assignments = assignmentsResult.rows;
 
   // Transform to include status
   const assignmentsWithStatus = assignments.map((a: any) => {

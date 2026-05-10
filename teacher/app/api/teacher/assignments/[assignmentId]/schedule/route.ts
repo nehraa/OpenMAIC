@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
 import {
-  createScheduleJob,
   getSchedule,
   updateSchedule
 } from '@/lib/server/scheduler';

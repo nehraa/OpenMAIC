@@ -9,7 +9,7 @@
 CREATE OR REPLACE FUNCTION set_current_tenant(tenant_id UUID)
 RETURNS VOID AS $$
 BEGIN
-  PERFORM set_config('app.current_tenant_id', tenant_id::TEXT, false);
+  PERFORM set_config('app.current_tenant_id', tenant_id::TEXT, true);
 END;
 $$ LANGUAGE plpgsql;
 
