@@ -4,7 +4,7 @@ import { getDb } from '../../../lib/db';
 import { verifyPassword } from '../../../lib/auth/password';
 import { generateAccessToken, generateRefreshToken } from '../../../lib/auth/jwt';
 import { checkRateLimit, rateLimitExceededResponse } from '../../../lib/auth/rate-limit';
-import bcrypt from 'bcryptjs';
+import { hashRefreshToken } from '../../../lib/auth/refresh-token';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -118,23 +118,24 @@ export async function POST(request: NextRequest) {
       tenantId,
       user.role
     );
-    const refreshToken = await generateRefreshToken(user.id);
+    const sessionId = crypto.randomUUID();
+    const refreshToken = await generateRefreshToken(user.id, sessionId);
 
     // Hash and store refresh token in session for rotation support
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const refreshTokenHash = hashRefreshToken(refreshToken);
     await db.query(
-      `INSERT INTO auth_sessions (user_id, refresh_token_hash, expires_at)
-       VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
-      [user.id, refreshTokenHash]
+      `INSERT INTO auth_sessions (id, user_id, refresh_token_hash, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      [sessionId, user.id, refreshTokenHash]
     );
 
-    // Set cookies - domain should be configurable for production
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
+    // Set cookies
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
     };
 

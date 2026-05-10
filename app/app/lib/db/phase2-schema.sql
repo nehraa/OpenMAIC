@@ -2,31 +2,31 @@
 
 -- Content assets (slide decks and quizzes)
 CREATE TABLE IF NOT EXISTS content_assets (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   owner_teacher_id TEXT NOT NULL REFERENCES users(id),
   type TEXT NOT NULL CHECK (type IN ('slide_deck', 'quiz')),
   title TEXT NOT NULL DEFAULT '',
   subject_tag TEXT NOT NULL DEFAULT '',
   source_kind TEXT NOT NULL DEFAULT 'manual' CHECK (source_kind IN ('manual', 'ai_generated', 'imported')),
   source_ref TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (NOW()),
+  updated_at TEXT NOT NULL DEFAULT (NOW())
 );
 
 -- Content asset versions for versioning
 CREATE TABLE IF NOT EXISTS content_asset_versions (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   asset_id TEXT NOT NULL REFERENCES content_assets(id) ON DELETE CASCADE,
   version_number INTEGER NOT NULL,
   payload_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TEXT NOT NULL DEFAULT (NOW()),
   UNIQUE(asset_id, version_number)
 );
 
 -- Assignments
 CREATE TABLE IF NOT EXISTS assignments (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   class_id TEXT NOT NULL REFERENCES classes(id),
   teacher_id TEXT NOT NULL REFERENCES users(id),
   title TEXT NOT NULL,
@@ -36,26 +36,26 @@ CREATE TABLE IF NOT EXISTS assignments (
   release_at TEXT,
   due_at TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'released', 'closed')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (NOW()),
+  updated_at TEXT NOT NULL DEFAULT (NOW())
 );
 
 -- Assignment recipients (which students receive which assignment)
 CREATE TABLE IF NOT EXISTS assignment_recipients (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
   visibility_status TEXT NOT NULL DEFAULT 'hidden' CHECK (visibility_status IN ('hidden', 'visible', 'completed')),
-  assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+  assigned_at TEXT NOT NULL DEFAULT (NOW()),
   UNIQUE(assignment_id, student_id)
 );
 
 -- Assignment attempts (student submissions)
 CREATE TABLE IF NOT EXISTS assignment_attempts (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
-  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  started_at TEXT NOT NULL DEFAULT (NOW()),
   submitted_at TEXT,
   score_percent REAL,
   answers_json TEXT,
@@ -65,25 +65,25 @@ CREATE TABLE IF NOT EXISTS assignment_attempts (
 
 -- Assignment slide progress (tracking which slides a student has viewed)
 CREATE TABLE IF NOT EXISTS assignment_slide_progress (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
   slide_id TEXT NOT NULL,
-  viewed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  viewed_at TEXT NOT NULL DEFAULT (NOW()),
   UNIQUE(assignment_id, student_id, slide_id)
 );
 
 -- Scheduler jobs for delayed/release tasks
 CREATE TABLE IF NOT EXISTS scheduler_jobs (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   target_type TEXT NOT NULL CHECK (target_type IN ('assignment', 'notification')),
   target_id TEXT NOT NULL,
   run_at TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed')),
   retry_count INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (NOW()),
+  updated_at TEXT NOT NULL DEFAULT (NOW())
 );
 
 -- Indexes for assignments
@@ -110,23 +110,23 @@ CREATE INDEX IF NOT EXISTS idx_scheduler_status_run_at ON scheduler_jobs(status,
 
 -- Live sessions for real-time slide/presentation sessions
 CREATE TABLE IF NOT EXISTS live_sessions (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   assignment_id TEXT NOT NULL REFERENCES assignments(id),
   teacher_id TEXT NOT NULL REFERENCES users(id),
   state_snapshot_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('live', 'ended')),
-  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  started_at TEXT NOT NULL DEFAULT (NOW()),
   ended_at TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (NOW()),
+  updated_at TEXT NOT NULL DEFAULT (NOW())
 );
 
 -- Live session participants (students who joined)
 CREATE TABLE IF NOT EXISTS live_session_participants (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   live_session_id TEXT NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id),
-  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+  joined_at TEXT NOT NULL DEFAULT (NOW()),
   left_at TEXT,
   completion_state TEXT NOT NULL DEFAULT 'pending' CHECK (completion_state IN ('pending', 'completed')),
   UNIQUE(live_session_id, user_id)
@@ -143,12 +143,12 @@ CREATE INDEX IF NOT EXISTS idx_live_participants_user ON live_session_participan
 
 -- Live session questions (students asking questions during live sessions)
 CREATE TABLE IF NOT EXISTS live_session_questions (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   session_id TEXT NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL REFERENCES users(id),
   question_text TEXT NOT NULL,
   answer_text TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TEXT NOT NULL DEFAULT (NOW()),
   answered_at TEXT
 );
 

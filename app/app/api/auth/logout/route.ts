@@ -26,15 +26,17 @@ export async function POST(request: NextRequest) {
       try {
         const tokenPayload = await verifyRefreshToken(refreshToken);
         const userId = tokenPayload.userId;
+        const sessionId = tokenPayload.sessionId;
 
         // Find the session for this refresh token and revoke it
         await db.query(
           `UPDATE auth_sessions
-           SET is_revoked = TRUE, revoked_at = NOW()
-           WHERE user_id = $1
-           AND is_revoked = FALSE
-           AND expires_at > NOW()`,
-          [userId]
+            SET is_revoked = TRUE, revoked_at = NOW()
+            WHERE id = $1
+            AND user_id = $2
+            AND is_revoked = FALSE
+            AND expires_at > NOW()`,
+          [sessionId, userId]
         );
       } catch {
         // Token is invalid/expired - nothing to revoke server-side
@@ -43,12 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Clear the cookies
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
     };
 
@@ -75,14 +77,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Logout error:', error);
     // Even on error, try to clear cookies
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const response = NextResponse.json({ success: true });
 
     response.cookies.set('access_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
       maxAge: 0,
     });
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
       maxAge: 0,
     });

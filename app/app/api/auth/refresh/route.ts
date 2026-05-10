@@ -2,23 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyRefreshToken } from '../../../lib/auth/jwt';
 import { getDb } from '../../../lib/db';
 import { generateAccessToken, generateRefreshToken } from '../../../lib/auth/jwt';
-import bcrypt from 'bcryptjs';
+import { hashRefreshToken, verifyRefreshTokenHash } from '../../../lib/auth/refresh-token';
 
 const REFRESH_TOKEN_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
-
-/**
- * Hash a refresh token using bcrypt for storage.
- */
-async function hashRefreshToken(token: string): Promise<string> {
-  return bcrypt.hash(token, 10);
-}
-
-/**
- * Verify a refresh token against its stored hash.
- */
-async function verifyRefreshTokenHash(token: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(token, hash);
-}
 
 export async function OPTIONS(_request: NextRequest) {
   const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
@@ -45,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the JWT structure and expiry
-    let tokenPayload: { userId: string };
+    let tokenPayload: { userId: string; sessionId: string };
     try {
       tokenPayload = await verifyRefreshToken(refreshToken);
     } catch {
@@ -58,16 +44,12 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const userId = tokenPayload.userId;
 
-    // Find the session associated with this refresh token
-    // We need to look up by the token hash stored in the session
-    // First, let's try to find sessions for this user that are not revoked
+    // Find the exact session associated with this refresh token
     const sessionResult = await db.query(
       `SELECT id, refresh_token_hash, token_family, token_version, is_revoked, replaced_by
        FROM auth_sessions
-       WHERE user_id = $1 AND expires_at > NOW()
-       ORDER BY issued_at DESC
-       LIMIT 1`,
-      [userId]
+       WHERE id = $1 AND user_id = $2 AND expires_at > NOW()`,
+      [tokenPayload.sessionId, userId]
     );
 
     if (sessionResult.rows.length === 0) {
@@ -80,22 +62,8 @@ export async function POST(request: NextRequest) {
     const session = sessionResult.rows[0];
 
     // Check if this specific session's refresh token matches
-    // Note: If this is the first refresh after login, the session might not have a hash yet
-    // In that case, we establish the hash and proceed
-    let isValidToken = false;
-
-    if (session.refresh_token_hash) {
-      // Verify the provided token against the stored hash
-      isValidToken = await verifyRefreshTokenHash(refreshToken, session.refresh_token_hash);
-    } else {
-      // First refresh after login - establish the hash
-      const tokenHash = await hashRefreshToken(refreshToken);
-      await db.query(
-        `UPDATE auth_sessions SET refresh_token_hash = $1 WHERE id = $2`,
-        [tokenHash, session.id]
-      );
-      isValidToken = true;
-    }
+    const isValidToken = Boolean(session.refresh_token_hash) &&
+      verifyRefreshTokenHash(refreshToken, session.refresh_token_hash);
 
     if (!isValidToken) {
       return NextResponse.json(
@@ -150,17 +118,16 @@ export async function POST(request: NextRequest) {
       user.tenant_id,
       user.role
     );
-    const newRefreshToken = await generateRefreshToken(user.id);
-    const newRefreshTokenHash = await hashRefreshToken(newRefreshToken);
+    const newSessionId = crypto.randomUUID();
+    const newRefreshToken = await generateRefreshToken(user.id, newSessionId);
+    const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
 
     // Create a new session with the new refresh token
-    const newSessionResult = await db.query(
-      `INSERT INTO auth_sessions (user_id, refresh_token_hash, token_family, token_version, expires_at)
-       VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days')
-       RETURNING id`,
-      [userId, newRefreshTokenHash, session.token_family, session.token_version + 1]
+    await db.query(
+      `INSERT INTO auth_sessions (id, user_id, refresh_token_hash, token_family, token_version, expires_at)
+       VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '7 days')`,
+      [newSessionId, userId, newRefreshTokenHash, session.token_family, session.token_version + 1]
     );
-    const newSessionId = newSessionResult.rows[0].id;
 
     // Mark the old session as replaced (so future use of old token is detected as replay)
     await db.query(
@@ -183,12 +150,12 @@ export async function POST(request: NextRequest) {
     );
 
     // Set cookies with new tokens
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
     };
 

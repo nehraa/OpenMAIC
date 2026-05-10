@@ -6,12 +6,12 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 -- Create tenants table for multi-tenancy
 CREATE TABLE IF NOT EXISTS tenants (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   owner_user_id TEXT NOT NULL REFERENCES users(id),
   name TEXT NOT NULL DEFAULT '',
   type TEXT NOT NULL DEFAULT 'personal' CHECK (type IN ('personal', 'team')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenants_owner ON tenants(owner_user_id);

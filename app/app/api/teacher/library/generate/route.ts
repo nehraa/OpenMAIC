@@ -4,7 +4,7 @@ import { saveGeneratedContent } from '../../../../lib/server/library';
 import type { AuthContext } from '../../../../middleware/auth';
 import { z } from 'zod';
 
-export const maxDuration = 900; // 15 minutes - generation can take up to 10 min
+export const maxDuration = 60;
 
 const GenerateSchema = z.object({
   type: z.enum(['slide_deck', 'quiz']),
@@ -12,45 +12,55 @@ const GenerateSchema = z.object({
 });
 
 // Call OpenMAIC classroom generation API
-async function generateOpenMAICClassroom(requirement: string, baseUrl: string): Promise<{ classroomId: string; url: string }> {
-  const res = await fetch(`${baseUrl}/api/generate-classroom`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requirement }),
-  });
+async function generateOpenMAICClassroom(
+  requirement: string,
+  baseUrl: string,
+  timeoutMs: number
+): Promise<{ classroomId: string; url: string }> {
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${baseUrl}/api/generate-classroom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: abortController.signal,
+      body: JSON.stringify({ requirement }),
+    });
 
-  if (!res.ok) {
-    throw new Error(`OpenMAIC generation failed: ${res.statusText}`);
-  }
-
-  const { jobId, pollUrl } = await res.json();
-
-  // Poll for completion (up to 15 minutes)
-  const maxAttempts = 180;
-  console.log(`[OpenMAIC] Starting to poll ${pollUrl}, max attempts: ${maxAttempts}`);
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    const pollRes = await fetch(pollUrl);
-    if (!pollRes.ok) {
-      console.log(`[OpenMAIC] Poll fetch failed: ${pollRes.statusText}`);
-      throw new Error(`Polling failed: ${pollRes.statusText}`);
+    if (!res.ok) {
+      throw new Error(`OpenMAIC generation failed: ${res.statusText}`);
     }
 
-    const job = await pollRes.json();
-    console.log(`[OpenMAIC] Poll attempt ${i+1}: status=${job.status}, done=${job.done}, step=${job.step}`);
-    if (job.done) {
-      if (job.status === 'failed') {
-        console.log(`[OpenMAIC] Job failed: ${job.error}`);
-        throw new Error(job.error || 'Generation failed');
+    const { pollUrl } = await res.json();
+
+    // Poll for completion within request timeout budget
+    const maxAttempts = Math.max(1, Math.floor((timeoutMs - 5000) / 5000));
+    console.log(`[OpenMAIC] Starting to poll ${pollUrl}, max attempts: ${maxAttempts}`);
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      const pollRes = await fetch(pollUrl, { signal: abortController.signal });
+      if (!pollRes.ok) {
+        console.log(`[OpenMAIC] Poll fetch failed: ${pollRes.statusText}`);
+        throw new Error(`Polling failed: ${pollRes.statusText}`);
       }
-      console.log(`[OpenMAIC] Job succeeded: ${JSON.stringify(job.result)}`);
-      return { classroomId: job.result.classroomId, url: job.result.url };
-    }
-  }
-  console.log(`[OpenMAIC] Polling timed out after ${maxAttempts} attempts`);
 
-  throw new Error('Generation timed out');
+      const job = await pollRes.json();
+      console.log(`[OpenMAIC] Poll attempt ${i+1}: status=${job.status}, done=${job.done}, step=${job.step}`);
+      if (job.done) {
+        if (job.status === 'failed') {
+          console.log(`[OpenMAIC] Job failed: ${job.error}`);
+          throw new Error(job.error || 'Generation failed');
+        }
+        console.log(`[OpenMAIC] Job succeeded: ${JSON.stringify(job.result)}`);
+        return { classroomId: job.result.classroomId, url: job.result.url };
+      }
+    }
+    console.log(`[OpenMAIC] Polling timed out after ${maxAttempts} attempts`);
+    throw new Error('Generation timed out');
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 // POST /api/teacher/library/generate - AI generation via OpenMAIC
@@ -66,7 +76,6 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
 
   // Determine OpenMAIC base URL (configurable via env)
   const openmaicUrl = process.env.OPENMAIC_BASE_URL || 'http://localhost:3002';
-  const baseUrl = process.env.OPENMAIC_PUBLIC_URL || openmaicUrl;
 
   let classroomId = '';
   let classroomUrl = '';
@@ -75,14 +84,8 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   if (type === 'slide_deck') {
     try {
       // Try OpenMAIC generation with a 60-second timeout for demo responsiveness
-      // If it takes longer, fall back to mock content (OpenMAIC continues in background)
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('OpenMAIC generation taking too long - using demo content')), 60000);
-      });
-      const result = await Promise.race([
-        generateOpenMAICClassroom(prompt, openmaicUrl),
-        timeoutPromise
-      ]) as { classroomId: string; url: string };
+      // If it takes longer, fall back to mock content
+      const result = await generateOpenMAICClassroom(prompt, openmaicUrl, 55000);
       classroomId = result.classroomId;
       classroomUrl = result.url;
     } catch (err) {

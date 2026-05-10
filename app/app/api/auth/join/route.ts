@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '../../../lib/db';
 import { generateAccessToken, generateRefreshToken } from '../../../lib/auth/jwt';
 import { checkRateLimit, rateLimitExceededResponse } from '../../../lib/auth/rate-limit';
-import bcrypt from 'bcryptjs';
+import { hashRefreshToken } from '../../../lib/auth/refresh-token';
 
 const joinSchema = {
   parse: (data: unknown) => {
@@ -120,23 +120,24 @@ export async function POST(request: NextRequest) {
       classRow.tenant_id,
       'student_classroom'
     );
-    const refreshToken = await generateRefreshToken(userId);
+    const sessionId = crypto.randomUUID();
+    const refreshToken = await generateRefreshToken(userId, sessionId);
 
     // Hash and store refresh token in session for rotation support
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const refreshTokenHash = hashRefreshToken(refreshToken);
     await db.query(
-      `INSERT INTO auth_sessions (user_id, refresh_token_hash, expires_at)
-       VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
-      [userId, refreshTokenHash]
+      `INSERT INTO auth_sessions (id, user_id, refresh_token_hash, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      [sessionId, userId, refreshTokenHash]
     );
 
     // Set cookies
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
     };
 
