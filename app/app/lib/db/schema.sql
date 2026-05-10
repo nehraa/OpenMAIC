@@ -1,85 +1,98 @@
+-- Tenants table
+CREATE TABLE IF NOT EXISTS tenants (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  owner_user_id TEXT,
+  name TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT 'personal' CHECK (type IN ('personal', 'team')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
   role TEXT NOT NULL CHECK (role IN ('teacher', 'student_classroom', 'student_b2c', 'individual')),
   phone_e164 TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Auth sessions
 CREATE TABLE IF NOT EXISTS auth_sessions (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  issued_at TEXT NOT NULL DEFAULT (datetime('now')),
-  expires_at TEXT NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
   user_agent TEXT,
   ip_hash TEXT
 );
 
 -- Classes
 CREATE TABLE IF NOT EXISTS classes (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
   teacher_id TEXT NOT NULL REFERENCES users(id),
   name TEXT NOT NULL,
   subject TEXT NOT NULL DEFAULT '',
   batch TEXT NOT NULL DEFAULT '',
   join_code TEXT UNIQUE NOT NULL,
-  peer_visibility_enabled INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  peer_visibility_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Class memberships
 CREATE TABLE IF NOT EXISTS class_memberships (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
   class_id TEXT NOT NULL REFERENCES classes(id),
   student_id TEXT NOT NULL REFERENCES users(id),
-  enrolled_at TEXT NOT NULL DEFAULT (datetime('now')),
+  enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'csv'))
 );
 
 -- Classroom sessions
 CREATE TABLE IF NOT EXISTS classroom_sessions (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   class_id TEXT NOT NULL REFERENCES classes(id),
   teacher_id TEXT NOT NULL REFERENCES users(id),
   title TEXT NOT NULL DEFAULT '',
   core_classroom_id TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'live', 'ended')),
-  started_at TEXT,
-  ended_at TEXT,
+  started_at TIMESTAMPTZ,
+  ended_at TIMESTAMPTZ,
   max_duration_minutes INTEGER NOT NULL DEFAULT 15,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Session participants
 CREATE TABLE IF NOT EXISTS session_participants (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   session_id TEXT NOT NULL REFERENCES classroom_sessions(id),
   user_id TEXT NOT NULL REFERENCES users(id),
-  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-  left_at TEXT,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  left_at TIMESTAMPTZ,
   completion_state TEXT NOT NULL DEFAULT 'pending' CHECK (completion_state IN ('pending', 'completed'))
 );
 
 -- Question messages
 CREATE TABLE IF NOT EXISTS question_messages (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   session_id TEXT NOT NULL REFERENCES classroom_sessions(id),
   student_id TEXT NOT NULL REFERENCES users(id),
   question_text TEXT NOT NULL,
   answer_text TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  answered_at TEXT
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  answered_at TIMESTAMPTZ
 );
 
 -- LLM usage events
 CREATE TABLE IF NOT EXISTS llm_usage_events (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-  timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   actor_user_id TEXT NOT NULL REFERENCES users(id),
   actor_role TEXT NOT NULL CHECK (actor_role IN ('teacher', 'student_classroom', 'student_b2c')),
   provider TEXT NOT NULL,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '../../../lib/db';
 import { generateAccessToken, generateRefreshToken } from '../../../lib/auth/jwt';
+import { hashRefreshToken } from '../../../lib/auth/refresh-token';
 
 const loginSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
       // Update name if changed
       if (user.name !== name) {
         await db.query(
-          `UPDATE users SET name = $1, updated_at = datetime('now') WHERE id = $2`,
+          `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`,
           [name, userId]
         );
         user = { ...user, name };
@@ -120,15 +121,22 @@ export async function POST(request: NextRequest) {
       tenantId,
       'student_b2c'
     );
-    const refreshToken = await generateRefreshToken(userId);
+    const sessionId = crypto.randomUUID();
+    const refreshToken = await generateRefreshToken(userId, sessionId);
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+    await db.query(
+      `INSERT INTO auth_sessions (id, user_id, refresh_token_hash, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      [sessionId, userId, refreshTokenHash]
+    );
 
-    // Set cookies - domain should be configurable for production
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
+    // Set cookies
+    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: cookieDomain,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       path: '/',
     };
 

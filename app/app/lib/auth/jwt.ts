@@ -35,11 +35,11 @@ export async function generateAccessToken(
 }
 
 /**
- * Generate a refresh token (7 days expiry) containing just the userId.
+ * Generate a refresh token (7 days expiry) containing userId and sessionId.
  */
-export async function generateRefreshToken(userId: string): Promise<string> {
+export async function generateRefreshToken(userId: string, sessionId: string): Promise<string> {
   const secret = getJwtSecret();
-  return new SignJWT({ userId })
+  return new SignJWT({ userId, sessionId })
     .setProtectedHeader({ alg: ALGORITHM })
     .setIssuedAt()
     .setExpirationTime(REFRESH_TOKEN_EXPIRY)
@@ -64,8 +64,8 @@ export async function verifyAccessToken(
  */
 export async function verifyRefreshToken(
   token: string
-): Promise<{ userId: string }> {
+): Promise<{ userId: string; sessionId: string }> {
   const secret = getJwtSecret();
   const { payload } = await jwtVerify(token, secret, { algorithms: [ALGORITHM] });
-  return { userId: payload.userId as string };
+  return { userId: payload.userId as string, sessionId: payload.sessionId as string };
 }

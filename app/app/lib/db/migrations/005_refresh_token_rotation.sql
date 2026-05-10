@@ -6,7 +6,7 @@ ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS token_family UUID DEFAULT gen
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS is_revoked BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
-ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS replaced_by UUID REFERENCES auth_sessions(id);
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS replaced_by TEXT REFERENCES auth_sessions(id);
 
 -- Index for quick session lookup by refresh token hash
 CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token_hash ON auth_sessions(refresh_token_hash) WHERE refresh_token_hash IS NOT NULL;

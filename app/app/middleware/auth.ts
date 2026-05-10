@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken } from '../lib/auth/jwt';
-import { getDb, setCurrentTenant } from '../lib/db';
+import { getDb } from '../lib/db';
 import type { User } from '@shared/types/roles';
 
 export interface AuthContext {
@@ -23,13 +23,11 @@ export function withAuth(
     const sessionId = req.cookies.get('session_id')?.value || req.headers.get('x-session-id');
 
     let userId: string | null = null;
-    let tenantId: string | null = null;
 
     if (accessToken) {
       try {
         const payload = await verifyAccessToken(accessToken);
         userId = payload.userId;
-        tenantId = (payload as any).tenantId;
       } catch {
         // Fall back to session ID if access token is invalid
       }
@@ -75,9 +73,6 @@ export function withAuth(
     }
 
     const user = result.rows[0] as User & { tenant_id: string };
-
-    // Set tenant context for RLS before processing the request
-    await setCurrentTenant(user.tenant_id);
 
     return handler(req, {
       user: {

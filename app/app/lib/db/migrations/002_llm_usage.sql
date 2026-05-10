@@ -1,7 +1,7 @@
 -- LLM Usage Events table for tracking token usage
 CREATE TABLE IF NOT EXISTS llm_usage_events (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-  timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   actor_user_id TEXT NOT NULL REFERENCES users(id),
   actor_role TEXT NOT NULL CHECK (actor_role IN ('teacher', 'student_classroom', 'student_b2c')),
   provider TEXT NOT NULL,
