@@ -3,7 +3,7 @@
 import { useState, useEffect, RefObject } from 'react';
 
 export function useParallax(
-  sectionRef: RefObject<HTMLElement>,
+  sectionRef: RefObject<HTMLElement | null>,
   speed: number = 0.5
 ): number {
   const [offset, setOffset] = useState(0);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, RefObject } from 'react';
 
-export function useScrollProgress(sectionRef: RefObject<HTMLElement>): number {
+export function useScrollProgress(sectionRef: RefObject<HTMLElement | null>): number {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
