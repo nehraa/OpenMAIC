@@ -2,7 +2,6 @@
 
 import { Navbar } from '@/app/components/sections/navbar';
 import { Hero } from '@/app/components/sections/hero';
-import { SocialProof } from '@/app/components/sections/social-proof';
 import { HowItWorks } from '@/app/components/sections/how-it-works';
 import { FeatureWorld } from '@/app/components/sections/feature-world';
 import { ClassroomPreview } from '@/app/components/sections/classroom-preview';
@@ -18,7 +17,6 @@ export default function HomePage() {
     <main className="min-h-screen bg-dark-base">
       <Navbar />
       <Hero />
-      <SocialProof />
       <HowItWorks />
       <FeatureWorld />
       <ClassroomPreview />

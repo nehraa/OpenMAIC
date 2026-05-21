@@ -6,26 +6,26 @@ import { forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2 focus-visible:ring-offset-dark-base disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         primary:
-          'bg-coral text-white hover:bg-coral-strong shadow-glow-coral hover:shadow-[0_0_50px_var(--coral-glow)] hover:-translate-y-0.5 active:translate-y-0',
+          'bg-orange-500 text-white hover:bg-orange-600 shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40',
         secondary:
-          'bg-transparent border border-white/20 text-white hover:bg-white/10 hover:border-white/30',
+          'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700',
         secondaryDark:
           'bg-dark-card border border-dark-line text-white hover:bg-dark-surface hover:border-white/20',
         ghost:
-          'bg-transparent text-slate-300 hover:text-white hover:bg-white/5',
+          'bg-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/5',
         link:
-          'bg-transparent text-coral underline-offset-4 hover:underline hover:text-coral-strong',
+          'bg-transparent text-orange-500 underline-offset-4 hover:underline hover:text-orange-600',
       },
       size: {
-        sm: 'h-8 px-3 text-sm rounded-lg',
-        md: 'h-10 px-4 text-sm rounded-[10px]',
-        lg: 'h-12 px-6 text-base rounded-[10px]',
-        icon: 'h-10 w-10 rounded-[10px]',
+        sm: 'h-9 px-4 text-sm rounded-xl',
+        md: 'h-11 px-6 text-base rounded-xl',
+        lg: 'h-14 px-8 text-lg rounded-xl',
+        icon: 'h-9 w-9 rounded-xl',
       },
     },
     defaultVariants: {

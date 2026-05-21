@@ -1,117 +1,162 @@
 'use client';
 
-import { cn } from '@/app/lib/cn';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { Brain, Users, PenTool, Mic, Box, TrendingUp, ChevronDown } from 'lucide-react';
-import { featureCards } from '@/app/lib/demo-data';
-import { Card, CardContent } from '@/app/components/ui/card';
+import { GlassCard } from '@/app/components/ui/GlassCard';
+import { cn } from '@/app/lib/cn';
 
-const iconMap = {
-  Brain,
-  Users,
-  PenTool,
-  Mic,
-  Box,
-  TrendingUp,
-};
+const features = [
+  {
+    title: 'Interactive Whiteboard',
+    description: 'Draw, diagram, and visualize concepts in real-time with AI-assisted sketching',
+    video: '/video/clips/whiteboard-demo.mp4',
+    accent: 'teal',
+  },
+  {
+    title: 'AI Debating Classmates',
+    description: 'Four distinct personas — Skeptic, Builder, Creative, Examiner — create authentic classroom dynamics',
+    video: '/video/clips/agent-demo.mp4',
+    accent: 'violet',
+  },
+  {
+    title: 'Adaptive Quizzes',
+    description: 'AI-generated questions that adapt to your level and identify weak areas',
+    video: '/video/clips/quiz-demo.mp4',
+    accent: 'coral',
+  },
+  {
+    title: 'Full Classroom Simulation',
+    description: 'A complete lesson with professor, classmates, and collaborative learning',
+    video: '/video/clips/classroom-demo.mp4',
+    accent: 'teal',
+  },
+];
 
-const colorMap = {
-  teal: 'bg-teal/20 text-teal border-teal/30',
-  violet: 'bg-violet/20 text-violet border-violet/30',
-  coral: 'bg-coral/20 text-coral border-coral/30',
-};
+function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
+  const [isHovering, setIsHovering] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-export function FeatureWorld() {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (videoRef.current) {
+      videoRef.current.play();
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
 
   return (
-    <section id="features" className="bg-dark-surface py-24 md:py-32">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <p className="text-kicker font-semibold tracking-widest text-coral uppercase mb-4">
-            Feature World
-          </p>
-          <h2 className="font-display font-semibold text-h1 text-white">
-            Everything That Makes It Alive
-          </h2>
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, delay: index * 0.1 }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="relative group cursor-pointer"
+    >
+      <GlassCard
+        variant="default"
+        className={cn(
+          'overflow-hidden p-0 border-white/10 transition-all duration-300',
+          'hover:border-white/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/30'
+        )}
+      >
+        {/* Video Container */}
+        <div className="relative aspect-video overflow-hidden bg-zinc-900">
+          <video
+            ref={videoRef}
+            src={feature.video}
+            muted
+            playsInline
+            loop
+            className={cn(
+              'w-full h-full object-cover transition-all duration-500',
+              isHovering ? 'scale-110' : 'scale-100'
+            )}
+          />
+          {/* Overlay on hover */}
+          <div
+            className={cn(
+              'absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent transition-opacity duration-300',
+              isHovering ? 'opacity-100' : 'opacity-0'
+            )}
+          />
+          {/* Play indicator */}
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center justify-center transition-opacity duration-300',
+              isHovering ? 'opacity-100' : 'opacity-0'
+            )}
+          >
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        {/* Feature Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featureCards.map((feature, index) => {
-            const Icon = iconMap[feature.icon as keyof typeof iconMap];
-            const isExpanded = expandedId === feature.id;
+        {/* Content */}
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className={cn(
+                'w-3 h-3 rounded-full',
+                feature.accent === 'teal' && 'bg-teal-500',
+                feature.accent === 'violet' && 'bg-violet-500',
+                feature.accent === 'coral' && 'bg-coral-500'
+              )}
+            />
+            <h3 className="text-xl font-bold text-white">{feature.title}</h3>
+          </div>
+          <p className="text-zinc-400 text-sm leading-relaxed">{feature.description}</p>
+        </div>
 
-            return (
-              <motion.div
-                key={feature.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <Card
-                  variant={isExpanded ? 'glow' : undefined}
-                  className={cn(
-                    'h-full cursor-pointer transition-all duration-300 hover:scale-[1.02]',
-                    isExpanded ? 'ring-1 ring-coral/50' : ''
-                  )}
-                >
-                  <CardContent className="p-6">
-                    <button
-                      className="w-full text-left"
-                      onClick={() => setExpandedId(isExpanded ? null : feature.id)}
-                      aria-expanded={isExpanded}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div
-                          className={cn(
-                            'w-12 h-12 rounded-xl border flex items-center justify-center',
-                            colorMap[feature.color as keyof typeof colorMap]
-                          )}
-                        >
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <ChevronDown
-                          className={cn(
-                            'w-5 h-5 text-slate-400 transition-transform duration-300',
-                            isExpanded && 'rotate-180'
-                          )}
-                        />
-                      </div>
-                      <h3 className="font-display font-semibold text-lg text-white mb-1">
-                        {feature.title}
-                      </h3>
-                      <p className="text-sm text-slate-400">{feature.tagline}</p>
+        {/* Accent glow on hover */}
+        <div
+          className={cn(
+            'absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10',
+            feature.accent === 'teal' && 'bg-gradient-to-br from-teal-500/10 to-transparent',
+            feature.accent === 'violet' && 'bg-gradient-to-br from-violet-500/10 to-transparent',
+            feature.accent === 'coral' && 'bg-gradient-to-br from-coral-500/10 to-transparent'
+          )}
+        />
+      </GlassCard>
+    </motion.div>
+  );
+}
 
-                      {/* Expanded content */}
-                      <div
-                        className={cn(
-                          'overflow-hidden transition-all duration-300',
-                          isExpanded ? 'max-h-96 mt-4' : 'max-h-0'
-                        )}
-                      >
-                        <p className="text-slate-300 text-sm leading-relaxed pb-4">
-                          {feature.description}
-                        </p>
-                        <a
-                          href="#"
-                          className="text-coral text-sm hover:underline inline-flex items-center gap-1"
-                        >
-                          See example
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                          </svg>
-                        </a>
-                      </div>
-                    </button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
+export function FeatureWorld() {
+  return (
+    <section className="py-24 px-6 bg-zinc-950">
+      <div className="max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
+            Features That Transform Learning
+          </h2>
+          <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+            Every element designed for maximum engagement and understanding.
+          </p>
+        </motion.div>
+
+        {/* 2x2 Grid */}
+        <div className="grid md:grid-cols-2 gap-8">
+          {features.map((feature, index) => (
+            <FeatureCard key={feature.title} feature={feature} index={index} />
+          ))}
         </div>
       </div>
     </section>

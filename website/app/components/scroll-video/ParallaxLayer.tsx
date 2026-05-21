@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { useRef, ReactNode } from 'react';
 import { useParallax } from '@/hooks/useParallax';
 
 interface ParallaxLayerProps {
@@ -10,10 +10,12 @@ interface ParallaxLayerProps {
 }
 
 export function ParallaxLayer({ children, speed = 0.5, className = '' }: ParallaxLayerProps) {
-  const offset = useParallax(null, speed);
+  const ref = useRef<HTMLDivElement>(null);
+  const offset = useParallax(ref, speed);
 
   return (
     <div
+      ref={ref}
       className={`will-change-transform ${className}`}
       style={{ transform: `translateY(${offset}px)` }}
     >
