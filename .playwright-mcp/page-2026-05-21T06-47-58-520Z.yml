@@ -1,0 +1,559 @@
+- main [ref=e2]:
+  - navigation [ref=e4]:
+    - link "A AIDU" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e7]: A
+      - generic [ref=e8]: AIDU
+    - generic [ref=e9]:
+      - link "Product" [ref=e10] [cursor=pointer]:
+        - /url: "#features"
+      - link "How it Works" [ref=e11] [cursor=pointer]:
+        - /url: "#how-it-works"
+      - link "Pricing" [ref=e12] [cursor=pointer]:
+        - /url: "#pricing"
+      - link "For Schools" [ref=e13] [cursor=pointer]:
+        - /url: "#pricing"
+    - generic [ref=e14]:
+      - link "Login" [ref=e15] [cursor=pointer]:
+        - /url: /login/student
+        - button "Login" [ref=e16]
+      - button "Start Learning" [ref=e17]:
+        - text: Start Learning
+        - img [ref=e18]
+  - generic [ref=e20]:
+    - img [ref=e23]
+    - generic [ref=e25]:
+      - paragraph [ref=e26]: Live Multi-Agent AI Classroom
+      - heading "Learn Beyond Limits" [level=1] [ref=e27]
+      - paragraph [ref=e28]: Turn any topic into a live lesson with an AI professor, debating classmates, whiteboard drawings, voice Q&A, and adaptive practice.
+      - generic [ref=e29]:
+        - button "Start Learning" [ref=e30]:
+          - text: Start Learning
+          - img [ref=e31]
+        - button "Watch Demo" [ref=e33]:
+          - img [ref=e34]
+          - text: Watch Demo
+  - generic [ref=e39]:
+    - paragraph [ref=e40]: Trusted by ambitious learners, teachers, and schools building better study systems.
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - paragraph [ref=e43]: 94%
+        - paragraph [ref=e44]: lesson completion
+      - generic [ref=e45]:
+        - paragraph [ref=e46]: 3.2x
+        - paragraph [ref=e47]: more questions asked
+      - generic [ref=e48]:
+        - paragraph [ref=e49]: "28"
+        - paragraph [ref=e50]: languages supported
+      - generic [ref=e51]:
+        - paragraph [ref=e52]: <1s
+        - paragraph [ref=e53]: realtime interactions
+    - generic [ref=e55]:
+      - generic "Delhi Public School" [ref=e56]
+      - generic "IIT Coaching" [ref=e57]
+      - generic "St. Xavier's" [ref=e58]
+      - generic "National Public School" [ref=e59]
+      - generic "Ryan International" [ref=e60]
+  - generic [ref=e62]:
+    - generic [ref=e63]:
+      - paragraph [ref=e64]: How It Works
+      - heading "Topic to Classroom in 3 Steps" [level=2] [ref=e65]
+    - generic [ref=e68]:
+      - generic [ref=e69]:
+        - generic [ref=e70]: "1"
+        - img [ref=e72]
+        - heading "Enter a topic" [level=3] [ref=e75]
+        - paragraph [ref=e76]: "Type anything: \"photosynthesis\", \"definite integrals\", \"Mughal history\" — AIDU understands context."
+      - generic [ref=e77]:
+        - generic [ref=e78]: "2"
+        - img [ref=e80]
+        - heading "AIDU builds the classroom" [level=3] [ref=e85]
+        - paragraph [ref=e86]: Professor, classmates, lesson plan, whiteboard, quiz, and simulation are created in seconds.
+      - generic [ref=e87]:
+        - generic [ref=e88]: "3"
+        - img [ref=e90]
+        - heading "Learn interactively" [level=3] [ref=e92]
+        - paragraph [ref=e93]: Ask questions, speak aloud, debate with classmates, solve problems, and track your mastery.
+  - generic [ref=e95]:
+    - generic [ref=e96]:
+      - paragraph [ref=e97]: Feature World
+      - heading "Everything That Makes It Alive" [level=2] [ref=e98]
+    - generic [ref=e99]:
+      - button "Socratic Engine Probes assumptions, challenges weak reasoning The AI professor asks follow-up questions that expose gaps in understanding. It adapts difficulty in real-time, ensuring every learner is challenged at their edge. See example" [ref=e103]:
+        - generic [ref=e104]:
+          - img [ref=e106]
+          - img [ref=e116]
+        - heading "Socratic Engine" [level=3] [ref=e118]
+        - paragraph [ref=e119]: Probes assumptions, challenges weak reasoning
+        - generic:
+          - paragraph [ref=e120]: The AI professor asks follow-up questions that expose gaps in understanding. It adapts difficulty in real-time, ensuring every learner is challenged at their edge.
+          - link "See example" [ref=e121] [cursor=pointer]:
+            - /url: "#"
+            - text: See example
+            - img [ref=e122]
+      - button "Agentic Classmates Four persona agents debate around any concept Skeptic questions claims. Builder constructs understanding. Creative offers analogies. Examiner tests readiness. Together they create authentic classroom dynamics. See example" [ref=e127]:
+        - generic [ref=e128]:
+          - img [ref=e130]
+          - img [ref=e135]
+        - heading "Agentic Classmates" [level=3] [ref=e137]
+        - paragraph [ref=e138]: Four persona agents debate around any concept
+        - generic:
+          - paragraph [ref=e139]: Skeptic questions claims. Builder constructs understanding. Creative offers analogies. Examiner tests readiness. Together they create authentic classroom dynamics.
+          - link "See example" [ref=e140] [cursor=pointer]:
+            - /url: "#"
+            - text: See example
+            - img [ref=e141]
+      - button "Generative Whiteboard Ink blooms into diagrams and equations WebGL-powered drawing that transforms rough sketches into polished diagrams. Equations render beautifully. Every stroke is replayable and exportable. See example" [ref=e146]:
+        - generic [ref=e147]:
+          - img [ref=e149]
+          - img [ref=e154]
+        - heading "Generative Whiteboard" [level=3] [ref=e156]
+        - paragraph [ref=e157]: Ink blooms into diagrams and equations
+        - generic:
+          - paragraph [ref=e158]: WebGL-powered drawing that transforms rough sketches into polished diagrams. Equations render beautifully. Every stroke is replayable and exportable.
+          - link "See example" [ref=e159] [cursor=pointer]:
+            - /url: "#"
+            - text: See example
+            - img [ref=e160]
+      - button "Spatial Voice Q&A Audio rings pan between avatars naturally Web Audio positioning creates spatial presence. Ask questions aloud and hear responses from the appropriate voice in the classroom. See example" [ref=e165]:
+        - generic [ref=e166]:
+          - img [ref=e168]
+          - img [ref=e171]
+        - heading "Spatial Voice Q&A" [level=3] [ref=e173]
+        - paragraph [ref=e174]: Audio rings pan between avatars naturally
+        - generic:
+          - paragraph [ref=e175]: Web Audio positioning creates spatial presence. Ask questions aloud and hear responses from the appropriate voice in the classroom.
+          - link "See example" [ref=e176] [cursor=pointer]:
+            - /url: "#"
+            - text: See example
+            - img [ref=e177]
+      - button "3D Simulations Isometric scenes generated per topic Biology cells, math graphs, physics fields, chemistry molecules — all interactive and generated contextual to your lesson. See example" [ref=e182]:
+        - generic [ref=e183]:
+          - img [ref=e185]
+          - img [ref=e188]
+        - heading "3D Simulations" [level=3] [ref=e190]
+        - paragraph [ref=e191]: Isometric scenes generated per topic
+        - generic:
+          - paragraph [ref=e192]: Biology cells, math graphs, physics fields, chemistry molecules — all interactive and generated contextual to your lesson.
+          - link "See example" [ref=e193] [cursor=pointer]:
+            - /url: "#"
+            - text: See example
+            - img [ref=e194]
+      - button "Shine Progression Mastery grows, streaks build, knowledge compounds A skill graph that tracks understanding over time. Spaced repetition schedules review. Targeted practice closes gaps before exams. See example" [ref=e199]:
+        - generic [ref=e200]:
+          - img [ref=e202]
+          - img [ref=e205]
+        - heading "Shine Progression" [level=3] [ref=e207]
+        - paragraph [ref=e208]: Mastery grows, streaks build, knowledge compounds
+        - generic:
+          - paragraph [ref=e209]: A skill graph that tracks understanding over time. Spaced repetition schedules review. Targeted practice closes gaps before exams.
+          - link "See example" [ref=e210] [cursor=pointer]:
+            - /url: "#"
+            - text: See example
+            - img [ref=e211]
+  - generic [ref=e214]:
+    - generic [ref=e215]:
+      - paragraph [ref=e216]: Live Classroom
+      - heading "See It in Action" [level=2] [ref=e217]
+      - paragraph [ref=e218]: A live photosynthesis lesson with AI professor and agentic classmates. Click avatars, ask questions, watch quizzes generate.
+    - generic [ref=e219]:
+      - generic [ref=e220]:
+        - generic [ref=e226]:
+          - generic [ref=e227]: ●
+          - generic [ref=e228]: Photosynthesis
+          - generic [ref=e229]: •
+          - generic [ref=e230]: Grade 10 Biology
+          - generic [ref=e231]: •
+          - generic [ref=e232]: 45 min
+        - generic [ref=e233]:
+          - button [ref=e234]:
+            - img [ref=e235]
+          - button [ref=e238]:
+            - img [ref=e239]
+          - button [ref=e242]:
+            - img [ref=e243]
+      - generic [ref=e245]:
+        - generic [ref=e246]:
+          - paragraph [ref=e247]: Participants
+          - generic [ref=e248]:
+            - generic [ref=e249]:
+              - generic [ref=e250]: AS
+              - generic [ref=e251]:
+                - paragraph [ref=e252]: Dr. Amit Singh
+                - paragraph [ref=e253]: Professor
+            - generic [ref=e254]:
+              - generic [ref=e255]: PR
+              - generic [ref=e256]:
+                - paragraph [ref=e257]: Priya
+                - paragraph [ref=e258]: Skeptic
+            - generic [ref=e259]:
+              - generic [ref=e260]: RH
+              - generic [ref=e261]:
+                - paragraph [ref=e262]: Rahul
+                - paragraph [ref=e263]: Creative
+            - generic [ref=e264]:
+              - generic [ref=e265]: MR
+              - generic [ref=e266]:
+                - paragraph [ref=e267]: Meera
+                - paragraph [ref=e268]: Examiner
+          - generic [ref=e269]:
+            - paragraph [ref=e270]: Lesson Phases
+            - generic [ref=e271]:
+              - generic [ref=e272]: Introduction
+              - generic [ref=e273]: Core Concept
+              - generic [ref=e274]: Discussion
+              - generic [ref=e275]: Quiz
+              - generic [ref=e276]: Summary
+        - generic [ref=e278]:
+          - paragraph [ref=e279]: Photosynthesis Equation
+          - generic [ref=e280]: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂
+          - generic [ref=e284]:
+            - img [ref=e285]
+            - paragraph [ref=e287]: Chloroplast structure diagram
+        - generic [ref=e288]:
+          - paragraph [ref=e289]: Discussion
+          - generic [ref=e290]:
+            - generic [ref=e291]:
+              - generic [ref=e293]: Professor
+              - paragraph [ref=e294]: “Before I explain, what do you think the plant is storing?”
+            - generic [ref=e295]:
+              - generic [ref=e297]: Priya
+              - paragraph [ref=e298]: “If oxygen is a waste product, why is it so important to us?”
+          - generic [ref=e299]:
+            - paragraph [ref=e300]: Generated Quiz
+            - generic [ref=e301]:
+              - paragraph [ref=e302]: Which reactant provides the carbon in glucose?
+              - generic [ref=e303]:
+                - generic [ref=e304]: Water
+                - generic [ref=e305]: Carbon dioxide
+                - generic [ref=e306]: Light energy
+                - generic [ref=e307]: Oxygen
+      - generic [ref=e309]:
+        - button [ref=e310]:
+          - img [ref=e311]
+        - button [ref=e314]:
+          - img [ref=e315]
+        - generic [ref=e318]: Ask the class anything...
+        - button [ref=e319]:
+          - img [ref=e320]
+        - button "Generate Quiz" [ref=e323]:
+          - img [ref=e324]
+          - text: Generate Quiz
+    - generic [ref=e326]:
+      - generic [ref=e327]: Click avatars to see persona cards
+      - generic [ref=e329]: Voice questions get spatial audio
+      - generic [ref=e331]: Whiteboard strokes are replayable
+  - generic [ref=e334]:
+    - generic [ref=e335]:
+      - heading "Simple Pricing" [level=2] [ref=e336]
+      - paragraph [ref=e337]: Start free, upgrade when you need more.
+    - generic [ref=e338]:
+      - generic [ref=e340]:
+        - heading "Individual" [level=3] [ref=e341]
+        - generic [ref=e343]: Free
+        - paragraph [ref=e344]: For self-paced learning.
+        - list [ref=e345]:
+          - listitem [ref=e346]:
+            - img [ref=e347]
+            - text: Unlimited topics
+          - listitem [ref=e349]:
+            - img [ref=e350]
+            - text: AI professor access
+          - listitem [ref=e352]:
+            - img [ref=e353]
+            - text: Basic quizzes
+        - button "Get Started" [ref=e355]
+      - generic [ref=e357]:
+        - generic [ref=e358]: Most Popular
+        - heading "Student" [level=3] [ref=e359]
+        - generic [ref=e360]:
+          - generic [ref=e361]: $9
+          - generic [ref=e362]: /month
+        - paragraph [ref=e363]: For enrolled students.
+        - list [ref=e364]:
+          - listitem [ref=e365]:
+            - img [ref=e366]
+            - text: Everything in Individual
+          - listitem [ref=e368]:
+            - img [ref=e369]
+            - text: Classroom sessions
+          - listitem [ref=e371]:
+            - img [ref=e372]
+            - text: Progress tracking
+          - listitem [ref=e374]:
+            - img [ref=e375]
+            - text: Priority support
+        - button "Get Started" [ref=e377]
+      - generic [ref=e379]:
+        - heading "Teacher" [level=3] [ref=e380]
+        - generic [ref=e381]:
+          - generic [ref=e382]: $29
+          - generic [ref=e383]: /month
+        - paragraph [ref=e384]: For educators.
+        - list [ref=e385]:
+          - listitem [ref=e386]:
+            - img [ref=e387]
+            - text: Everything in Student
+          - listitem [ref=e389]:
+            - img [ref=e390]
+            - text: Class management
+          - listitem [ref=e392]:
+            - img [ref=e393]
+            - text: Custom content
+          - listitem [ref=e395]:
+            - img [ref=e396]
+            - text: Analytics dashboard
+        - button "Get Started" [ref=e398]
+  - generic [ref=e400]:
+    - generic [ref=e401]:
+      - paragraph [ref=e402]: Teacher Command Center
+      - heading "See Who Understands, Who Is Stuck" [level=2] [ref=e403]
+      - paragraph [ref=e404]: Real-time analytics and AI-generated interventions help you teach smarter, not harder.
+    - generic [ref=e405]:
+      - generic [ref=e406]:
+        - generic [ref=e407]:
+          - generic [ref=e409]: 10A
+          - generic [ref=e410]:
+            - heading "Grade 10 - Section A" [level=3] [ref=e411]
+            - paragraph [ref=e412]: 32 students enrolled
+        - generic [ref=e413]:
+          - button "Generate Plan" [ref=e414]:
+            - img [ref=e415]
+            - text: Generate Plan
+          - button "Export" [ref=e418]:
+            - img [ref=e419]
+            - text: Export
+      - generic [ref=e422]:
+        - generic [ref=e423]:
+          - paragraph [ref=e424]:
+            - img [ref=e425]
+            - text: Roster
+          - generic [ref=e430]:
+            - generic [ref=e431]:
+              - generic [ref=e432]:
+                - generic [ref=e433]: AM
+                - generic [ref=e434]: Arjun Mehta
+              - generic [ref=e436]: 92%
+            - generic [ref=e437]:
+              - generic [ref=e438]:
+                - generic [ref=e439]: SP
+                - generic [ref=e440]: Sneha Patel
+              - generic [ref=e442]: 78%
+            - generic [ref=e443]:
+              - generic [ref=e444]:
+                - generic [ref=e445]: VS
+                - generic [ref=e446]: Vikram Singh
+              - generic [ref=e447]:
+                - img [ref=e448]
+                - generic [ref=e450]: 65%
+            - generic [ref=e451]:
+              - generic [ref=e452]:
+                - generic [ref=e453]: AS
+                - generic [ref=e454]: Anaya Sharma
+              - generic [ref=e456]: 88%
+            - generic [ref=e457]:
+              - generic [ref=e458]:
+                - generic [ref=e459]: RG
+                - generic [ref=e460]: Rohan Gupta
+              - generic [ref=e461]:
+                - img [ref=e462]
+                - generic [ref=e464]: 45%
+            - generic [ref=e465]:
+              - generic [ref=e466]:
+                - generic [ref=e467]: IK
+                - generic [ref=e468]: Ishaan Khan
+              - generic [ref=e470]: 82%
+            - generic [ref=e471]:
+              - generic [ref=e472]:
+                - generic [ref=e473]: PR
+                - generic [ref=e474]: Priya Reddy
+              - generic [ref=e476]: 71%
+            - generic [ref=e477]:
+              - generic [ref=e478]:
+                - generic [ref=e479]: AV
+                - generic [ref=e480]: Aditya Verma
+              - generic [ref=e482]: 95%
+        - generic [ref=e483]:
+          - generic [ref=e484]:
+            - paragraph [ref=e485]:
+              - img [ref=e486]
+              - text: Class Performance
+            - generic [ref=e488]:
+              - generic [ref=e489]: 78%
+              - generic [ref=e490]:
+                - img [ref=e491]
+                - text: +12%
+          - generic [ref=e507]:
+            - generic [ref=e508]:
+              - paragraph [ref=e509]: Questions Asked
+              - paragraph [ref=e510]: "247"
+            - generic [ref=e511]:
+              - paragraph [ref=e512]: Speaking Time
+              - paragraph [ref=e513]: 18 min avg
+            - generic [ref=e514]:
+              - paragraph [ref=e515]: Quiz Confidence
+              - paragraph [ref=e516]: 82%
+        - generic [ref=e517]:
+          - paragraph [ref=e518]: AI Interventions
+          - generic [ref=e519]:
+            - paragraph [ref=e520]: Misconception Alerts
+            - generic [ref=e521]:
+              - generic [ref=e522]:
+                - paragraph [ref=e523]: Mitosis vs Meiosis
+                - paragraph [ref=e524]: 8 students affected
+              - generic [ref=e525]:
+                - paragraph [ref=e526]: Photosynthesis equation
+                - paragraph [ref=e527]: 5 students affected
+              - generic [ref=e528]:
+                - paragraph [ref=e529]: Atomic structure
+                - paragraph [ref=e530]: 3 students affected
+          - generic [ref=e531]:
+            - paragraph [ref=e532]: Suggested Next Lesson
+            - paragraph [ref=e533]: Cell Division Visual Lab
+            - button "Assign to Class" [ref=e534]:
+              - img [ref=e535]
+              - text: Assign to Class
+          - generic [ref=e538]:
+            - paragraph [ref=e539]: Recent Activity
+            - generic [ref=e540]:
+              - generic [ref=e541]:
+                - paragraph [ref=e542]: Arjun Mehta
+                - paragraph [ref=e543]: Completed quiz on photosynthesis
+              - generic [ref=e544]:
+                - paragraph [ref=e545]: Sneha Patel
+                - paragraph [ref=e546]: Asked question about light reactions
+              - generic [ref=e547]:
+                - paragraph [ref=e548]: Vikram Singh
+                - paragraph [ref=e549]: Struggled with Calvin cycle concept
+  - generic [ref=e551]:
+    - generic [ref=e552]:
+      - paragraph [ref=e553]: Outcomes
+      - heading "Learning that becomes measurable." [level=2] [ref=e554]
+    - generic [ref=e555]:
+      - generic [ref=e558]:
+        - img [ref=e560]
+        - heading "Understand faster" [level=3] [ref=e562]
+        - paragraph [ref=e563]: Adaptive explanations, Socratic checks, and diagrams reduce passive reading and build real comprehension.
+      - generic [ref=e566]:
+        - img [ref=e568]
+        - heading "Ask more" [level=3] [ref=e570]
+        - paragraph [ref=e571]: Agentic classmates make questions feel natural, not embarrassing. No question is too simple.
+      - generic [ref=e574]:
+        - img [ref=e576]
+        - heading "Remember longer" [level=3] [ref=e586]
+        - paragraph [ref=e587]: Mastery graph schedules spaced review and targeted practice so knowledge compounds over time.
+      - generic [ref=e590]:
+        - img [ref=e592]
+        - heading "Teach smarter" [level=3] [ref=e595]
+        - paragraph [ref=e596]: Teachers see misconceptions before exam week. Interventions are generated, not guessed.
+  - generic [ref=e598]:
+    - generic [ref=e599]:
+      - paragraph [ref=e600]: FAQ
+      - heading "Questions Answered" [level=2] [ref=e601]
+    - generic [ref=e603]:
+      - generic [ref=e604]:
+        - button "How does AIDU adapt to my learning level?" [ref=e605]:
+          - generic [ref=e606]: How does AIDU adapt to my learning level?
+          - img [ref=e607]
+        - paragraph [ref=e609]: AIDU's AI professor continuously assesses your responses through Socratic questioning and quiz performance. It adjusts explanation depth and pace dynamically, ensuring you're always learning at your edge of capability.
+      - generic [ref=e610]:
+        - button "What devices support AIDU?" [ref=e611]:
+          - generic [ref=e612]: What devices support AIDU?
+          - img [ref=e613]
+        - paragraph [ref=e615]: AIDU works on any modern browser — desktop, tablet, and mobile. For voice features, we recommend a microphone. 3D simulations require WebGL support, which is available on 99% of modern devices.
+      - generic [ref=e616]:
+        - button "How is my data protected?" [ref=e617]:
+          - generic [ref=e618]: How is my data protected?
+          - img [ref=e619]
+        - paragraph [ref=e621]: Your learning data is encrypted at rest and in transit. We never sell personal data. Teachers have full control over student data and can export or delete it anytime. Our infrastructure is hosted on ISO 27001 certified data centers.
+      - generic [ref=e622]:
+        - button "Can AIDU be used for exam preparation?" [ref=e623]:
+          - generic [ref=e624]: Can AIDU be used for exam preparation?
+          - img [ref=e625]
+        - paragraph [ref=e627]: Absolutely. Exam Prep mode focuses on past papers, time-bounded practice, and confidence scoring. The Examiner agent identifies weak areas and generates targeted practice to strengthen them.
+      - generic [ref=e628]:
+        - button "Do you offer school or institutional pricing?" [ref=e629]:
+          - generic [ref=e630]: Do you offer school or institutional pricing?
+          - img [ref=e631]
+        - paragraph [ref=e633]: Yes. Schools and coaching centers can request a pilot program with dedicated onboarding, teacher training, and custom pricing based on student count. Contact our education team for details.
+      - generic [ref=e634]:
+        - button "What languages does AIDU support?" [ref=e635]:
+          - generic [ref=e636]: What languages does AIDU support?
+          - img [ref=e637]
+        - paragraph [ref=e639]: AIDU currently supports 28 languages including English, Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, and more. The AI professor can explain concepts in your preferred language and switch seamlessly.
+  - generic [ref=e643]:
+    - heading "Start with one topic." [level=2] [ref=e644]
+    - paragraph [ref=e645]: AIDU will build the classroom around it.
+    - generic [ref=e646]:
+      - button "Create My Classroom" [ref=e647]:
+        - text: Create My Classroom
+        - img [ref=e648]
+      - button "View Teacher Plan" [ref=e650]
+  - generic [ref=e652]:
+    - generic [ref=e653]:
+      - generic [ref=e654]:
+        - generic [ref=e655]:
+          - generic [ref=e657]: A
+          - generic [ref=e658]: AIDU
+        - paragraph [ref=e659]: Your AI Classroom, Anywhere. Turn any topic into a living, breathing lesson with adaptive AI.
+        - generic [ref=e660]:
+          - link "Twitter" [ref=e661] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e662]
+          - link "LinkedIn" [ref=e664] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e665]
+          - link "GitHub" [ref=e669] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e670]
+          - link "Email" [ref=e673] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e674]
+      - generic [ref=e677]:
+        - paragraph [ref=e678]: Product
+        - list [ref=e679]:
+          - listitem [ref=e680]:
+            - link "Features" [ref=e681] [cursor=pointer]:
+              - /url: "#features"
+          - listitem [ref=e682]:
+            - link "How it Works" [ref=e683] [cursor=pointer]:
+              - /url: "#how-it-works"
+          - listitem [ref=e684]:
+            - link "Pricing" [ref=e685] [cursor=pointer]:
+              - /url: "#pricing"
+          - listitem [ref=e686]:
+            - link "For Schools" [ref=e687] [cursor=pointer]:
+              - /url: "#pricing"
+      - generic [ref=e688]:
+        - paragraph [ref=e689]: Company
+        - list [ref=e690]:
+          - listitem [ref=e691]:
+            - link "About" [ref=e692] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e693]:
+            - link "Blog" [ref=e694] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e695]:
+            - link "Careers" [ref=e696] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e697]:
+            - link "Press" [ref=e698] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=e699]:
+        - paragraph [ref=e700]: Resources
+        - list [ref=e701]:
+          - listitem [ref=e702]:
+            - link "Help Center" [ref=e703] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e704]:
+            - link "Privacy Policy" [ref=e705] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e706]:
+            - link "Terms of Service" [ref=e707] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e708]:
+            - link "Cookie Policy" [ref=e709] [cursor=pointer]:
+              - /url: "#"
+    - generic [ref=e710]:
+      - paragraph [ref=e711]: 2026 AIDU. All rights reserved.
+      - generic [ref=e714]: All systems operational
