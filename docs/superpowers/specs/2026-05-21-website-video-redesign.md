@@ -15,7 +15,7 @@
 ## Part 1: Video Processing
 
 ### Source Video Analysis
-- **File**: `/Users/abhinavnehra/Downloads/Video Project 1.mp4`
+- **File**: `./assets/video.mp4`
 - **Duration**: 110.67 seconds (1:50)
 - **Resolution**: 1920x1080 @ 30fps
 - **Encoding**: H.264 AAC
@@ -36,7 +36,7 @@ Extract these clips for feature sections:
 #!/bin/bash
 # Extract clips with clean cuts, 1080p, H.264
 
-INPUT="/Users/abhinavnehra/Downloads/Video Project 1.mp4"
+INPUT="./assets/video.mp4"
 OUTPUT_DIR="./public/video/clips"
 
 mkdir -p "$OUTPUT_DIR"
@@ -156,7 +156,7 @@ Each feature gets a scroll-synced video:
 
 ### Component Architecture
 
-```
+```text
 website/app/
 ├── components/
 │   ├── scroll-video/
@@ -287,7 +287,7 @@ export function ScrollVideo({ src, screenshots, children }: {
 
 ## File Structure
 
-```
+```text
 website/
 ├── app/
 │   ├── page.tsx                    # Simplified landing
