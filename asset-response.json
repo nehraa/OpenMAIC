@@ -1,0 +1,28 @@
+#21 [GET] http://localhost:3001/api/teacher/library/assets?
+
+  General
+    status:    [200] OK
+    duration:  39ms
+    type:      fetch
+    mimeType:  application/json
+
+  Request headers
+    sec-ch-ua-platform: "macOS"
+    referer: http://localhost:3001/teacher/library
+    user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36
+    sec-ch-ua: "Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"
+    sec-ch-ua-mobile: ?0
+
+  Response headers
+    transfer-encoding: chunked
+    content-security-policy: default-src 'none'; frame-ancestors 'none'
+    connection: keep-alive
+    referrer-policy: strict-origin-when-cross-origin
+    x-content-type-options: nosniff
+    keep-alive: timeout=5
+    date: Tue, 12 May 2026 11:21:04 GMT
+    content-type: application/json
+    vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+    x-frame-options: DENY
+
+Call browser_network_request with part="response-body" to read the response body.

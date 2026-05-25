@@ -1,0 +1,140 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Content Library" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Reuse your generated slides and quizzes
+      - button "Generate with AI" [active] [ref=e7]:
+        - img [ref=e8]
+        - text: Generate with AI
+    - generic [ref=e10]:
+      - textbox "Search by title..." [ref=e12]
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - button "All" [ref=e15]
+          - button "Slides" [ref=e16]
+          - button "Quizzes" [ref=e17]
+        - combobox [ref=e30]:
+          - option "All Subjects" [selected]
+          - option "AI Generated"
+          - option "Mathematics"
+          - option "Science"
+          - option "English"
+        - combobox [ref=e31]:
+          - option "All Classes" [selected]
+          - option "Class 10 English"
+          - option "Class 10 Science"
+          - option "Class 10 Mathematics"
+    - generic [ref=e32]:
+      - button "All Classes" [ref=e33]
+      - button "Class 10 English" [ref=e34]
+      - button "Class 10 Science" [ref=e35]
+      - button "Class 10 Mathematics" [ref=e36]
+    - paragraph [ref=e18]: 9 assets
+    - generic [ref=e19]:
+      - generic [ref=e37] [cursor=pointer]:
+        - generic [ref=e38]:
+          - heading "Introduction to Photosynthesis for 5th Grade Sc..." [level=3] [ref=e40]
+          - generic [ref=e41]: Slides
+        - paragraph [ref=e42]: AI Generated
+        - generic [ref=e43]:
+          - generic [ref=e44]: 5/12/2026
+          - generic [ref=e45]:
+            - button "Delete" [ref=e46]
+            - button "Use" [ref=e47]
+      - generic [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]:
+          - heading "Introduction to quantum physics" [level=3] [ref=e51]
+          - generic [ref=e52]: Slides
+        - paragraph [ref=e53]: AI Generated
+        - generic [ref=e54]:
+          - generic [ref=e55]: 5/12/2026
+          - generic [ref=e56]:
+            - button "Delete" [ref=e57]
+            - button "Use" [ref=e58]
+      - generic [ref=e59] [cursor=pointer]:
+        - generic [ref=e60]:
+          - heading "Introduction to Algebra for 8th Grade - coverin..." [level=3] [ref=e62]
+          - generic [ref=e63]: Slides
+        - paragraph [ref=e64]: AI Generated
+        - generic [ref=e65]:
+          - generic [ref=e66]: 5/11/2026
+          - generic [ref=e67]:
+            - button "Delete" [ref=e68]
+            - button "Use" [ref=e69]
+      - generic [ref=e70] [cursor=pointer]:
+        - generic [ref=e71]:
+          - heading "Introduction to Electromagnetism" [level=3] [ref=e73]
+          - generic [ref=e74]: Slides
+        - paragraph [ref=e75]: AI Generated
+        - generic [ref=e76]:
+          - generic [ref=e77]: 5/11/2026
+          - generic [ref=e78]:
+            - button "Delete" [ref=e79]
+            - button "Use" [ref=e80]
+      - generic [ref=e81] [cursor=pointer]:
+        - generic [ref=e82]:
+          - heading "Introduction to Algebra" [level=3] [ref=e84]
+          - generic [ref=e85]: Slides
+        - paragraph [ref=e86]: Mathematics
+        - generic [ref=e87]:
+          - generic [ref=e88]: 5/3/2026
+          - generic [ref=e89]:
+            - button "Delete" [ref=e90]
+            - button "Use" [ref=e91]
+      - generic [ref=e92] [cursor=pointer]:
+        - generic [ref=e93]:
+          - heading "Newton's Laws Quiz" [level=3] [ref=e95]
+          - generic [ref=e96]: Quiz
+        - paragraph [ref=e97]: Science
+        - generic [ref=e98]:
+          - generic [ref=e99]: 5/3/2026
+          - generic [ref=e100]:
+            - button "Delete" [ref=e101]
+            - button "Use" [ref=e102]
+      - generic [ref=e103] [cursor=pointer]:
+        - generic [ref=e104]:
+          - heading "Newton's Laws of Motion" [level=3] [ref=e106]
+          - generic [ref=e107]: Slides
+        - paragraph [ref=e108]: Science
+        - generic [ref=e109]:
+          - generic [ref=e110]: 5/3/2026
+          - generic [ref=e111]:
+            - button "Delete" [ref=e112]
+            - button "Use" [ref=e113]
+      - generic [ref=e114] [cursor=pointer]:
+        - generic [ref=e115]:
+          - heading "Shakespeare's Hamlet — Act 1" [level=3] [ref=e117]
+          - generic [ref=e118]: Slides
+        - paragraph [ref=e119]: English
+        - generic [ref=e120]:
+          - generic [ref=e121]: 5/3/2026
+          - generic [ref=e122]:
+            - button "Delete" [ref=e123]
+            - button "Use" [ref=e124]
+      - generic [ref=e125] [cursor=pointer]:
+        - generic [ref=e126]:
+          - heading "Algebra Quiz — Chapter 2" [level=3] [ref=e128]
+          - generic [ref=e129]: Quiz
+        - paragraph [ref=e130]: Mathematics
+        - generic [ref=e131]:
+          - generic [ref=e132]: 5/3/2026
+          - generic [ref=e133]:
+            - button "Delete" [ref=e134]
+            - button "Use" [ref=e135]
+    - generic [ref=e137]:
+      - heading "Generate with AI" [level=2] [ref=e138]
+      - paragraph [ref=e139]: Describe the topic and learning level to create content instantly.
+      - generic [ref=e140]:
+        - generic [ref=e141]:
+          - generic [ref=e142]: I want to create a...
+          - generic [ref=e143]:
+            - button "Slide Deck" [ref=e144]
+            - button "Quiz" [ref=e145]
+          - textbox "e.g., Introduction to Algebra for 8th Grade" [ref=e146]
+        - generic [ref=e147]:
+          - button "Cancel" [ref=e148]
+          - button "Generate Now" [disabled] [ref=e149]
+  - button "Open Next.js Dev Tools" [ref=e25] [cursor=pointer]:
+    - img [ref=e26]
+  - alert [ref=e29]

@@ -1,0 +1,117 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Content Library" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Reuse your generated slides and quizzes
+      - button "Generate with AI" [ref=e7]:
+        - img [ref=e8]
+        - text: Generate with AI
+    - generic [ref=e10]:
+      - textbox "Search by title..." [ref=e12]
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - button "All" [ref=e15]
+          - button "Slides" [ref=e16]
+          - button "Quizzes" [ref=e17]
+        - combobox [ref=e18]:
+          - option "All Subjects" [selected]
+          - option "AI Generated"
+          - option "Mathematics"
+          - option "Science"
+          - option "English"
+        - combobox [ref=e19]:
+          - option "All Classes" [selected]
+          - option "Class 10 English"
+          - option "Class 10 Science"
+          - option "Class 10 Mathematics"
+    - generic [ref=e20]:
+      - button "All Classes" [ref=e21]
+      - button "Class 10 English" [ref=e22]
+      - button "Class 10 Science" [ref=e23]
+      - button "Class 10 Mathematics" [ref=e24]
+    - paragraph [ref=e25]: 8 assets
+    - generic [ref=e26]:
+      - generic [ref=e27] [cursor=pointer]:
+        - generic [ref=e28]:
+          - heading "Introduction to quantum physics" [level=3] [ref=e30]
+          - generic [ref=e31]: Slides
+        - paragraph [ref=e32]: AI Generated
+        - generic [ref=e33]:
+          - generic [ref=e34]: 5/12/2026
+          - generic [ref=e35]:
+            - button "Delete" [ref=e36]
+            - button "Use" [ref=e37]
+      - generic [ref=e38] [cursor=pointer]:
+        - generic [ref=e39]:
+          - heading "Introduction to Algebra for 8th Grade - coverin..." [level=3] [ref=e41]
+          - generic [ref=e42]: Slides
+        - paragraph [ref=e43]: AI Generated
+        - generic [ref=e44]:
+          - generic [ref=e45]: 5/11/2026
+          - generic [ref=e46]:
+            - button "Delete" [ref=e47]
+            - button "Use" [ref=e48]
+      - generic [ref=e49] [cursor=pointer]:
+        - generic [ref=e50]:
+          - heading "Introduction to Electromagnetism" [level=3] [ref=e52]
+          - generic [ref=e53]: Slides
+        - paragraph [ref=e54]: AI Generated
+        - generic [ref=e55]:
+          - generic [ref=e56]: 5/11/2026
+          - generic [ref=e57]:
+            - button "Delete" [ref=e58]
+            - button "Use" [ref=e59]
+      - generic [ref=e60] [cursor=pointer]:
+        - generic [ref=e61]:
+          - heading "Algebra Quiz — Chapter 2" [level=3] [ref=e63]
+          - generic [ref=e64]: Quiz
+        - paragraph [ref=e65]: Mathematics
+        - generic [ref=e66]:
+          - generic [ref=e67]: 5/3/2026
+          - generic [ref=e68]:
+            - button "Delete" [ref=e69]
+            - button "Use" [ref=e70]
+      - generic [ref=e71] [cursor=pointer]:
+        - generic [ref=e72]:
+          - heading "Introduction to Algebra" [level=3] [ref=e74]
+          - generic [ref=e75]: Slides
+        - paragraph [ref=e76]: Mathematics
+        - generic [ref=e77]:
+          - generic [ref=e78]: 5/3/2026
+          - generic [ref=e79]:
+            - button "Delete" [ref=e80]
+            - button "Use" [ref=e81]
+      - generic [ref=e82] [cursor=pointer]:
+        - generic [ref=e83]:
+          - heading "Newton's Laws Quiz" [level=3] [ref=e85]
+          - generic [ref=e86]: Quiz
+        - paragraph [ref=e87]: Science
+        - generic [ref=e88]:
+          - generic [ref=e89]: 5/3/2026
+          - generic [ref=e90]:
+            - button "Delete" [ref=e91]
+            - button "Use" [ref=e92]
+      - generic [ref=e93] [cursor=pointer]:
+        - generic [ref=e94]:
+          - heading "Newton's Laws of Motion" [level=3] [ref=e96]
+          - generic [ref=e97]: Slides
+        - paragraph [ref=e98]: Science
+        - generic [ref=e99]:
+          - generic [ref=e100]: 5/3/2026
+          - generic [ref=e101]:
+            - button "Delete" [ref=e102]
+            - button "Use" [ref=e103]
+      - generic [ref=e104] [cursor=pointer]:
+        - generic [ref=e105]:
+          - heading "Shakespeare's Hamlet — Act 1" [level=3] [ref=e107]
+          - generic [ref=e108]: Slides
+        - paragraph [ref=e109]: English
+        - generic [ref=e110]:
+          - generic [ref=e111]: 5/3/2026
+          - generic [ref=e112]:
+            - button "Delete" [ref=e113]
+            - button "Use" [ref=e114]
+  - button "Open Next.js Dev Tools" [ref=e120] [cursor=pointer]:
+    - img [ref=e121]
+  - alert [ref=e124]

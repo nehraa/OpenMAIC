@@ -1,128 +1,37 @@
 # Pass 1: Test-Sync
 
 **Status:** FAIL
-**Time:** 2026-05-01T11:31:30+05:30
-**Attempt:** 14
+**Time:** 2026-05-21T14:44:40+05:30
+**Attempt:** 17
 
 ## Details
 
-Missing test files for:\n\n- app/app/layout.tsx (missing test)\n- app/app/login/individual/page.tsx (missing test)\n- app/app/login/student/page.tsx (missing test)\n- app/app/login/teacher/page.tsx (missing test)\n- app/app/page.tsx (missing test)\n- e2e/auth-flow.spec.ts (missing test)\n- e2e/rls-isolation.spec.ts (missing test)\n- e2e/teacher-student-flow.spec.ts (missing test)\n- student/app/api/auth/join/route.ts (missing test)\n- teacher/app/api/auth/login/route.ts (missing test)\n- teacher/app/api/auth/signup/route.ts (missing test)\n- teacher/app/api/auth/verify-otp/route.ts (missing test)\n- teacher/app/api/teacher/assignments/route.ts (missing test)\n- teacher/app/api/teacher/classes/[classId]/students/route.ts (missing test)\n- teacher/app/api/teacher/classes/route.ts (missing test)\n- teacher/app/page.tsx (missing test)\n- teacher/middleware/auth.ts (missing test)\n\n\n### Instructions to Pass\n\n1. Create test file for each missing test\n2. Write minimum viable test (happy path)\n3. Run tests to verify they pass\n4. Commit tests before proceeding
+Missing test files for:\n\n- website/app/components/scroll-video/ParallaxLayer.tsx (missing test)\n- website/app/components/scroll-video/ScrollVideo.tsx (missing test)\n- website/app/components/sections/FinalCTA.tsx (missing test)\n- website/app/components/sections/Hero.tsx (missing test)\n- website/app/components/sections/Pricing.tsx (missing test)\n- website/app/components/sections/classroom-preview.tsx (missing test)\n- website/app/components/sections/feature-world.tsx (missing test)\n- website/app/components/sections/final-cta.tsx (missing test)\n- website/app/components/sections/hero.tsx (missing test)\n- website/app/components/sections/how-it-works.tsx (missing test)\n- website/app/components/sections/pricing.tsx (missing test)\n- website/app/components/ui/Button.tsx (missing test)\n- website/app/components/ui/GlassCard.tsx (missing test)\n- website/app/components/ui/button.tsx (missing test)\n- website/hooks/useInView.ts (missing test)\n- website/hooks/useParallax.ts (missing test)\n- website/hooks/useScrollProgress.ts (missing test)\n\n\n### Instructions to Pass\n\n1. Create test file for each missing test\n2. Write minimum viable test (happy path)\n3. Run tests to verify they pass\n4. Commit tests before proceeding
 
 ## Changed Files
 
 ```\napp/app/globals.css
-app/app/layout.tsx
-app/app/login/individual/page.tsx
-app/app/login/student/page.tsx
-app/app/login/teacher/page.tsx
-app/app/page.tsx
-e2e/auth-flow.spec.ts
-e2e/rls-isolation.spec.ts
-e2e/teacher-student-flow.spec.ts
-node_modules/.modules.yaml
-node_modules/.pnpm-workspace-state-v1.json
-node_modules/.pnpm/@babel+core@7.29.0/node_modules/@babel/core/node_modules/.bin/json5
-node_modules/.pnpm/@babel+core@7.29.0/node_modules/@babel/core/node_modules/.bin/parser
-node_modules/.pnpm/@babel+core@7.29.0/node_modules/@babel/core/node_modules/.bin/semver
-node_modules/.pnpm/@babel+generator@7.29.1/node_modules/@babel/generator/node_modules/.bin/jsesc
-node_modules/.pnpm/@babel+generator@7.29.1/node_modules/@babel/generator/node_modules/.bin/parser
-node_modules/.pnpm/@babel+helper-compilation-targets@7.28.6/node_modules/@babel/helper-compilation-targets/node_modules/.bin/browserslist
-node_modules/.pnpm/@babel+helper-compilation-targets@7.28.6/node_modules/@babel/helper-compilation-targets/node_modules/.bin/semver
-node_modules/.pnpm/@babel+template@7.28.6/node_modules/@babel/template/node_modules/.bin/parser
-node_modules/.pnpm/@babel+traverse@7.29.0/node_modules/@babel/traverse/node_modules/.bin/parser
-node_modules/.pnpm/@eslint+eslintrc@3.3.5/node_modules/@eslint/eslintrc/node_modules/.bin/js-yaml
-node_modules/.pnpm/@eslint-community+eslint-utils@4.9.1_eslint@9.39.4_jiti@2.6.1_/node_modules/@eslint-community/eslint-utils/node_modules/.bin/eslint
-node_modules/.pnpm/@tailwindcss+node@4.2.4/node_modules/@tailwindcss/node/node_modules/.bin/jiti
-node_modules/.pnpm/@typescript-eslint+eslint-plugin@8.59.0_@typescript-eslint+parser@8.59.0_eslint@9.39.4__f4b8f379f9d2202f924d4362f77c93d9/node_modules/@typescript-eslint/eslint-plugin/node_modules/.bin/eslint
-node_modules/.pnpm/@typescript-eslint+eslint-plugin@8.59.0_@typescript-eslint+parser@8.59.0_eslint@9.39.4__f4b8f379f9d2202f924d4362f77c93d9/node_modules/@typescript-eslint/eslint-plugin/node_modules/.bin/tsc
-node_modules/.pnpm/@typescript-eslint+eslint-plugin@8.59.0_@typescript-eslint+parser@8.59.0_eslint@9.39.4__f4b8f379f9d2202f924d4362f77c93d9/node_modules/@typescript-eslint/eslint-plugin/node_modules/.bin/tsserver
-node_modules/.pnpm/@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/parser/node_modules/.bin/eslint
-node_modules/.pnpm/@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/parser/node_modules/.bin/tsc
-node_modules/.pnpm/@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/parser/node_modules/.bin/tsserver
-node_modules/.pnpm/@typescript-eslint+tsconfig-utils@8.59.0_typescript@5.9.3/node_modules/@typescript-eslint/tsconfig-utils/node_modules/.bin/tsc
-node_modules/.pnpm/@typescript-eslint+tsconfig-utils@8.59.0_typescript@5.9.3/node_modules/@typescript-eslint/tsconfig-utils/node_modules/.bin/tsserver
-node_modules/.pnpm/@typescript-eslint+type-utils@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/type-utils/node_modules/.bin/eslint
-node_modules/.pnpm/@typescript-eslint+type-utils@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/type-utils/node_modules/.bin/tsc
-node_modules/.pnpm/@typescript-eslint+type-utils@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/type-utils/node_modules/.bin/tsserver
-node_modules/.pnpm/@typescript-eslint+typescript-estree@8.59.0_typescript@5.9.3/node_modules/@typescript-eslint/typescript-estree/node_modules/.bin/semver
-node_modules/.pnpm/@typescript-eslint+typescript-estree@8.59.0_typescript@5.9.3/node_modules/@typescript-eslint/typescript-estree/node_modules/.bin/tsc
-node_modules/.pnpm/@typescript-eslint+typescript-estree@8.59.0_typescript@5.9.3/node_modules/@typescript-eslint/typescript-estree/node_modules/.bin/tsserver
-node_modules/.pnpm/@typescript-eslint+utils@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/utils/node_modules/.bin/eslint
-node_modules/.pnpm/@typescript-eslint+utils@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/utils/node_modules/.bin/tsc
-node_modules/.pnpm/@typescript-eslint+utils@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/@typescript-eslint/utils/node_modules/.bin/tsserver
-node_modules/.pnpm/acorn-jsx@5.3.2_acorn@8.16.0/node_modules/acorn-jsx/node_modules/.bin/acorn
-node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/node_modules/.bin/prebuild-install
-node_modules/.pnpm/browserslist@4.28.2/node_modules/browserslist/node_modules/.bin/baseline-browser-mapping
-node_modules/.pnpm/browserslist@4.28.2/node_modules/browserslist/node_modules/.bin/update-browserslist-db
-node_modules/.pnpm/cross-spawn@7.0.6/node_modules/cross-spawn/node_modules/.bin/node-which
-node_modules/.pnpm/eslint-config-next@16.1.2_@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__ty_4f17397e722633668ba39b369c634621/node_modules/eslint-config-next/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-config-next@16.1.2_@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__ty_4f17397e722633668ba39b369c634621/node_modules/eslint-config-next/node_modules/.bin/tsc
-node_modules/.pnpm/eslint-config-next@16.1.2_@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__ty_4f17397e722633668ba39b369c634621/node_modules/eslint-config-next/node_modules/.bin/tsserver
-node_modules/.pnpm/eslint-config-next@16.1.2_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/eslint-config-next/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-config-next@16.1.2_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/eslint-config-next/node_modules/.bin/tsc
-node_modules/.pnpm/eslint-config-next@16.1.2_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/eslint-config-next/node_modules/.bin/tsserver
-node_modules/.pnpm/eslint-import-resolver-node@0.3.10/node_modules/eslint-import-resolver-node/node_modules/.bin/resolve
-node_modules/.pnpm/eslint-import-resolver-typescript@3.10.1_eslint-plugin-import@2.32.0_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-import-resolver-typescript/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-module-utils@2.12.1_@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1__t_3fe485b779eeb132c948772f9c13a888/node_modules/eslint-module-utils/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-plugin-import@2.32.0_@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1___3b7c8ecaf57edc8753febcfe8d71bd0c/node_modules/eslint-plugin-import/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-plugin-import@2.32.0_@typescript-eslint+parser@8.59.0_eslint@9.39.4_jiti@2.6.1___3b7c8ecaf57edc8753febcfe8d71bd0c/node_modules/eslint-plugin-import/node_modules/.bin/semver
-node_modules/.pnpm/eslint-plugin-import@2.32.0_eslint-import-resolver-typescript@3.10.1_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-import/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-plugin-import@2.32.0_eslint-import-resolver-typescript@3.10.1_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-import/node_modules/.bin/semver
-node_modules/.pnpm/eslint-plugin-jsx-a11y@6.10.2_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-jsx-a11y/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-plugin-react-hooks@7.1.1_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-react-hooks/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-plugin-react-hooks@7.1.1_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-react-hooks/node_modules/.bin/parser
-node_modules/.pnpm/eslint-plugin-react@7.37.5_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-react/node_modules/.bin/eslint
-node_modules/.pnpm/eslint-plugin-react@7.37.5_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-react/node_modules/.bin/resolve
-node_modules/.pnpm/eslint-plugin-react@7.37.5_eslint@9.39.4_jiti@2.6.1_/node_modules/eslint-plugin-react/node_modules/.bin/semver
-node_modules/.pnpm/eslint@9.39.4_jiti@2.6.1/node_modules/eslint/node_modules/.bin/jiti
-node_modules/.pnpm/espree@10.4.0/node_modules/espree/node_modules/.bin/acorn
-node_modules/.pnpm/is-bun-module@2.0.0/node_modules/is-bun-module/node_modules/.bin/semver
-node_modules/.pnpm/lock.yaml
-node_modules/.pnpm/next@16.1.2_@babel+core@7.29.0_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/node_modules/.bin/baseline-browser-mapping
-node_modules/.pnpm/node-abi@3.89.0/node_modules/node-abi/node_modules/.bin/semver
-node_modules/.pnpm/node-exports-info@1.6.0/node_modules/node-exports-info/node_modules/.bin/semver
-node_modules/.pnpm/node_modules/.bin/acorn
-node_modules/.pnpm/node_modules/.bin/baseline-browser-mapping
-node_modules/.pnpm/node_modules/.bin/browserslist
-node_modules/.pnpm/node_modules/.bin/eslint
-node_modules/.pnpm/node_modules/.bin/jiti
-node_modules/.pnpm/node_modules/.bin/js-yaml
-node_modules/.pnpm/node_modules/.bin/jsesc
-node_modules/.pnpm/node_modules/.bin/json5
-node_modules/.pnpm/node_modules/.bin/loose-envify
-node_modules/.pnpm/node_modules/.bin/nanoid
-node_modules/.pnpm/node_modules/.bin/next
-node_modules/.pnpm/node_modules/.bin/node-which
-node_modules/.pnpm/node_modules/.bin/parser
-node_modules/.pnpm/node_modules/.bin/prettier
-node_modules/.pnpm/node_modules/.bin/resolve
-node_modules/.pnpm/node_modules/.bin/semver
-node_modules/.pnpm/node_modules/.bin/tsc
-node_modules/.pnpm/node_modules/.bin/tsserver
-node_modules/.pnpm/node_modules/.bin/update-browserslist-db
-node_modules/.pnpm/node_modules/next
-node_modules/.pnpm/postcss@8.4.31/node_modules/postcss/node_modules/.bin/nanoid
-node_modules/.pnpm/postcss@8.5.10/node_modules/postcss/node_modules/.bin/nanoid
-node_modules/.pnpm/prebuild-install@7.1.3/node_modules/prebuild-install/node_modules/.bin/rc
-node_modules/.pnpm/prop-types@15.8.1/node_modules/prop-types/node_modules/.bin/loose-envify
-node_modules/.pnpm/sharp@0.34.5/node_modules/sharp/node_modules/.bin/semver
-node_modules/.pnpm/tsconfig-paths@3.15.0/node_modules/tsconfig-paths/node_modules/.bin/json5
-node_modules/.pnpm/typescript-eslint@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/typescript-eslint/node_modules/.bin/eslint
-node_modules/.pnpm/typescript-eslint@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/typescript-eslint/node_modules/.bin/tsc
-node_modules/.pnpm/typescript-eslint@8.59.0_eslint@9.39.4_jiti@2.6.1__typescript@5.9.3/node_modules/typescript-eslint/node_modules/.bin/tsserver
-node_modules/.pnpm/update-browserslist-db@1.2.3_browserslist@4.28.2/node_modules/update-browserslist-db/node_modules/.bin/browserslist
-pnpm-lock.yaml
-student/app/api/auth/join/route.ts
-student/package.json
-teacher/app/api/auth/login/route.ts
-teacher/app/api/auth/signup/route.ts
-teacher/app/api/auth/verify-otp/route.ts
-teacher/app/api/teacher/assignments/route.ts
-teacher/app/api/teacher/classes/[classId]/students/route.ts
-teacher/app/api/teacher/classes/route.ts
-teacher/app/page.tsx
-teacher/middleware/auth.ts
-teacher/package.json
+website/app/components/scroll-video/ParallaxLayer.tsx
+website/app/components/scroll-video/ScrollVideo.tsx
+website/app/components/sections/FinalCTA.tsx
+website/app/components/sections/Hero.tsx
+website/app/components/sections/Pricing.tsx
+website/app/components/sections/classroom-preview.tsx
+website/app/components/sections/feature-world.tsx
+website/app/components/sections/final-cta.tsx
+website/app/components/sections/hero.tsx
+website/app/components/sections/how-it-works.tsx
+website/app/components/sections/pricing.tsx
+website/app/components/ui/Button.tsx
+website/app/components/ui/GlassCard.tsx
+website/app/components/ui/button.tsx
+website/claude-code/plan/FIX_REQUEST.md
+website/claude-code/verification/attempt-count.txt
+website/claude-code/verification/current-failures.json
+website/claude-code/verification/pass-1-test-sync.md
+website/hooks/useInView.ts
+website/hooks/useParallax.ts
+website/hooks/useScrollProgress.ts
 ```
 
 ---
