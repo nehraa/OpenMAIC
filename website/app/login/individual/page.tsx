@@ -8,11 +8,33 @@ export default function IndividualLogin() {
   const router = useRouter();
   const [email, setEmail] = useState('learner@aidu.tech');
   const [password, setPassword] = useState('demo123');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, userType: 'student' }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.error?.message || 'Login failed');
+        setLoading(false);
+        return;
+      }
+
       router.push('/dashboard/student');
+    } catch {
+      setError('Network error. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -38,6 +60,7 @@ export default function IndividualLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-dark-surface border border-dark-line rounded-lg px-4 py-3 text-white placeholder:text-slate-500"
+                disabled={loading}
               />
             </div>
             <div>
@@ -47,9 +70,15 @@ export default function IndividualLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-dark-surface border border-dark-line rounded-lg px-4 py-3 text-white"
+                disabled={loading}
               />
             </div>
-            <Button type="submit" className="w-full">Sign In</Button>
+            {error && (
+              <p className="text-red-400 text-sm">{error}</p>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
           </form>
 
           <div className="mt-6 pt-6 border-t border-dark-line">
