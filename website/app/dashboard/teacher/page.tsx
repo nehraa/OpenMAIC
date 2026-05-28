@@ -71,10 +71,8 @@ function AtRiskTeachingTips({
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard/teacher', icon: 'grid' },
-  { label: 'Roster', href: '/dashboard/teacher/roster', icon: 'users' },
-  { label: 'Lessons', href: '/dashboard/teacher/lessons', icon: 'book' },
   { label: 'Assignments', href: '/dashboard/teacher/assignments', icon: 'clipboard' },
-  { label: 'Analytics', href: '/dashboard/teacher/analytics', icon: 'chart' },
+  { label: 'Join Class', href: '/dashboard/student/class-join', icon: 'users' },
 ];
 
 interface TeacherDashboardData {
@@ -197,6 +195,15 @@ export default function TeacherDashboard() {
               </Link>
             );
           })}
+          <Link
+            href="/dashboard/teacher/assignments/create"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-coral/20 text-coral border border-coral/30"
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {sidebarOpen && <span className="font-medium">New Lesson</span>}
+          </Link>
         </nav>
 
         <div className="mt-auto pt-8">
