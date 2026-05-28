@@ -1,17 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/card';
 import Link from 'next/link';
-import {
-  studentDashboards,
-  teacherDashboard,
-  type TeacherDashboard,
-  type Student,
-} from '@/app/lib/mock-data';
+import { usePathname } from 'next/navigation';
 import { Lightbulb, Eye, Ear, Book, Hand, Sparkles, AlertTriangle } from 'lucide-react';
 
 function LearningStyleIcon({ style }: { style: string }) {
@@ -48,15 +43,9 @@ function AtRiskTeachingTips({
   student,
   riskLevel,
 }: {
-  student: Student;
+  student: { id: string; name: string; avatar: string; color: 'teal' | 'violet' | 'coral' | 'info' | 'slate' };
   riskLevel: 'high' | 'medium' | 'low';
 }) {
-  const dashboard = studentDashboards[student.id];
-  if (!dashboard?.student.learningStyle) return null;
-
-  const ls = dashboard.student.learningStyle;
-  const guidance = dashboard.teachingGuidance;
-
   return (
     <div className="p-4 rounded-xl bg-dark-surface border border-dark-line mb-4">
       <div className="flex items-center gap-3 mb-3">
@@ -67,30 +56,13 @@ function AtRiskTeachingTips({
             <Badge variant={riskLevel === 'high' ? 'warning' : riskLevel === 'medium' ? 'coral' : 'teal'}>
               {riskLevel} risk
             </Badge>
-            <LearningStyleBadge style={ls.learningStyle} />
           </div>
         </div>
       </div>
       <div className="space-y-3">
         <div>
-          <p className="text-xs text-slate-500 mb-1">Recommended Approach</p>
-          <p className="text-sm text-slate-300">{guidance.recommendedApproach}</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500 mb-1">Content Types</p>
-          <div className="flex flex-wrap gap-1">
-            {guidance.preferredContentTypes.slice(0, 3).map((type, i) => (
-              <Badge key={i} variant="default" className="text-xs">{type}</Badge>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500 mb-1">Engagement Strategy</p>
-          <p className="text-sm text-slate-300">{guidance.engagementStrategies[0]}</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500 mb-1">Pacing</p>
-          <p className="text-sm text-slate-300">{guidance.pacingRecommendations}</p>
+          <p className="text-xs text-slate-500 mb-1">Suggested Intervention</p>
+          <p className="text-sm text-slate-300">Schedule one-on-one session</p>
         </div>
       </div>
     </div>
@@ -98,17 +70,99 @@ function AtRiskTeachingTips({
 }
 
 const navItems = [
-  { label: 'Dashboard', icon: 'grid', active: true },
-  { label: 'Roster', icon: 'users', active: false },
-  { label: 'Lessons', icon: 'book', active: false },
-  { label: 'Assignments', icon: 'clipboard', active: false },
-  { label: 'Analytics', icon: 'chart', active: false },
+  { label: 'Dashboard', href: '/dashboard/teacher', icon: 'grid' },
+  { label: 'Roster', href: '/dashboard/teacher/roster', icon: 'users' },
+  { label: 'Lessons', href: '/dashboard/teacher/lessons', icon: 'book' },
+  { label: 'Assignments', href: '/dashboard/teacher/assignments', icon: 'clipboard' },
+  { label: 'Analytics', href: '/dashboard/teacher/analytics', icon: 'chart' },
 ];
 
-const data = teacherDashboard as TeacherDashboard;
+interface TeacherDashboardData {
+  teacher: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  classOverview: {
+    totalStudents: number;
+    activeToday: number;
+    averageMastery: number;
+    masteryChange: number;
+  };
+  students: Array<{
+    id: string;
+    name: string;
+    email: string;
+    avatar: string;
+    color: 'teal' | 'violet' | 'coral' | 'info' | 'slate';
+    class: string;
+    section: string;
+    rollNumber: number;
+    mastery: number;
+  }>;
+  atRiskStudents: Array<{
+    student: { id: string; name: string; avatar: string; color: 'teal' | 'violet' | 'coral' | 'info' | 'slate' };
+    riskLevel: 'high' | 'medium' | 'low';
+    reasons: string[];
+    suggestedIntervention: string;
+  }>;
+  misconceptionClusters: Array<{
+    topic: string;
+    affectedStudents: number;
+    description: string;
+    severity: 'high' | 'medium' | 'low';
+  }>;
+}
 
 export default function TeacherDashboard() {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [data, setData] = useState<TeacherDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchDashboard() {
+      try {
+        const response = await fetch('/api/dashboard/teacher', {
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        const result = await response.json();
+        if (result.success) {
+          setData(result.data);
+        } else {
+          throw new Error(result.error?.code || 'Unknown error');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDashboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dark-base flex items-center justify-center">
+        <div className="text-slate-400">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-dark-base flex items-center justify-center">
+        <div className="text-coral">Error: {error || 'Failed to load dashboard'}</div>
+      </div>
+    );
+  }
+
+  const teacherName = data.teacher.name.split(' ')[0] || 'Teacher';
+  const highRiskCount = data.atRiskStudents.filter(s => s.riskLevel === 'high').length;
 
   return (
     <div className="min-h-screen bg-dark-base flex">
@@ -124,21 +178,25 @@ export default function TeacherDashboard() {
         </div>
 
         <nav className="space-y-2">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                item.active
-                  ? 'bg-coral/20 text-coral border border-coral/30'
-                  : 'text-slate-400 hover:text-white hover:bg-dark-surface'
-              }`}
-            >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              {sidebarOpen && <span className="font-medium">{item.label}</span>}
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-coral/20 text-coral border border-coral/30'
+                    : 'text-slate-400 hover:text-white hover:bg-dark-surface'
+                }`}
+              >
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="mt-auto pt-8">
@@ -151,7 +209,7 @@ export default function TeacherDashboard() {
           </Button>
           <div className="mt-4 pt-4 border-t border-dark-line">
             <div className="flex items-center gap-3 px-4">
-              <Avatar initials="PS" color="coral" size="sm" />
+              <Avatar initials={data.teacher.name.split(' ').map(n => n[0]).join('').slice(0, 2)} color="coral" size="sm" />
               {sidebarOpen && (
                 <div className="text-left">
                   <p className="text-sm font-medium text-white">{data.teacher.name}</p>
@@ -168,16 +226,18 @@ export default function TeacherDashboard() {
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-display font-bold text-white">Good morning, {data.teacher.name.split(' ')[0]}</h1>
-            <p className="text-slate-400">{data.teacher.class} {data.teacher.section} | {data.teacher.subject}</p>
+            <h1 className="text-2xl font-display font-bold text-white">Good morning, {teacherName}</h1>
+            <p className="text-slate-400">{data.students[0]?.class || 'Class'} {data.students[0]?.section || ''} | Science</p>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="secondary" size="sm">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Lesson
-            </Button>
+            <Link href="/dashboard/teacher/assignments/create">
+              <Button variant="secondary" size="sm">
+                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Assignment
+              </Button>
+            </Link>
             <Button size="sm">
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -225,7 +285,7 @@ export default function TeacherDashboard() {
               </div>
             </div>
             <div className="text-3xl font-display font-bold text-white">{data.atRiskStudents.length}</div>
-            <p className="text-sm text-coral mt-1">{data.atRiskStudents.filter(s => s.riskLevel === 'high').length} critical attention needed</p>
+            <p className="text-sm text-coral mt-1">{highRiskCount} critical attention needed</p>
           </div>
         </div>
 
@@ -246,9 +306,8 @@ export default function TeacherDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-line">
-                  {Object.values(studentDashboards).map((dashboard) => {
-                    const student = dashboard.student;
-                    const mastery = dashboard.overallMastery;
+                  {data.students.map((student) => {
+                    const mastery = student.mastery;
                     const status = mastery >= 80 ? 'on-track' : mastery >= 60 ? 'at-risk' : 'critical';
                     return (
                       <tr key={student.id} className="hover:bg-dark-surface transition-colors">
@@ -266,11 +325,7 @@ export default function TeacherDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          {student.learningStyle ? (
-                            <LearningStyleBadge style={student.learningStyle.learningStyle} />
-                          ) : (
-                            <span className="text-slate-500 text-sm">Not assessed</span>
-                          )}
+                          <span className="text-slate-500 text-sm">Not assessed</span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -315,6 +370,9 @@ export default function TeacherDashboard() {
                   riskLevel={atRisk.riskLevel}
                 />
               ))}
+              {data.atRiskStudents.length === 0 && (
+                <p className="text-slate-500 text-sm text-center py-8">No at-risk students identified</p>
+              )}
             </div>
           </div>
         </div>
@@ -341,6 +399,9 @@ export default function TeacherDashboard() {
               </Button>
             </div>
           ))}
+          {data.misconceptionClusters.length === 0 && (
+            <p className="text-slate-500 text-sm text-center py-8">No misconceptions detected</p>
+          )}
         </div>
       </aside>
     </div>

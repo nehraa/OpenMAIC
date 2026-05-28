@@ -1,0 +1,610 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  teacher
+  student_classroom
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+enum ClassMembershipSource {
+  manual
+  csv
+}
+
+enum AssignmentStatus {
+  draft
+  scheduled
+  released
+  closed
+}
+
+enum AssignmentVisibilityStatus {
+  hidden
+  visible
+  completed
+}
+
+enum AssignmentCompletionState {
+  pending
+  in_progress
+  submitted
+  graded
+}
+
+enum ClassroomSessionStatus {
+  DRAFT
+  LIVE
+  ENDED
+}
+
+enum SessionParticipantCompletionState {
+  PENDING
+  COMPLETED
+}
+
+enum LlmUsageActorRole {
+  TEACHER
+  STUDENT_CLASSROOM
+  STUDENT_B2C
+}
+
+enum ContentAssetType {
+  SLIDE_DECK
+  QUIZ
+}
+
+enum ContentAssetSourceKind {
+  MANUAL
+  AI_GENERATED
+  IMPORTED
+}
+
+enum ContentAssetVersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SchedulerJobTargetType {
+  ASSIGNMENT
+  NOTIFICATION
+}
+
+enum SchedulerJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum LiveSessionStatus {
+  LIVE
+  ENDED
+}
+
+enum LiveSessionParticipantCompletionState {
+  PENDING
+  COMPLETED
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+/// Root tenant entity for multi-tenancy
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users                    User[]
+  authSessions             AuthSession[]
+  classes                  Class[]
+  classMemberships         ClassMembership[]
+  assignments              Assignment[]
+  assignmentRecipients     AssignmentRecipient[]
+  assignmentAttempts       AssignmentAttempt[]
+  assignmentSlideProgress  AssignmentSlideProgress[]
+  classroomSessions        ClassroomSession[]
+  sessionParticipants       SessionParticipant[]
+  questionMessages         QuestionMessage[]
+  llmUsageEvents           LlmUsageEvent[]
+  contentAssets            ContentAsset[]
+  contentAssetVersions     ContentAssetVersion[]
+  schedulerJobs            SchedulerJob[]
+  liveSessions             LiveSession[]
+  liveSessionParticipants  LiveSessionParticipant[]
+  liveSessionQuestions     LiveSessionQuestion[]
+
+  @@map("tenants")
+}
+
+// ============================================================================
+// USERS TABLE
+// ============================================================================
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @map("tenant_id") @db.Uuid
+  role         UserRole
+  phoneE164    String     @unique @map("phone_e164") @db.VarChar(20)
+  name         String     @default("")
+  email        String?    @unique
+  passwordHash String?    @map("password_hash")
+  status       UserStatus @default(active)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  authSessions         AuthSession[]
+  teacherClasses       Class[]               @relation("TeacherClasses")
+  classMemberships     ClassMembership[]
+  assignments          Assignment[]          @relation("TeacherAssignments")
+  assignmentRecipients AssignmentRecipient[]
+  assignmentAttempts   AssignmentAttempt[]
+  assignmentSlideProgress AssignmentSlideProgress[]
+  classroomSessions    ClassroomSession[]
+  sessionParticipants   SessionParticipant[]
+  questionMessages     QuestionMessage[]
+  llmUsageEvents       LlmUsageEvent[]        @relation("LlmUsageActor")
+  ownedContentAssets   ContentAsset[]        @relation("OwnerTeacher")
+  liveSessions         LiveSession[]
+  liveSessionParticipants LiveSessionParticipant[]
+  liveSessionQuestions LiveSessionQuestion[]
+
+  @@index([phoneE164], name: "idx_users_phone")
+  @@index([role], name: "idx_users_role")
+  @@index([tenantId], name: "idx_users_tenant")
+  @@map("users")
+}
+
+// ============================================================================
+// AUTH SESSIONS
+// ============================================================================
+
+model AuthSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  issuedAt  DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  userAgent String?  @map("user_agent")
+  ipHash    String?  @map("ip_hash")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([userId], name: "idx_sessions_user")
+  @@index([expiresAt], name: "idx_sessions_expires")
+  @@index([tenantId], name: "idx_sessions_tenant")
+  @@map("auth_sessions")
+}
+
+// ============================================================================
+// CLASSES TABLE
+// ============================================================================
+
+model Class {
+  id                    String   @id @default(uuid()) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  teacherId             String   @map("teacher_id") @db.Uuid
+  name                  String
+  subject               String   @default("")
+  batch                 String   @default("")
+  joinCode              String   @unique @map("join_code")
+  peerVisibilityEnabled Boolean  @default(false) @map("peer_visibility_enabled")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  teacher        User                @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Restrict)
+  memberships    ClassMembership[]
+  assignments    Assignment[]
+  classroomSessions ClassroomSession[]
+
+  @@index([teacherId], name: "idx_class_teacher")
+  @@index([joinCode], name: "idx_class_join_code")
+  @@index([tenantId], name: "idx_class_tenant")
+  @@map("classes")
+}
+
+// ============================================================================
+// CLASS MEMBERSHIPS
+// ============================================================================
+
+model ClassMembership {
+  id         String               @id @default(uuid()) @db.Uuid
+  tenantId   String               @map("tenant_id") @db.Uuid
+  classId    String               @map("class_id") @db.Uuid
+  studentId  String               @map("student_id") @db.Uuid
+  enrolledAt DateTime             @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+  source     ClassMembershipSource @default(manual)
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student User   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([classId, studentId], name: "class_memberships_class_id_student_id_key")
+  @@index([classId], name: "idx_membership_class")
+  @@index([studentId], name: "idx_membership_student")
+  @@index([tenantId], name: "idx_membership_tenant")
+  @@map("class_memberships")
+}
+
+// ============================================================================
+// ASSIGNMENTS
+// ============================================================================
+
+model Assignment {
+  id                   String           @id @default(uuid()) @db.Uuid
+  tenantId             String           @map("tenant_id") @db.Uuid
+  classId              String           @map("class_id") @db.Uuid
+  teacherId            String           @map("teacher_id") @db.Uuid
+  title                String
+  description          String           @default("")
+  slideAssetVersionId  String?          @map("slide_asset_version_id") @db.Uuid
+  quizAssetVersionId   String?          @map("quiz_asset_version_id") @db.Uuid
+  releaseAt            DateTime?        @map("release_at") @db.Timestamptz(6)
+  dueAt                DateTime?        @map("due_at") @db.Timestamptz(6)
+  status               AssignmentStatus @default(draft)
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  class       Class                 @relation(fields: [classId], references: [id], onDelete: Restrict)
+  teacher     User                  @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Restrict)
+  recipients  AssignmentRecipient[]
+  attempts    AssignmentAttempt[]
+  slideProgress AssignmentSlideProgress[]
+  liveSessions LiveSession[]
+
+  @@index([teacherId, status], name: "idx_assignments_teacher_status")
+  @@index([classId, status], name: "idx_assignments_class_status")
+  @@index([tenantId], name: "idx_assignments_tenant")
+  @@map("assignments")
+}
+
+// ============================================================================
+// ASSIGNMENT RECIPIENTS
+// ============================================================================
+
+model AssignmentRecipient {
+  id               String                    @id @default(uuid()) @db.Uuid
+  tenantId         String                    @map("tenant_id") @db.Uuid
+  assignmentId     String                    @map("assignment_id") @db.Uuid
+  studentId        String                    @map("student_id") @db.Uuid
+  visibilityStatus AssignmentVisibilityStatus @default(hidden) @map("visibility_status")
+  assignedAt       DateTime                  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, studentId], name: "assignment_recipients_assignment_id_student_id_key")
+  @@index([assignmentId], name: "idx_recipients_assignment")
+  @@index([studentId], name: "idx_recipients_student")
+  @@index([tenantId], name: "idx_recipients_tenant")
+  @@map("assignment_recipients")
+}
+
+// ============================================================================
+// ASSIGNMENT ATTEMPTS
+// ============================================================================
+
+model AssignmentAttempt {
+  id             String                   @id @default(uuid()) @db.Uuid
+  tenantId       String                   @map("tenant_id") @db.Uuid
+  assignmentId   String                   @map("assignment_id") @db.Uuid
+  studentId      String                   @map("student_id") @db.Uuid
+  startedAt      DateTime                 @default(now()) @map("started_at") @db.Timestamptz(6)
+  submittedAt    DateTime?                @map("submitted_at") @db.Timestamptz(6)
+  scorePercent   Float?                   @map("score_percent")
+  answersJson    String?                  @map("answers_json")
+  completionState AssignmentCompletionState @default(pending) @map("completion_state")
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  assignment Assignment             @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User                  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, studentId], name: "assignment_attempts_assignment_id_student_id_key")
+  @@index([assignmentId, studentId], name: "idx_attempts_assignment_student")
+  @@map("assignment_attempts")
+}
+
+// ============================================================================
+// ASSIGNMENT SLIDE PROGRESS
+// ============================================================================
+
+model AssignmentSlideProgress {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  slideId      String   @map("slide_id")
+  viewedAt     DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, studentId, slideId], name: "assignment_slide_progress_assignment_id_student_id_slide_id_key")
+  @@index([assignmentId], name: "idx_slide_progress_assignment")
+  @@index([studentId], name: "idx_slide_progress_student")
+  @@index([tenantId], name: "idx_slide_progress_tenant")
+  @@map("assignment_slide_progress")
+}
+
+// ============================================================================
+// CLASSROOM SESSIONS
+// ============================================================================
+
+model ClassroomSession {
+  id                String                 @id @default(uuid()) @db.Uuid
+  tenantId          String                 @map("tenant_id") @db.Uuid
+  classId           String                 @map("class_id") @db.Uuid
+  teacherId         String                 @map("teacher_id") @db.Uuid
+  title             String                 @default("")
+  coreClassroomId   String?                @map("core_classroom_id")
+  status            ClassroomSessionStatus @default(DRAFT)
+  startedAt         DateTime?              @map("started_at") @db.Timestamptz(6)
+  endedAt           DateTime?              @map("ended_at") @db.Timestamptz(6)
+  maxDurationMinutes Int                   @default(15) @map("max_duration_minutes")
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  class        Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher      User                 @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  participants SessionParticipant[]
+  questions    QuestionMessage[]
+
+  @@index([classId], name: "idx_session_class")
+  @@index([status], name: "idx_session_status")
+  @@index([teacherId], name: "idx_session_teacher")
+  @@index([tenantId], name: "idx_session_tenant")
+  @@map("classroom_sessions")
+}
+
+// ============================================================================
+// SESSION PARTICIPANTS
+// ============================================================================
+
+model SessionParticipant {
+  id             String                          @id @default(uuid()) @db.Uuid
+  tenantId       String                          @map("tenant_id") @db.Uuid
+  sessionId      String                          @map("session_id") @db.Uuid
+  userId         String                          @map("user_id") @db.Uuid
+  joinedAt       DateTime                        @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt         DateTime?                       @map("left_at") @db.Timestamptz(6)
+  completionState SessionParticipantCompletionState @default(PENDING) @map("completion_state")
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  session ClassroomSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, userId], name: "session_participants_session_id_user_id_key")
+  @@index([sessionId], name: "idx_participants_session")
+  @@index([userId], name: "idx_participants_user")
+  @@index([tenantId], name: "idx_participants_tenant")
+  @@map("session_participants")
+}
+
+// ============================================================================
+// QUESTION MESSAGES
+// ============================================================================
+
+model QuestionMessage {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  sessionId    String    @map("session_id") @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  questionText String    @map("question_text")
+  answerText   String?   @map("answer_text")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  answeredAt   DateTime? @map("answered_at") @db.Timestamptz(6)
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  session ClassroomSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId], name: "idx_questions_session")
+  @@index([studentId], name: "idx_questions_student")
+  @@index([tenantId], name: "idx_questions_tenant")
+  @@map("question_messages")
+}
+
+// ============================================================================
+// LLM USAGE EVENTS
+// ============================================================================
+
+model LlmUsageEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  timestamp      DateTime        @default(now()) @map("timestamp") @db.Timestamptz(6)
+  actorUserId    String          @map("actor_user_id") @db.Uuid
+  actorRole      LlmUsageActorRole @map("actor_role")
+  provider       String
+  model          String
+  endpoint       String
+  inputTokens    Int             @default(0) @map("input_tokens")
+  outputTokens   Int             @default(0) @map("output_tokens")
+  cachedTokens   Int             @default(0) @map("cached_tokens")
+  reasoningTokens Int            @default(0) @map("reasoning_tokens")
+  costUsd        Float           @default(0) @map("cost_usd")
+  requestId      String?         @map("request_id")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  actor  User   @relation("LlmUsageActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([timestamp], name: "idx_usage_timestamp")
+  @@index([actorUserId], name: "idx_usage_actor")
+  @@index([actorRole], name: "idx_usage_role")
+  @@index([tenantId], name: "idx_usage_tenant")
+  @@map("llm_usage_events")
+}
+
+// ============================================================================
+// CONTENT ASSETS
+// ============================================================================
+
+model ContentAsset {
+  id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @map("tenant_id") @db.Uuid
+  ownerTeacherId String               @map("owner_teacher_id") @db.Uuid
+  type           ContentAssetType      @map("type")
+  title          String               @default("")
+  subjectTag     String               @default("") @map("subject_tag")
+  sourceKind     ContentAssetSourceKind @default(MANUAL) @map("source_kind")
+  sourceRef      String               @default("") @map("source_ref")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  ownerTeacher  User                   @relation("OwnerTeacher", fields: [ownerTeacherId], references: [id], onDelete: Restrict)
+  versions      ContentAssetVersion[]
+
+  @@index([ownerTeacherId], name: "idx_content_assets_owner")
+  @@index([type], name: "idx_content_assets_type")
+  @@index([tenantId], name: "idx_content_assets_tenant")
+  @@map("content_assets")
+}
+
+// ============================================================================
+// CONTENT ASSET VERSIONS
+// ============================================================================
+
+model ContentAssetVersion {
+  id            String                   @id @default(uuid()) @db.Uuid
+  tenantId      String                   @map("tenant_id") @db.Uuid
+  assetId       String                   @map("asset_id") @db.Uuid
+  versionNumber Int                      @map("version_number")
+  payloadJson   String                   @default("{}") @map("payload_json")
+  status        ContentAssetVersionStatus @default(DRAFT)
+  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  asset  ContentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, versionNumber], name: "content_asset_versions_asset_id_version_number_key")
+  @@index([assetId], name: "idx_asset_versions_asset")
+  @@index([tenantId], name: "idx_asset_versions_tenant")
+  @@map("content_asset_versions")
+}
+
+// ============================================================================
+// SCHEDULER JOBS
+// ============================================================================
+
+model SchedulerJob {
+  id         String               @id @default(uuid()) @db.Uuid
+  tenantId   String               @map("tenant_id") @db.Uuid
+  targetType SchedulerJobTargetType @map("target_type")
+  targetId   String               @map("target_id")
+  runAt      DateTime             @map("run_at") @db.Timestamptz(6)
+  status     SchedulerJobStatus   @default(PENDING)
+  retryCount Int                  @default(0) @map("retry_count")
+  lastError  String?              @map("last_error")
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([status, runAt], name: "idx_scheduler_status_run_at")
+  @@index([tenantId], name: "idx_scheduler_tenant")
+  @@map("scheduler_jobs")
+}
+
+// ============================================================================
+// LIVE SESSIONS
+// ============================================================================
+
+model LiveSession {
+  id               String          @id @default(uuid()) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  assignmentId     String          @map("assignment_id") @db.Uuid
+  teacherId        String          @map("teacher_id") @db.Uuid
+  stateSnapshotJson String         @default("{}") @map("state_snapshot_json")
+  status           LiveSessionStatus @default(LIVE)
+  startedAt        DateTime        @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt          DateTime?       @map("ended_at") @db.Timestamptz(6)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  assignment   Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  teacher      User                       @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  participants LiveSessionParticipant[]
+  questions    LiveSessionQuestion[]
+
+  @@index([assignmentId], name: "idx_live_sessions_assignment")
+  @@index([teacherId], name: "idx_live_sessions_teacher")
+  @@index([status], name: "idx_live_sessions_status")
+  @@index([tenantId], name: "idx_live_sessions_tenant")
+  @@map("live_sessions")
+}
+
+// ============================================================================
+// LIVE SESSION PARTICIPANTS
+// ============================================================================
+
+model LiveSessionParticipant {
+  id             String                                  @id @default(uuid()) @db.Uuid
+  tenantId       String                                  @map("tenant_id") @db.Uuid
+  liveSessionId  String                                  @map("live_session_id") @db.Uuid
+  userId         String                                  @map("user_id") @db.Uuid
+  joinedAt       DateTime                                @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt         DateTime?                               @map("left_at") @db.Timestamptz(6)
+  completionState LiveSessionParticipantCompletionState  @default(PENDING) @map("completion_state")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  liveSession LiveSession  @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([liveSessionId, userId], name: "live_session_participants_live_session_id_user_id_key")
+  @@index([liveSessionId], name: "idx_live_participants_session")
+  @@index([userId], name: "idx_live_participants_user")
+  @@index([tenantId], name: "idx_live_participants_tenant")
+  @@map("live_session_participants")
+}
+
+// ============================================================================
+// LIVE SESSION QUESTIONS
+// ============================================================================
+
+model LiveSessionQuestion {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  sessionId    String    @map("session_id") @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  questionText String    @map("question_text")
+  answerText   String?   @map("answer_text")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  answeredAt   DateTime? @map("answered_at") @db.Timestamptz(6)
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  session LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId], name: "idx_live_questions_session")
+  @@index([studentId], name: "idx_live_questions_student")
+  @@index([tenantId], name: "idx_live_questions_tenant")
+  @@map("live_session_questions")
+}
