@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Fragment } from 'react';
+import Link from 'next/link';
 
 export interface StudentProgress {
   studentId: string;
@@ -244,7 +245,11 @@ export function ProgressGrid({ students, totalStudents: _totalStudents, onExport
                           {isExpanded ? '▼' : '▶'}
                         </button>
                       </td>
-                      <td className="px-4 py-3 font-medium">{student.studentName}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link href={`/teacher/students/${student.studentId}`} className="hover:text-primary hover:underline">
+                          {student.studentName}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-gray-600">{student.studentPhone}</td>
                       <td className="px-4 py-3">
                         <span className="text-gray-600">
@@ -269,6 +274,16 @@ export function ProgressGrid({ students, totalStudents: _totalStudents, onExport
                       <tr key={`${student.studentId}-details`} className="bg-gray-50">
                         <td colSpan={5} className="px-4 py-3">
                           <div className="pl-4 border-l-2 border-gray-200 space-y-4">
+                            {/* View full profile link */}
+                            <div className="flex justify-end">
+                              <Link
+                                href={`/teacher/students/${student.studentId}`}
+                                className="text-xs text-primary hover:underline font-medium"
+                              >
+                                View full activity profile →
+                              </Link>
+                            </div>
+
                             {/* AI Insights */}
                             {student.aiInsights && student.aiInsights.length > 0 && (
                               <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">

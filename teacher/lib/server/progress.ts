@@ -437,3 +437,168 @@ function escapeCSV(value: string): string {
   }
   return value;
 }
+
+// ---------------------------------------------------------------------------
+// Per-student deep-dive: event timeline + sparkline data
+// ---------------------------------------------------------------------------
+
+export interface StudentEvent {
+  id: string;
+  eventType: string;
+  relatedId: string | null;
+  score: number | null;
+  durationSeconds: number | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface StudentProgressSummary {
+  studentId: string;
+  studentName: string;
+  studentPhone: string;
+  className: string;
+  classId: string;
+  totalEvents: number;
+  assignmentCompleted: number;
+  assignmentStarted: number;
+  quizAttempts: number;
+  avgQuizScore: number | null;
+  sessionJoined: number;
+  logins: number;
+  totalDurationMinutes: number;
+  lastActiveAt: string | null;
+  firstEventAt: string | null;
+  events: StudentEvent[];
+  /** Daily activity counts for sparkline (last 30 days, oldest→newest) */
+  sparkline: Array<{ date: string; count: number }>;
+}
+
+export async function getStudentProgressEvents(
+  studentId: string,
+  classId?: string,
+  days = 30
+): Promise<StudentProgressSummary | null> {
+  const db = getDb();
+
+  // Resolve student + class
+  const studentResult = await db.query(
+    `SELECT u.id, u.name, u.phone_e164, cm.class_id, c.name as class_name
+     FROM users u
+     INNER JOIN class_memberships cm ON cm.student_id = u.id
+     INNER JOIN classes c ON c.id = cm.class_id
+     WHERE u.id = $1 AND u.role = 'student_classroom'
+     ${classId ? 'AND cm.class_id = $2' : ''}
+     ORDER BY cm.enrolled_at DESC
+     LIMIT 1`,
+    classId ? [studentId, classId] : [studentId]
+  );
+
+  const student = studentResult.rows[0] as
+    | { id: string; name: string; phone_e164: string; class_id: string; class_name: string }
+    | undefined;
+
+  if (!student) return null;
+
+  const resolvedClassId = student.class_id;
+
+  // Fetch events within the lookback window
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const eventsResult = await db.query(
+    `SELECT id, event_type, related_id, score, duration_seconds, metadata, created_at
+     FROM student_progress_events
+     WHERE student_id = $1 AND class_id = $2 AND created_at >= $3
+     ORDER BY created_at DESC`,
+    [studentId, resolvedClassId, since.toISOString()]
+  );
+
+  const events: StudentEvent[] = eventsResult.rows.map((row: any) => ({
+    id: row.id,
+    eventType: row.event_type,
+    relatedId: row.related_id,
+    score: row.score,
+    durationSeconds: row.duration_seconds,
+    metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+    createdAt: row.created_at,
+  }));
+
+  // Aggregate counts
+  let assignmentCompleted = 0;
+  let assignmentStarted = 0;
+  let quizAttempts = 0;
+  let sessionJoined = 0;
+  let logins = 0;
+  let totalDurationSeconds = 0;
+  let quizScoreSum = 0;
+  let quizScoreCount = 0;
+
+  for (const e of events) {
+    switch (e.eventType) {
+      case 'assignment_completed':
+        assignmentCompleted++;
+        break;
+      case 'assignment_started':
+        assignmentStarted++;
+        break;
+      case 'quiz_attempt':
+        quizAttempts++;
+        if (e.score != null) {
+          quizScoreSum += e.score;
+          quizScoreCount++;
+        }
+        break;
+      case 'session_joined':
+        sessionJoined++;
+        break;
+      case 'login':
+        logins++;
+        break;
+    }
+    if (e.durationSeconds) {
+      totalDurationSeconds += e.durationSeconds;
+    }
+  }
+
+  // Build sparkline: daily event counts for the last N days
+  const sparklineMap = new Map<string, number>();
+  // Pre-fill all days with 0 so the chart has a continuous axis
+  for (let d = days - 1; d >= 0; d--) {
+    const dt = new Date();
+    dt.setDate(dt.getDate() - d);
+    const key = dt.toISOString().split('T')[0];
+    sparklineMap.set(key, 0);
+  }
+  for (const e of events) {
+    const key = e.createdAt.split('T')[0];
+    if (sparklineMap.has(key)) {
+      sparklineMap.set(key, (sparklineMap.get(key) || 0) + 1);
+    }
+  }
+  const sparkline = Array.from(sparklineMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+
+  const lastActiveAt = events.length > 0 ? events[0].createdAt : null;
+  const firstEventAt = events.length > 0 ? events[events.length - 1].createdAt : null;
+
+  return {
+    studentId: student.id,
+    studentName: student.name,
+    studentPhone: student.phone_e164,
+    className: student.class_name,
+    classId: resolvedClassId,
+    totalEvents: events.length,
+    assignmentCompleted,
+    assignmentStarted,
+    quizAttempts,
+    avgQuizScore: quizScoreCount > 0 ? Math.round((quizScoreSum / quizScoreCount) * 100) / 100 : null,
+    sessionJoined,
+    logins,
+    totalDurationMinutes: Math.round(totalDurationSeconds / 60),
+    lastActiveAt,
+    firstEventAt,
+    events,
+    sparkline,
+  };
+}

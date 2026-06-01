@@ -1,337 +1,349 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, UserCheck, GraduationCap, Mail, Phone, Sparkles, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  User,
+  Phone,
+  GraduationCap,
+  Clock,
+  Trophy,
+  BookOpen,
+  LogIn,
+  PlayCircle,
+  HelpCircle,
+  Activity,
+} from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell,
+} from 'recharts';
 
-interface Student {
-  id: string;
-  name: string;
-  phone_e164: string;
-  status: string;
-  class_id: string;
-  class_name: string;
-  enrolled_at: string;
-  email?: string;
+interface StudentSummary {
+  studentId: string;
+  studentName: string;
+  studentPhone: string;
+  className: string;
+  classId: string;
+  totalEvents: number;
+  assignmentCompleted: number;
+  assignmentStarted: number;
+  quizAttempts: number;
+  avgQuizScore: number | null;
+  sessionJoined: number;
+  logins: number;
+  totalDurationMinutes: number;
+  lastActiveAt: string | null;
+  firstEventAt: string | null;
+  events: Array<{
+    id: string;
+    eventType: string;
+    relatedId: string | null;
+    score: number | null;
+    durationSeconds: number | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+  }>;
+  sparkline: Array<{ date: string; count: number }>;
 }
 
-interface AssignmentProgress {
-  id: string;
-  title: string;
-  status: string;
-  submitted_at: string | null;
-  score: number | null;
+const EVENT_CONFIG: Record<string, { label: string; icon: typeof Activity; color: string }> = {
+  login: { label: 'Logged in', icon: LogIn, color: 'bg-gray-100 text-gray-600' },
+  session_joined: { label: 'Joined session', icon: PlayCircle, color: 'bg-purple-100 text-purple-600' },
+  assignment_started: { label: 'Started assignment', icon: BookOpen, color: 'bg-blue-100 text-blue-600' },
+  assignment_completed: { label: 'Completed assignment', icon: Trophy, color: 'bg-green-100 text-green-600' },
+  quiz_attempt: { label: 'Quiz attempt', icon: HelpCircle, color: 'bg-amber-100 text-amber-600' },
+};
+
+function getSessionId() {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('session_id') || '';
 }
 
-interface QuizProgress {
-  id: string;
-  title: string;
-  status: string;
-  submitted_at: string | null;
-  score: number | null;
-}
-
-function generateMockQuizzes(assignments: AssignmentProgress[]): QuizProgress[] {
-  const scored = assignments.filter(a => a.score !== null);
-  const avgScore = scored.length > 0
-    ? scored.reduce((sum, a) => sum + (a.score || 0), 0) / scored.length
-    : 75;
-
-  const quizTitles = [
-    'Algebra Fundamentals Quiz',
-    'Quadratic Equations Test',
-    'Geometry Basics Check',
-    'Linear Functions Assessment',
-    'Probability Quiz',
-    'Statistics Mid-Term',
-  ];
-
-  const now = new Date();
-  return quizTitles.slice(0, 4 + Math.floor(Math.random() * 2)).map((title, i) => {
-    const daysAgo = (i + 1) * 7;
-    const submittedAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-    const scoreVariation = (Math.random() - 0.5) * 30;
-    const score = Math.min(100, Math.max(0, Math.round(avgScore + scoreVariation)));
-    return {
-      id: `quiz-${i + 1}`,
-      title,
-      status: score >= 70 ? 'graded' : 'submitted',
-      submitted_at: submittedAt.toISOString(),
-      score,
-    };
-  });
-}
-
-function identifyPainPoints(assignments: AssignmentProgress[]): string[] {
-  const painPoints: string[] = [];
-  const byTitle: Record<string, number[]> = {};
-
-  assignments.forEach(a => {
-    const key = a.title.toLowerCase();
-    if (a.score !== null) {
-      if (key.includes('algebra') || key.includes('equation')) {
-        byTitle['algebra'] = byTitle['algebra'] || [];
-        byTitle['algebra'].push(a.score);
-      } else if (key.includes('geometry') || key.includes('angle') || key.includes('triangle')) {
-        byTitle['geometry'] = byTitle['geometry'] || [];
-        byTitle['geometry'].push(a.score);
-      } else if (key.includes('fraction') || key.includes('decimal') || key.includes('percentage')) {
-        byTitle['number-systems'] = byTitle['number-systems'] || [];
-        byTitle['number-systems'].push(a.score);
-      } else if (key.includes('graph') || key.includes('plot')) {
-        byTitle['graphs'] = byTitle['graphs'] || [];
-        byTitle['graphs'].push(a.score);
-      }
-    }
-  });
-
-  Object.entries(byTitle).forEach(([topic, scores]) => {
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    if (avg < 60) painPoints.push(`Struggles with ${topic.replace('-', ' ')} (avg: ${Math.round(avg)}%)`);
-    else if (avg < 75) painPoints.push(`Needs practice in ${topic.replace('-', ' ')} (avg: ${Math.round(avg)}%)`);
-  });
-
-  if (painPoints.length === 0 && assignments.length > 0) {
-    painPoints.push('General revision recommended to strengthen foundations');
-  }
-  return painPoints;
-}
-
-function generateFallbackStudyPlan(studentName: string, points: string[]): string {
-  const lines = [
-    `# Personalized Study Plan for ${studentName}`,
-    '',
-    '## Identified Areas for Improvement',
-    ...points.map(p => `- ${p}`),
-    '',
-    '## Recommended Study Sequence',
-    '',
-    '### Week 1-2: Foundation Building',
-    'Focus on core concepts where performance was weakest. Spend 30-45 minutes daily on targeted practice.',
-    '',
-    '### Week 3-4: Application Practice',
-    'Apply foundational knowledge to solving multi-step problems. Include previous exam questions.',
-    '',
-    '### Week 5-6: Review & Assessment',
-    'Take mock quizzes under timed conditions. Review mistakes and revisit weak areas.',
-    '',
-    '## Daily Practice Recommendations',
-    '- 15 minutes: Review notes and key formulas',
-    '- 30 minutes: Solve 5-10 practice problems',
-    '- 10 minutes: Review previous mistakes',
-    '',
-    '## Resources to Use',
-    '- AI-generated explanations for difficult topics',
-    '- Practice worksheets targeting specific weak areas',
-    '- Peer study sessions for collaborative learning',
-  ];
-  return lines.join('\n');
-}
-
-export default function StudentDetailPage({ params }: { params: Promise<{ studentId: string }> }) {
-  const { studentId } = use(params);
-  const [student, setStudent] = useState<Student | null>(null);
-  const [assignments, setAssignments] = useState<AssignmentProgress[]>([]);
-  const [quizzes, setQuizzes] = useState<QuizProgress[]>([]);
+export default function StudentProgressPage({ params }: { params: Promise<{ studentId: string }> }) {
+  const [studentId, setStudentId] = useState<string>('');
+  const [summary, setSummary] = useState<StudentSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generatingPlan, setGeneratingPlan] = useState(false);
-  const [studyPlan, setStudyPlan] = useState<string | null>(null);
-  const [painPoints, setPainPoints] = useState<string[]>([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchStudent();
+    params.then((p) => setStudentId(p.studentId));
+  }, [params]);
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    async function fetchData() {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch(`/teacher/api/teacher/progress/student/${studentId}?days=30`, {
+          headers: { 'x-session-id': getSessionId() },
+        });
+        if (!res.ok) {
+          setError('Student not found or access denied');
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        setSummary(data.summary);
+      } catch {
+        setError('Failed to load student progress');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
   }, [studentId]);
 
-  async function fetchStudent() {
-    try {
-      const res = await fetch(`/api/teacher/students/${studentId}`, {
-        headers: { 'x-session-id': getSessionId() }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStudent(data.student);
-        const fetchedAssignments = data.assignments || [];
-        setAssignments(fetchedAssignments);
-        setQuizzes(generateMockQuizzes(fetchedAssignments));
-        setPainPoints(identifyPainPoints(fetchedAssignments));
-      }
-    } catch (error) {
-      console.error('Failed to fetch student:', error);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = useCallback((iso: string | null) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, []);
+
+  const formatRelative = useCallback((iso: string | null) => {
+    if (!iso) return 'Never';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'Yesterday';
+    return `${days} days ago`;
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3" />
+          <div className="h-4 bg-gray-200 rounded w-1/4" />
+          <div className="grid grid-cols-3 gap-4 mt-8">
+            <div className="h-24 bg-gray-200 rounded" />
+            <div className="h-24 bg-gray-200 rounded" />
+            <div className="h-24 bg-gray-200 rounded" />
+          </div>
+          <div className="h-48 bg-gray-200 rounded mt-6" />
+        </div>
+      </div>
+    );
   }
 
-  async function generateStudyPlan() {
-    setGeneratingPlan(true);
-    setStudyPlan(null);
-    try {
-      const res = await fetch(`/api/teacher/students/${studentId}/study-plan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-session-id': getSessionId(),
-        },
-        body: JSON.stringify({ studentName: student?.name, painPoints, assignments }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStudyPlan(data.plan);
-      } else {
-        setStudyPlan(generateFallbackStudyPlan(student?.name || 'Student', painPoints));
-      }
-    } catch {
-      setStudyPlan(generateFallbackStudyPlan(student?.name || 'Student', painPoints));
-    } finally {
-      setGeneratingPlan(false);
-    }
+  if (error) {
+    return (
+      <div className="p-8">
+        <Link href="/teacher/progress" className="text-primary hover:underline flex items-center gap-1 text-sm mb-6">
+          <ArrowLeft size={14} /> Back to Progress
+        </Link>
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-lg">{error}</p>
+        </div>
+      </div>
+    );
   }
 
-  function getSessionId() {
-    return localStorage.getItem('session_id') || '';
-  }
+  if (!summary) return null;
 
-  if (loading || !student) {
-    return <div className="p-8">Loading...</div>;
-  }
+  const stats = [
+    {
+      label: 'Assignments Done',
+      value: summary.assignmentCompleted,
+      sub: `${summary.assignmentStarted} started`,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+    },
+    {
+      label: 'Quiz Attempts',
+      value: summary.quizAttempts,
+      sub: summary.avgQuizScore != null ? `Avg ${summary.avgQuizScore}%` : 'No scores',
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+    },
+    {
+      label: 'Sessions Joined',
+      value: summary.sessionJoined,
+      sub: `${summary.logins} logins`,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
+    {
+      label: 'Time on Platform',
+      value: `${summary.totalDurationMinutes}m`,
+      sub: 'Last 30 days',
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+    },
+  ];
+
+  // Sparkline: show last 14 of 30 days for readability
+  const sparkSlice = summary.sparkline.slice(-14);
+  const maxSparkCount = Math.max(...sparkSlice.map((s) => s.count), 1);
 
   return (
-    <div className="p-8">
-      <Link href="/teacher/students" className="text-blue-600 hover:underline mb-4 inline-flex items-center gap-1">
-        <ArrowLeft size={16} /> Back to Students
+    <div className="p-8 max-w-5xl mx-auto">
+      {/* Back link */}
+      <Link
+        href="/teacher/progress"
+        className="text-primary hover:underline flex items-center gap-1 text-sm mb-6"
+      >
+        <ArrowLeft size={14} /> Back to Class Progress
       </Link>
 
-      <div className="bg-white border rounded-xl p-6 mb-6">
-        <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-primary text-2xl font-bold">
-              {student.name?.charAt(0)?.toUpperCase() ?? '?'}
+      {/* Student header */}
+      <div className="flex items-start gap-4 mb-8">
+        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <User className="text-primary" size={24} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold truncate">{summary.studentName}</h1>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Phone size={13} /> {summary.studentPhone || 'No phone'}
+            </span>
+            <span className="flex items-center gap-1">
+              <GraduationCap size={13} /> {summary.className}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={13} /> Last active: {formatRelative(summary.lastActiveAt)}
             </span>
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold mb-1">{student.name}</h1>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-2">
-              <span className="flex items-center gap-1">
-                <Phone size={14} /> {student.phone_e164}
-              </span>
-              {student.email && (
-                <span className="flex items-center gap-1">
-                  <Mail size={14} /> {student.email}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <GraduationCap size={14} /> {student.class_name}
-              </span>
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-              }`}>
-                <UserCheck size={12} />
-                {student.status}
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
-      {painPoints.length > 0 && (
-        <div className="bg-white border rounded-xl p-5 mb-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <h3 className="font-semibold text-orange-700 mb-2">Identified Pain Points</h3>
-              <ul className="space-y-1">
-                {painPoints.map((point, i) => (
-                  <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                    <span className="text-orange-500 mt-0.5">•</span>
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <button
-              onClick={generateStudyPlan}
-              disabled={generatingPlan}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 whitespace-nowrap"
-            >
-              {generatingPlan ? (
-                <><Loader2 size={16} className="animate-spin" /> Generating...</>
-              ) : (
-                <><Sparkles size={16} /> Generate AI Study Plan</>
-              )}
-            </button>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {stats.map((s) => (
+          <div key={s.label} className={`${s.bg} rounded-xl p-4`}>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{s.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
           </div>
-        </div>
-      )}
-
-      {studyPlan && (
-        <div className="bg-white border rounded-xl p-5 mb-6">
-          <h3 className="font-semibold mb-3">Personalized Study Plan</h3>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{studyPlan}</pre>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white border rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b bg-gray-50">
-            <h2 className="font-semibold">Assignment Progress</h2>
-          </div>
-          <div className="divide-y">
-            {assignments.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No assignments</div>
-            ) : (
-              assignments.map((a) => (
-                <div key={a.id} className="px-5 py-3 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{a.title}</p>
-                    <p className="text-xs text-gray-500">
-                      {a.submitted_at ? `Submitted ${new Date(a.submitted_at).toLocaleDateString()}` : 'Not submitted'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {a.score !== null && <span className="text-sm font-medium">{a.score}%</span>}
-                    <span className={`ml-2 inline-block px-2 py-1 rounded text-xs ${
-                      a.status === 'submitted' ? 'bg-green-100 text-green-700' :
-                      a.status === 'graded' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>{a.status}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white border rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b bg-gray-50">
-            <h2 className="font-semibold">Quiz Progress</h2>
-          </div>
-          <div className="divide-y">
-            {quizzes.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No quizzes</div>
-            ) : (
-              quizzes.map((q) => (
-                <div key={q.id} className="px-5 py-3 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{q.title}</p>
-                    <p className="text-xs text-gray-500">
-                      {q.submitted_at ? `Submitted ${new Date(q.submitted_at).toLocaleDateString()}` : 'Not submitted'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {q.score !== null && <span className="text-sm font-medium">{q.score}%</span>}
-                    <span className={`ml-2 inline-block px-2 py-1 rounded text-xs ${
-                      q.status === 'submitted' ? 'bg-green-100 text-green-700' :
-                      q.status === 'graded' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>{q.status}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        ))}
       </div>
+
+      {/* Activity Sparkline */}
+      <div className="bg-white border rounded-xl p-5 mb-8">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+          <Activity size={15} className="text-primary" />
+          Daily Activity (last 14 days)
+        </h2>
+        {sparkSlice.length > 0 && sparkSlice.some((s) => s.count > 0) ? (
+          <div className="h-[120px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sparkSlice} margin={{ top: 4, right: 0, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v: string) => {
+                    const d = new Date(v);
+                    return `${d.getDate()}/${d.getMonth() + 1}`;
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`${value} events`, 'Activity']}
+                  labelFormatter={(label: string) => new Date(label).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar dataKey="count" radius={[3, 3, 0, 0]} maxBarSize={28}>
+                  {sparkSlice.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.count > 0 ? '#6366f1' : '#e5e7eb'}
+                      fillOpacity={entry.count / maxSparkCount > 0.5 ? 1 : 0.4 + (entry.count / maxSparkCount) * 0.6}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-[120px] flex items-center justify-center text-gray-400 text-sm">
+            No activity data yet
+          </div>
+        )}
+      </div>
+
+      {/* Event Timeline */}
+      <div className="bg-white border rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b bg-gray-50 flex justify-between items-center">
+          <h2 className="text-sm font-semibold text-gray-700">Event Timeline</h2>
+          <span className="text-xs text-gray-400">{summary.totalEvents} events (last 30 days)</span>
+        </div>
+
+        {summary.events.length === 0 ? (
+          <div className="p-8 text-center text-gray-400 text-sm">
+            No events recorded for this student yet.
+          </div>
+        ) : (
+          <div className="divide-y max-h-[600px] overflow-y-auto">
+            {summary.events.map((event) => {
+              const config = EVENT_CONFIG[event.eventType] ?? {
+                label: event.eventType,
+                icon: Activity,
+                color: 'bg-gray-100 text-gray-600',
+              };
+              const Icon = config.icon;
+
+              return (
+                <div key={event.id} className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${config.color}`}>
+                    <Icon size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{config.label}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5 text-xs text-gray-400">
+                      <span>{formatDate(event.createdAt)}</span>
+                      {event.score != null && (
+                        <span className={event.score >= 60 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                          Score: {event.score}%
+                        </span>
+                      )}
+                      {event.durationSeconds != null && event.durationSeconds > 0 && (
+                        <span>{Math.round(event.durationSeconds / 60)}m</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-300 shrink-0 mt-1">
+                    {formatRelative(event.createdAt)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Empty state guidance */}
+      {summary.totalEvents === 0 && (
+        <div className="mt-6 bg-blue-50 border border-blue-100 rounded-xl p-4">
+          <p className="text-sm text-blue-800">
+            <strong>No events yet.</strong> As the student interacts with assignments, quizzes, and live sessions, their activity will appear here.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
