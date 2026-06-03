@@ -11,8 +11,8 @@ const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_OTP_REQUESTS = 5;
 
 export function generateOtp(_phone: string): string {
-  // DEV MODE: Always return "123456"
-  if (process.env.NODE_ENV === 'development') {
+  // DEV MODE: Always return "123456" — only when explicitly opted in
+  if (process.env.OTP_DEV_BYPASS === 'true') {
     return '123456';
   }
   // PROD: Generate secure 6-digit OTP using crypto
