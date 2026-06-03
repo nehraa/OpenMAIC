@@ -154,8 +154,9 @@ export const POST = async (request: NextRequest) => {
       },
     });
 
-    // Add CORS headers for cross-origin requests from app (port 3001)
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    // Add CORS headers for cross-origin requests from the student app
+    const allowedOrigin = process.env.OPENMAIC_PUBLIC_URL || process.env.STUDENT_APP_ORIGIN || 'http://localhost:3001';
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.append('Access-Control-Allow-Methods', 'POST, OPTIONS');
     response.headers.append('Access-Control-Allow-Headers', 'Content-Type');
@@ -181,10 +182,11 @@ export const POST = async (request: NextRequest) => {
 };
 
 export async function OPTIONS(_request: NextRequest) {
+  const allowedOrigin = process.env.OPENMAIC_PUBLIC_URL || process.env.STUDENT_APP_ORIGIN || 'http://localhost:3001';
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': 'http://localhost:3001',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Allow-Credentials': 'true',
