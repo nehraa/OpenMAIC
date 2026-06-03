@@ -25,10 +25,22 @@ export function getTextStyle(style?: TableCellStyle): CSSProperties {
 }
 
 /**
- * Format text: convert \n to <br/> and spaces to &nbsp;
+ * Escape HTML special characters to prevent XSS when injecting via dangerouslySetInnerHTML.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Format text: HTML-escape, then convert \n to <br/> and spaces to &nbsp;
  */
 export function formatText(text: string): string {
-  return text.replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
+  return escapeHtml(text).replace(/\n/g, '<br/>').replace(/ /g, '&nbsp;');
 }
 
 /**
