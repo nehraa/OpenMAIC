@@ -1,0 +1,23 @@
+{
+  "repoPath": ".",
+  "storageRoot": ".coderag",
+  "retrieval": {
+    "topK": 6,
+    "rerankK": 3
+  },
+  "traversal": {
+    "defaultDepth": 1,
+    "maxDepth": 3
+  },
+  "embedding": {
+    "provider": "onnx",
+    "dimensions": 384
+  },
+  "llm": {
+    "enabled": true,
+    "transport": "openai-compatible",
+    "baseUrl": "https://api.minimax.io/v1",
+    "model": "MiniMax-M2.7",
+    "apiKey": "sk-cp-KjobHFSNe1A5LaEtTY0qrBV5l85bitrDDWkjO4VEtsGd6h8uTnRmbcuEQflj1FXbUwFX2L9S1Qt5_M-dqpFnX7qMGg7GUtGTfYp5EJJ05MVyuLN7N5WWoyA"
+  }
+}
