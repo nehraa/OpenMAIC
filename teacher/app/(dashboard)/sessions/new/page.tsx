@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,10 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 
+interface ClassItem {
+  id: string
+  name: string
+  subject?: string
+}
+
 interface SessionConfig {
   classId: string
   title: string
-  duration: number // minutes
+  duration: number
   maxParticipants: number
   aiTeacherEnabled: boolean
   aiClassmatesCount: number
@@ -22,6 +28,8 @@ interface SessionConfig {
 
 export default function NewSessionPage() {
   const router = useRouter()
+  const [classes, setClasses] = useState<ClassItem[]>([])
+  const [classesLoading, setClassesLoading] = useState(true)
   const [config, setConfig] = useState<SessionConfig>({
     classId: '',
     title: '',
@@ -33,6 +41,14 @@ export default function NewSessionPage() {
     enableChat: true,
   })
   const [isLaunching, setIsLaunching] = useState(false)
+
+  useEffect(() => {
+    fetch('/teacher/api/teacher/classes', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : { classes: [] })
+      .then(data => setClasses(data.classes || []))
+      .catch(() => {})
+      .finally(() => setClassesLoading(false))
+  }, [])
 
   const handleLaunch = async () => {
     setIsLaunching(true)
@@ -74,8 +90,17 @@ export default function NewSessionPage() {
                 <SelectValue placeholder="Select a class" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="class-1">Class 10A - Mathematics</SelectItem>
-                <SelectItem value="class-2">Class 10B - Science</SelectItem>
+                {classesLoading ? (
+                  <SelectItem value="_loading" disabled>Loading classes...</SelectItem>
+                ) : classes.length === 0 ? (
+                  <SelectItem value="_none" disabled>No classes found — create one first</SelectItem>
+                ) : (
+                  classes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}{c.subject ? ` — ${c.subject}` : ''}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
