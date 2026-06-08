@@ -57,7 +57,8 @@ export const POST = async (request: NextRequest) => {
     }
 
     const { joinCode, phone, name } = validation.data;
-    const normalizedPhone = phone.replace(/\D/g, '');
+    // Keep E.164 format to match users created via teacher add-student route.
+    const normalizedPhone = phone;
     const db = getDb();
 
     // Step 1: Find class by join code

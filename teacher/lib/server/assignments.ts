@@ -136,7 +136,7 @@ export async function addRecipients(assignmentId: string, studentIds: string[]):
 export async function releaseAssignment(id: string): Promise<Assignment | null> {
   const db = getDb();
 
-  // Get current assignment
+  // Get current assignment (need class_id to backfill recipients)
   const assignmentResult = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
   const assignment = assignmentResult.rows[0] as Assignment | undefined;
   if (!assignment) {
@@ -147,12 +147,30 @@ export async function releaseAssignment(id: string): Promise<Assignment | null> 
     throw new Error(`Cannot release assignment with status '${assignment.status}'`);
   }
 
+  // Backfill: if no recipients exist, create one row per enrolled student in the class.
+  // This is the common path because createAssignment never inserts recipients.
+  const recipientsResult = await db.query(
+    'SELECT COUNT(*)::int AS n FROM assignment_recipients WHERE assignment_id = $1',
+    [id]
+  );
+  const existingCount = (recipientsResult.rows[0] as { n: number }).n;
+  if (existingCount === 0) {
+    await db.query(
+      `INSERT INTO assignment_recipients (tenant_id, assignment_id, student_id, visibility_status)
+       SELECT cm.tenant_id, $1, cm.student_id, 'visible'
+       FROM class_memberships cm
+       WHERE cm.class_id = $2
+       ON CONFLICT (assignment_id, student_id) DO NOTHING`,
+      [id, assignment.class_id]
+    );
+  }
+
   // Update assignment status to released
   await db.query(`
     UPDATE assignments SET status = 'released', updated_at = NOW() WHERE id = $1
   `, [id]);
 
-  // Update all recipients to visible
+  // Update all recipients to visible (handles the backfill path + the pre-existing path)
   await db.query(`
     UPDATE assignment_recipients SET visibility_status = 'visible' WHERE assignment_id = $1
   `, [id]);

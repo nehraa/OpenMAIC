@@ -4,7 +4,7 @@ import { getDb } from '@/lib/db';
 import { z } from 'zod';
 
 const TrackProgressSchema = z.object({
-  slideId: z.string().min(1)
+  slideId: z.string().min(1),
 });
 
 // POST /api/student/assignments/[assignmentId]/progress
@@ -36,7 +36,7 @@ export const POST = async (
   const db = getDb();
 
   // First verify this assignment is assigned to this student
-  const recipientCheck = db.query(`
+  const recipientResult = await db.query(`
     SELECT ar.id
     FROM assignment_recipients ar
     JOIN assignments a ON ar.assignment_id = a.id
@@ -45,51 +45,52 @@ export const POST = async (
       AND a.status IN ('released', 'closed')
   `, [assignmentId, studentId]);
 
-  const recipient = (recipientCheck as any)?.rows?.[0] || (recipientCheck as any);
-  if (!recipient) {
+  if (recipientResult.rows.length === 0) {
     return NextResponse.json({ error: 'Assignment not found or not assigned to you' }, { status: 404 });
   }
 
   // Insert or update slide progress using UPSERT
-  // ON CONFLICT DO UPDATE sets viewed_at to current time (re-viewing a slide updates timestamp)
   await db.query(`
-    INSERT INTO assignment_slide_progress (assignment_id, student_id, slide_id, viewed_at)
-    VALUES ($1, $2, $3, NOW())
+    INSERT INTO assignment_slide_progress (tenant_id, assignment_id, student_id, slide_id, viewed_at)
+    VALUES (
+      (SELECT tenant_id FROM assignments WHERE id = $1),
+      $1, $2, $3, NOW()
+    )
     ON CONFLICT (assignment_id, student_id, slide_id)
     DO UPDATE SET viewed_at = NOW()
   `, [assignmentId, studentId, slideId]);
 
   // Get updated progress count
-  const countResult = db.query(`
-    SELECT COUNT(*) as viewed_count
+  const countResult = await db.query(`
+    SELECT COUNT(*)::int AS viewed_count
     FROM assignment_slide_progress
     WHERE assignment_id = $1 AND student_id = $2
   `, [assignmentId, studentId]);
 
-  const count = ((countResult as any)?.rows?.[0]?.viewed_count || (countResult as any)?.viewed_count || 0) as number;
+  const count = (countResult.rows[0]?.viewed_count ?? 0) as number;
 
   // Get total slides count from the assignment's slide asset version
-  const assignmentResult = db.query(`
+  const assignmentResult = await db.query(`
     SELECT slide_asset_version_id
     FROM assignments
     WHERE id = $1
   `, [assignmentId]);
 
-  const assignment = (assignmentResult as any)?.rows?.[0] || (assignmentResult as any);
+  const assignment = assignmentResult.rows[0];
 
   let totalSlides = 0;
   if (assignment?.slide_asset_version_id) {
-    const versionResult = db.query(`
+    const versionResult = await db.query(`
       SELECT payload_json
       FROM content_asset_versions
       WHERE id = $1
     `, [assignment.slide_asset_version_id]);
 
-    const version = (versionResult as any)?.rows?.[0] || (versionResult as any);
+    const version = versionResult.rows[0];
     if (version?.payload_json) {
       try {
         const payload = JSON.parse(version.payload_json);
-        totalSlides = (payload.slides || []).length;
+        totalSlides = (Array.isArray(payload.slides) ? payload.slides : []).length;
       } catch {
         totalSlides = 0;
       }
@@ -101,7 +102,7 @@ export const POST = async (
     progress: {
       viewed_count: count,
       total_slides: totalSlides,
-      is_complete: totalSlides > 0 && count >= totalSlides
-    }
+      is_complete: totalSlides > 0 && count >= totalSlides,
+    },
   });
-}
+};

@@ -39,7 +39,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     filters.dateTo = dateTo;
   }
 
-  const progress = getClassProgress(classId, filters);
+  const progress = await getClassProgress(classId, filters);
 
   if (!progress) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
