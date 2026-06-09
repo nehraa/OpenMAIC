@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomInt } from 'node:crypto';
 import { withRole } from '@/middleware';
 import { getDb } from '@/lib/db';
 import type { AuthContext } from '@/middleware/auth';
@@ -12,7 +13,7 @@ function generateJoinCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(randomInt(0, chars.length));
   }
   return code;
 }
