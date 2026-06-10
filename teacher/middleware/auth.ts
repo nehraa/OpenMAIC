@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth/jwt';
+import { verifyAccessToken, type TokenPayload } from '@/lib/auth/jwt';
 import { getDb, setCurrentTenant } from '@/lib/db';
 import type { User } from '@shared/types/roles';
 
@@ -10,6 +10,24 @@ export interface AuthContext {
 
 type RouteContext = { params: Promise<Record<string, string>> };
 
+/**
+ * Middleware that authenticates a request via either a JWT access token
+ * (short-lived, 15 min) or a long-lived session cookie.
+ *
+ * JWT failure handling:
+ * - `ERR_JWT_EXPIRED` is treated as benign: the access token is short-lived,
+ *   so the session cookie can authenticate the user instead. This preserves
+ *   the "stay logged in" UX across access-token rotations.
+ * - All other JWT failures (tampering, bad signature, malformed, wrong
+ *   issuer/audience, etc.) are rejected with 401 immediately. Silently
+ *   falling through to the session lookup for those would mask token
+ *   tampering and create an authentication bypass on any request that
+ *   carries both a bogus access token and a valid session ID.
+ *
+ * @param handler - The protected route handler to invoke once authenticated.
+ * @returns A Next.js route handler that returns 401 if no valid credentials
+ *   are present, or the result of `handler` otherwise.
+ */
 export function withAuth(
   handler: (
     req: NextRequest,
@@ -23,22 +41,24 @@ export function withAuth(
     const sessionId = req.cookies.get('session_id')?.value || req.headers.get('x-session-id');
 
     let userId: string | null = null;
-    let _tenantId: string | null = null;
 
     if (accessToken) {
       try {
-        const payload = await verifyAccessToken(accessToken);
+        const payload: TokenPayload = await verifyAccessToken(accessToken);
         userId = payload.userId;
-        _tenantId = (payload as any).tenantId;
       } catch (err) {
-        // JWT verification failed (tampered, expired, bad signature, etc.).
-        // Do NOT silently fall through to session lookup — that would mask
-        // token tampering and could allow auth bypass on misconfigured sessions.
-        console.error('[auth] JWT verification failed:', err);
-        return NextResponse.json(
-          { error: 'Invalid or expired token' },
-          { status: 401 }
-        );
+        // Distinguish "expired" from every other JWT failure. The string
+        // `code` check is used (rather than `instanceof errors.JWTExpired`)
+        // so the behavior is stable across `jose` minor upgrades.
+        const isExpired = (err as { code?: string } | null)?.code === 'ERR_JWT_EXPIRED';
+        if (!isExpired) {
+          console.error('[auth] JWT verification failed:', err);
+          return NextResponse.json(
+            { error: 'Invalid token' },
+            { status: 401 }
+          );
+        }
+        // Expired access token: fall through to session lookup below.
       }
     }
 
@@ -56,7 +76,6 @@ export function withAuth(
 
       if (sessionResult.rows.length > 0) {
         userId = sessionResult.rows[0].user_id;
-        _tenantId = sessionResult.rows[0].tenant_id;
       }
     }
 
@@ -81,10 +100,12 @@ export function withAuth(
       );
     }
 
-    const user = result.rows[0] as User;
+    const user = result.rows[0] as User & { tenant_id: string };
 
-    // Set tenant context for RLS before processing the request
-    await setCurrentTenant((user as any).tenant_id);
+    // Set tenant context for Postgres RLS policies. Uses the dedicated
+    // connection that RLS checks `current_setting('app.current_tenant_id')`
+    // against, so the rest of the request executes under that tenant scope.
+    await setCurrentTenant(user.tenant_id);
 
     return handler(req, {
       user: {
