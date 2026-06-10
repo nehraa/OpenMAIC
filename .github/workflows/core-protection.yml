@@ -24,14 +24,21 @@ jobs:
           fi
           # Fetch base commit if not present
           git fetch origin "$BASE_SHA" 2>/dev/null || true
+          # /core is the sacred baseline for Phase 1, but a narrow set of
+          # deployment-manifest paths are whitelisted so the container build
+          # (Dockerfile, .dockerignore) can evolve without being treated as
+          # application code. Anything else under /core is still blocked.
           CORE_CHANGES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
-            | grep -E '^core/' || true)
+            | grep -E '^core/' \
+            | grep -vE '^core/(Dockerfile|\.dockerignore)$' || true)
           if [ -n "$CORE_CHANGES" ]; then
             echo "ERROR: Changes detected in /core directory:"
             echo "$CORE_CHANGES"
             echo ""
             echo "The /core directory is the sacred baseline for Phase 1."
             echo "All teacher/student development must happen in /teacher and /student."
+            echo "Only /core/Dockerfile and /core/.dockerignore are whitelisted"
+            echo "as deployment-manifest paths."
             exit 1
           fi
-          echo "No core changes detected. Core protection passed."
+          echo "No protected core changes detected. Core protection passed."
