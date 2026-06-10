@@ -30,8 +30,15 @@ export function withAuth(
         const payload = await verifyAccessToken(accessToken);
         userId = payload.userId;
         _tenantId = (payload as any).tenantId;
-      } catch {
-        // Fall back to session ID if access token is invalid
+      } catch (err) {
+        // JWT verification failed (tampered, expired, bad signature, etc.).
+        // Do NOT silently fall through to session lookup — that would mask
+        // token tampering and could allow auth bypass on misconfigured sessions.
+        console.error('[auth] JWT verification failed:', err);
+        return NextResponse.json(
+          { error: 'Invalid or expired token' },
+          { status: 401 }
+        );
       }
     }
 
