@@ -1,85 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { teacher, students } from '@/app/lib/mock-data';
+import { authenticateUser } from '@/app/lib/session';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password, userType } = body;
 
-    // Mock validation - in production this would verify against a database
-    if (!email || !password) {
+    if (!email || !password || !userType) {
       return NextResponse.json(
-        { error: { code: 'INVALID_INPUT', message: 'Email and password are required' } },
+        { error: { code: 'INVALID_INPUT', message: 'Email, password, and userType are required' } },
         { status: 400 }
       );
     }
 
-    // Check for teacher login
-    if (userType === 'teacher') {
-      if (email === teacher.email) {
-        return NextResponse.json({
-          success: true,
-          user: {
-            id: teacher.id,
-            name: teacher.name,
-            email: teacher.email,
-            avatar: teacher.avatar,
-            color: teacher.color,
-            userType: 'teacher',
-            subject: teacher.subject,
-            class: `${teacher.class} ${teacher.section}`,
-          },
-          token: 'mock-teacher-token-' + Date.now(),
-        });
-      }
+    const role = userType === 'teacher' ? 'TEACHER' : 'STUDENT_CLASSROOM';
+    const result = await authenticateUser(email, password, role);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: { code: result.error, message: 'Invalid email or password' } },
+        { status: 401 }
+      );
     }
 
-    // Check for student login
-    if (userType === 'student') {
-      const student = students.find((s) => s.email === email);
-      if (student) {
-        return NextResponse.json({
-          success: true,
-          user: {
-            id: student.id,
-            name: student.name,
-            email: student.email,
-            avatar: student.avatar,
-            color: student.color,
-            userType: 'student',
-            class: `${student.class} ${student.section}`,
-            rollNumber: student.rollNumber,
-          },
-          token: 'mock-student-token-' + Date.now(),
-        });
-      }
-    }
+    const response = NextResponse.json({
+      success: true,
+      user: result.user,
+    });
 
-    // Individual login (email-based lookup for either)
-    const student = students.find((s) => s.email === email);
-    if (student) {
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: student.id,
-          name: student.name,
-          email: student.email,
-          avatar: student.avatar,
-          color: student.color,
-          userType: 'student',
-          class: `${student.class} ${student.section}`,
-          rollNumber: student.rollNumber,
-        },
-        token: 'mock-student-token-' + Date.now(),
-      });
-    }
+    response.cookies.set('auth_token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    });
 
-    // No match found
-    return NextResponse.json(
-      { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } },
-      { status: 401 }
-    );
+    return response;
   } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json(
       { error: { code: 'SERVER_ERROR', message: 'An error occurred during login' } },
       { status: 500 }
