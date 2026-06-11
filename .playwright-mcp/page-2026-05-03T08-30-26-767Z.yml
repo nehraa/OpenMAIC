@@ -1,9 +1,0 @@
-- generic [active] [ref=e1]:
-  - generic [ref=e2]:
-    - heading "Token Usage" [level=1] [ref=e3]
-    - generic [ref=e4]:
-      - button "Daily" [ref=e5]
-      - button "Weekly" [ref=e6]
-  - button "Open Next.js Dev Tools" [ref=e12] [cursor=pointer]:
-    - img [ref=e13]
-  - alert [ref=e16]

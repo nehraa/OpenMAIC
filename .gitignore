@@ -45,6 +45,38 @@ playwright/.cache/
 .qwen/
 reasoning/
 .worktrees/
+.playwright-mcp/
+
+# Test/diagnostic captures and demo videos at repo root.
+# Real product assets live in core/assets/, core/public/, website/public/, website/screenshots/
+/[0-9][0-9]_*.png
+/[0-9][0-9]_*_*.png
+/aidu_demo.mp4
+/teacher_demo*.mp4
+/scaled/
+/video_frames/
+/asset-preview.png
+/assignment_*.png
+/assignments.png
+/class_*.png
+/classes.png
+/current_*.png
+/dashboard.png
+/generate-*.png
+/generation-*.png
+/homepage-*.png
+/library*.png
+/modal-*.png
+/openmaic-not-running.png
+/preview-*.png
+/progress.png
+/quizzes.png
+/screenshot_*.png
+/scroll-*.png
+/students.png
+/teacher_dashboard_logged_in.png
+/usage.png
+/video-scrub-test.png
 
 # Vercel
 .vercel
