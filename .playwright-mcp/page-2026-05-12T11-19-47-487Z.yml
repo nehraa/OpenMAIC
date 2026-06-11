@@ -1,0 +1,113 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e36] [cursor=pointer]:
+    - img [ref=e37]
+  - alert [ref=e40]
+  - generic [ref=e41]:
+    - banner [ref=e42]:
+      - generic [ref=e44]:
+        - img [ref=e46]
+        - generic [ref=e49]:
+          - heading "Teacher Dashboard" [level=1] [ref=e50]
+          - paragraph [ref=e51]: Manage your classroom
+    - main [ref=e52]:
+      - generic [ref=e53]:
+        - link "Assignments Create and manage assignments" [ref=e54] [cursor=pointer]:
+          - /url: /teacher/assignments
+          - img [ref=e55]
+          - heading "Assignments" [level=3] [ref=e58]
+          - paragraph [ref=e59]: Create and manage assignments
+        - link "Quizzes Build AI-powered quizzes" [ref=e60] [cursor=pointer]:
+          - /url: /teacher/quizzes
+          - img [ref=e61]
+          - heading "Quizzes" [level=3] [ref=e63]
+          - paragraph [ref=e64]: Build AI-powered quizzes
+        - link "Library Content assets and resources" [ref=e65] [cursor=pointer]:
+          - /url: /teacher/library
+          - img [ref=e66]
+          - heading "Library" [level=3] [ref=e68]
+          - paragraph [ref=e69]: Content assets and resources
+        - link "Progress Student progress analytics" [ref=e70] [cursor=pointer]:
+          - /url: /teacher/progress
+          - img [ref=e71]
+          - heading "Progress" [level=3] [ref=e73]
+          - paragraph [ref=e74]: Student progress analytics
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - heading "Your Classes" [level=2] [ref=e78]:
+              - img [ref=e79]
+              - text: Your Classes
+            - link "View all" [ref=e84] [cursor=pointer]:
+              - /url: /teacher/classes
+          - generic [ref=e85]:
+            - link "Class 10 English(English) 10 students" [ref=e86] [cursor=pointer]:
+              - /url: /teacher/classes/c0000002-0000-0000-0000-000000000003
+              - generic [ref=e87]:
+                - text: Class 10 English
+                - generic [ref=e88]: (English)
+              - generic [ref=e89]: 10 students
+            - link "Class 10 Science(Science) 10 students" [ref=e90] [cursor=pointer]:
+              - /url: /teacher/classes/c0000002-0000-0000-0000-000000000002
+              - generic [ref=e91]:
+                - text: Class 10 Science
+                - generic [ref=e92]: (Science)
+              - generic [ref=e93]: 10 students
+            - link "Class 10 Mathematics(Mathematics) 10 students" [ref=e94] [cursor=pointer]:
+              - /url: /teacher/classes/c0000002-0000-0000-0000-000000000001
+              - generic [ref=e95]:
+                - text: Class 10 Mathematics
+                - generic [ref=e96]: (Mathematics)
+              - generic [ref=e97]: 10 students
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - heading "Recent Assignments" [level=2] [ref=e100]:
+              - img [ref=e101]
+              - text: Recent Assignments
+            - link "View all" [ref=e104] [cursor=pointer]:
+              - /url: /teacher/assignments
+          - generic [ref=e105]:
+            - link "Introduction to Algebra for 8th Grade - coverin...(Class 10 Mathematics) draft" [ref=e106] [cursor=pointer]:
+              - /url: /teacher/assignments/3dd525de-3a45-44b9-8031-a2e54a86bf26
+              - generic [ref=e107]:
+                - text: Introduction to Algebra for 8th Grade - coverin...
+                - generic [ref=e108]: (Class 10 Mathematics)
+              - generic [ref=e109]: draft
+            - link "Introduction to electromagnetism(Class 10 Science) released" [ref=e110] [cursor=pointer]:
+              - /url: /teacher/assignments/b60d5740-cc98-4825-bf3d-eb944bfb5559
+              - generic [ref=e111]:
+                - text: Introduction to electromagnetism
+                - generic [ref=e112]: (Class 10 Science)
+              - generic [ref=e113]: released
+            - 'link "Essay Writing: Persuasion Techniques(Class 10 English) scheduled" [ref=e114] [cursor=pointer]':
+              - /url: /teacher/assignments/e0000001-0000-0000-0000-000000000006
+              - generic [ref=e115]:
+                - text: "Essay Writing: Persuasion Techniques"
+                - generic [ref=e116]: (Class 10 English)
+              - generic [ref=e117]: scheduled
+            - link "Shakespeare's Hamlet — Act 1(Class 10 English) closed" [ref=e118] [cursor=pointer]:
+              - /url: /teacher/assignments/e0000001-0000-0000-0000-000000000005
+              - generic [ref=e119]:
+                - text: Shakespeare's Hamlet — Act 1
+                - generic [ref=e120]: (Class 10 English)
+              - generic [ref=e121]: closed
+            - link "Thermodynamics Intro(Class 10 Science) released" [ref=e122] [cursor=pointer]:
+              - /url: /teacher/assignments/e0000001-0000-0000-0000-000000000004
+              - generic [ref=e123]:
+                - text: Thermodynamics Intro
+                - generic [ref=e124]: (Class 10 Science)
+              - generic [ref=e125]: released
+      - generic [ref=e126]:
+        - link "Manage Classes Add students, view enrollments" [ref=e127] [cursor=pointer]:
+          - /url: /teacher/classes
+          - generic [ref=e128]:
+            - img [ref=e130]
+            - generic [ref=e133]:
+              - heading "Manage Classes" [level=3] [ref=e134]
+              - paragraph [ref=e135]: Add students, view enrollments
+        - link "Manage Students View all students across classes" [ref=e136] [cursor=pointer]:
+          - /url: /teacher/students
+          - generic [ref=e137]:
+            - img [ref=e139]
+            - generic [ref=e144]:
+              - heading "Manage Students" [level=3] [ref=e145]
+              - paragraph [ref=e146]: View all students across classes
