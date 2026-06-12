@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint",
     "tsc": "tsc --noEmit",
+    "test": "node --experimental-strip-types --no-warnings --test 'lib/**/*.test.ts'",
     "check": "prettier . --check",
     "format": "prettier . --write"
   },
