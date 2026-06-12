@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
 import type { AuthContext } from '@/middleware/auth';
 import { getDb } from '@/lib/db';
-import type { User } from '@shared/types/roles';
 
 interface RouteContext {
   params: Promise<Record<string, string>>;
@@ -127,7 +126,7 @@ async function getTeacherProgressData(
       slide_asset_version_id: string | null;
     }>;
 
-    let totalAssignments = assignments.length;
+    const totalAssignments = assignments.length;
     let assignmentsCompleted = 0;
     let totalQuizScore = 0;
     let quizAttempts = 0;

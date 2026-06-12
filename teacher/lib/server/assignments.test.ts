@@ -37,7 +37,7 @@ describe('Assignments Domain', () => {
   });
 
   describe('createAssignment', () => {
-    it('creates a draft assignment with required fields', () => {
+    it('creates a draft assignment with required fields', async () => {
       const mockAssignment: Assignment = {
         id: 'test-assignment-id',
         class_id: 'class-123',
@@ -63,7 +63,7 @@ describe('Assignments Domain', () => {
         return { get: getMock };
       });
 
-      const result = createAssignment({
+      const result = await createAssignment({
         classId: 'class-123',
         teacherId: 'teacher-456',
         title: 'Test Assignment'
@@ -75,17 +75,17 @@ describe('Assignments Domain', () => {
   });
 
   describe('getAssignmentById', () => {
-    it('returns null when assignment not found', () => {
+    it('returns null when assignment not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = getAssignmentById('non-existent-id');
+      const result = await getAssignmentById('non-existent-id');
 
       expect(result).toBeNull();
     });
 
-    it('returns assignment when found', () => {
+    it('returns assignment when found', async () => {
       const mockAssignment: Assignment = {
         id: 'assign-1',
         class_id: 'class-123',
@@ -105,7 +105,7 @@ describe('Assignments Domain', () => {
         get: vi.fn().mockReturnValue(mockAssignment)
       });
 
-      const result = getAssignmentById('assign-1');
+      const result = await getAssignmentById('assign-1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('assign-1');
@@ -113,7 +113,7 @@ describe('Assignments Domain', () => {
   });
 
   describe('updateAssignment', () => {
-    it('updates assignment title', () => {
+    it('updates assignment title', async () => {
       const currentAssignment = { status: 'draft' };
       const updatedAssignment: Assignment = {
         id: 'assign-1',
@@ -140,7 +140,7 @@ describe('Assignments Domain', () => {
         return { get: vi.fn().mockReturnValue(updatedAssignment) };
       });
 
-      const result = updateAssignment('assign-1', { title: 'Updated Title' });
+      const result = await updateAssignment('assign-1', { title: 'Updated Title' });
 
       expect(result).not.toBeNull();
       expect(mockDb.prepare).toHaveBeenCalled();
@@ -164,7 +164,7 @@ describe('Assignments Domain', () => {
       mockDb.transaction.mockReset();
     });
 
-    it('creates records for each student', () => {
+    it('creates records for each student', async () => {
       const mockRecipients: AssignmentRecipient[] = [
         { id: 'recipient-1', assignment_id: 'assign-1', student_id: 'student-1', visibility_status: 'hidden', assigned_at: '2026-04-26T10:00:00.000Z' },
         { id: 'recipient-2', assignment_id: 'assign-1', student_id: 'student-2', visibility_status: 'hidden', assigned_at: '2026-04-26T10:00:00.000Z' }
@@ -198,14 +198,14 @@ describe('Assignments Domain', () => {
         };
       });
 
-      const result = addRecipients('assign-1', ['student-1', 'student-2']);
+      const result = await addRecipients('assign-1', ['student-1', 'student-2']);
 
       expect(result).toHaveLength(2);
       expect(result[0].student_id).toBe('student-1');
       expect(result[1].student_id).toBe('student-2');
     });
 
-    it('does not duplicate existing recipients', () => {
+    it('does not duplicate existing recipients', async () => {
       const existingRecipient: AssignmentRecipient = {
         id: 'existing-1',
         assignment_id: 'assign-1',
@@ -227,7 +227,7 @@ describe('Assignments Domain', () => {
         };
       });
 
-      const result = addRecipients('assign-1', ['student-1']);
+      const result = await addRecipients('assign-1', ['student-1']);
 
       // No insert happens, so insertedRecipients stays empty
       expect(result).toHaveLength(0);
@@ -235,7 +235,7 @@ describe('Assignments Domain', () => {
   });
 
   describe('releaseAssignment', () => {
-    it('changes status to released and sets visibility to visible', () => {
+    it('changes status to released and sets visibility to visible', async () => {
       const draftAssignment: Assignment = {
         id: 'assign-1',
         class_id: 'class-123',
@@ -271,7 +271,7 @@ describe('Assignments Domain', () => {
         return { get: vi.fn(), run: vi.fn() };
       });
 
-      const result = releaseAssignment('assign-1');
+      const result = await releaseAssignment('assign-1');
 
       expect(result).not.toBeNull();
       expect(result?.status).toBe('released');
@@ -290,7 +290,7 @@ describe('Assignments Domain', () => {
   });
 
   describe('getAssignmentsForTeacher', () => {
-    it('returns all assignments for teacher', () => {
+    it('returns all assignments for teacher', async () => {
       const mockAssignments: Assignment[] = [
         { id: 'assign-1', teacher_id: 'teacher-456', status: 'draft', class_id: 'class-1', title: 'Assignment 1', description: '', slide_asset_version_id: null, quiz_asset_version_id: null, release_at: null, due_at: null, created_at: '', updated_at: '' },
         { id: 'assign-2', teacher_id: 'teacher-456', status: 'released', class_id: 'class-1', title: 'Assignment 2', description: '', slide_asset_version_id: null, quiz_asset_version_id: null, release_at: null, due_at: null, created_at: '', updated_at: '' }
@@ -300,13 +300,13 @@ describe('Assignments Domain', () => {
         all: vi.fn().mockReturnValue(mockAssignments)
       });
 
-      const result = getAssignmentsForTeacher('teacher-456');
+      const result = await getAssignmentsForTeacher('teacher-456');
 
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalled();
     });
 
-    it('filters by classId when provided', () => {
+    it('filters by classId when provided', async () => {
       const mockAssignments: Assignment[] = [
         { id: 'assign-1', teacher_id: 'teacher-456', class_id: 'class-123', status: 'draft', title: 'Assignment 1', description: '', slide_asset_version_id: null, quiz_asset_version_id: null, release_at: null, due_at: null, created_at: '', updated_at: '' }
       ];
@@ -315,13 +315,13 @@ describe('Assignments Domain', () => {
         all: vi.fn().mockReturnValue(mockAssignments)
       });
 
-      const result = getAssignmentsForTeacher('teacher-456', { classId: 'class-123' });
+      const result = await getAssignmentsForTeacher('teacher-456', { classId: 'class-123' });
 
       expect(result).toHaveLength(1);
       expect(result[0].class_id).toBe('class-123');
     });
 
-    it('filters by status when provided', () => {
+    it('filters by status when provided', async () => {
       const mockAssignments: Assignment[] = [
         { id: 'assign-1', teacher_id: 'teacher-456', status: 'draft', class_id: 'class-1', title: 'Assignment 1', description: '', slide_asset_version_id: null, quiz_asset_version_id: null, release_at: null, due_at: null, created_at: '', updated_at: '' }
       ];
@@ -330,13 +330,13 @@ describe('Assignments Domain', () => {
         all: vi.fn().mockReturnValue(mockAssignments)
       });
 
-      const result = getAssignmentsForTeacher('teacher-456', { status: 'draft' });
+      const result = await getAssignmentsForTeacher('teacher-456', { status: 'draft' });
 
       expect(result).toHaveLength(1);
       expect(result[0].status).toBe('draft');
     });
 
-    it('filters by both classId and status when both provided', () => {
+    it('filters by both classId and status when both provided', async () => {
       const mockAssignments: Assignment[] = [
         { id: 'assign-1', teacher_id: 'teacher-456', class_id: 'class-123', status: 'draft', title: 'Assignment 1', description: '', slide_asset_version_id: null, quiz_asset_version_id: null, release_at: null, due_at: null, created_at: '', updated_at: '' }
       ];
@@ -345,14 +345,14 @@ describe('Assignments Domain', () => {
         all: vi.fn().mockReturnValue(mockAssignments)
       });
 
-      const result = getAssignmentsForTeacher('teacher-456', { classId: 'class-123', status: 'draft' });
+      const result = await getAssignmentsForTeacher('teacher-456', { classId: 'class-123', status: 'draft' });
 
       expect(result).toHaveLength(1);
     });
   });
 
   describe('deleteAssignment', () => {
-    it('deletes draft assignment', () => {
+    it('deletes draft assignment', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT status')) {
           return { get: vi.fn().mockReturnValue({ status: 'draft' }) };
@@ -363,7 +363,7 @@ describe('Assignments Domain', () => {
         return { get: vi.fn() };
       });
 
-      const result = deleteAssignment('assign-1');
+      const result = await deleteAssignment('assign-1');
 
       expect(result).toBe(true);
     });
@@ -377,12 +377,12 @@ describe('Assignments Domain', () => {
         .toThrow("Cannot delete assignment with status 'released'");
     });
 
-    it('returns false when assignment not found', () => {
+    it('returns false when assignment not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = deleteAssignment('non-existent');
+      const result = await deleteAssignment('non-existent');
 
       expect(result).toBe(false);
     });

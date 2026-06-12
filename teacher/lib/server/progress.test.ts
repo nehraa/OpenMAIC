@@ -32,17 +32,17 @@ describe('Progress Domain', () => {
   });
 
   describe('getClassProgress', () => {
-    it('returns null when class not found', () => {
+    it('returns null when class not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = getClassProgress('non-existent-class');
+      const result = await getClassProgress('non-existent-class');
 
       expect(result).toBeNull();
     });
 
-    it('returns all enrolled students for a class', () => {
+    it('returns all enrolled students for a class', async () => {
       // Mock class exists
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT id, name FROM classes')) {
@@ -62,7 +62,7 @@ describe('Progress Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = getClassProgress('class-1');
+      const result = await getClassProgress('class-1');
 
       expect(result).not.toBeNull();
       expect(result!.classId).toBe('class-1');
@@ -72,7 +72,7 @@ describe('Progress Domain', () => {
       expect(result!.students[1].studentName).toBe('Bob');
     });
 
-    it('filters students by status when provided', () => {
+    it('filters students by status when provided', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT id, name FROM classes')) {
           return { get: vi.fn().mockReturnValue({ id: 'class-1', name: 'Test Class' }) };
@@ -107,7 +107,7 @@ describe('Progress Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = getClassProgress('class-1', { status: 'completed' });
+      const result = await getClassProgress('class-1', { status: 'completed' });
 
       expect(result).not.toBeNull();
       // Students with all assignments completed will be returned
@@ -115,17 +115,17 @@ describe('Progress Domain', () => {
   });
 
   describe('getAssignmentProgress', () => {
-    it('returns null when assignment not found', () => {
+    it('returns null when assignment not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = getAssignmentProgress('non-existent-assignment');
+      const result = await getAssignmentProgress('non-existent-assignment');
 
       expect(result).toBeNull();
     });
 
-    it('returns progress for assignment with correct stats', () => {
+    it('returns progress for assignment with correct stats', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT a.id, a.title, a.class_id')) {
           return { get: vi.fn().mockReturnValue({ id: 'assign-1', title: 'Test Assignment', class_id: 'class-1' }) };
@@ -154,7 +154,7 @@ describe('Progress Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = getAssignmentProgress('assign-1');
+      const result = await getAssignmentProgress('assign-1');
 
       expect(result).not.toBeNull();
       expect(result!.assignmentId).toBe('assign-1');
@@ -164,17 +164,17 @@ describe('Progress Domain', () => {
   });
 
   describe('exportToCSV', () => {
-    it('returns empty string when class not found', () => {
+    it('returns empty string when class not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = exportToCSV('non-existent-class');
+      const result = await exportToCSV('non-existent-class');
 
       expect(result).toBe('');
     });
 
-    it('generates valid CSV with correct columns', () => {
+    it('generates valid CSV with correct columns', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT id, name FROM classes')) {
           return { get: vi.fn().mockReturnValue({ id: 'class-1', name: 'Test Class' }) };
@@ -208,7 +208,7 @@ describe('Progress Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = exportToCSV('class-1');
+      const result = await exportToCSV('class-1');
 
       const lines = result.split('\n');
       expect(lines.length).toBeGreaterThanOrEqual(2); // Header + at least 1 data row
@@ -225,7 +225,7 @@ describe('Progress Domain', () => {
       expect(header).toContain('last_activity_at');
     });
 
-    it('escapes CSV values with commas and quotes', () => {
+    it('escapes CSV values with commas and quotes', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT id, name FROM classes')) {
           return { get: vi.fn().mockReturnValue({ id: 'class-1', name: 'Test, Class' }) };
@@ -243,13 +243,13 @@ describe('Progress Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = exportToCSV('class-1');
+      const result = await exportToCSV('class-1');
 
       // Check that the student name with quotes is properly escaped
       expect(result).toContain('"Alice ""quotes"""');
     });
 
-    it('handles students with no assignments', () => {
+    it('handles students with no assignments', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT id, name FROM classes')) {
           return { get: vi.fn().mockReturnValue({ id: 'class-1', name: 'Test Class' }) };
@@ -267,7 +267,7 @@ describe('Progress Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = exportToCSV('class-1');
+      const result = await exportToCSV('class-1');
 
       const lines = result.split('\n');
       // Header + 1 student row with empty assignment fields

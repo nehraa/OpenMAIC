@@ -75,7 +75,7 @@ export default function ClassesPage() {
       setShowCreate(false);
       setCreateForm({ name: '', subject: '', batch: '' });
       setShowJoinCode(data.class.join_code);
-    } catch (err) {
+    } catch {
       setCreateError('Failed to create class');
     } finally {
       setCreateLoading(false);

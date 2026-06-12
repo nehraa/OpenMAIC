@@ -37,7 +37,9 @@ export default function TeacherDashboard() {
       try {
         const user = JSON.parse(userStr);
         setUserName(user.name || 'Teacher');
-      } catch {}
+      } catch {
+        // Ignore parse errors
+      }
     }
   }, []);
 

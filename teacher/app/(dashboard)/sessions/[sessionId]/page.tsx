@@ -124,8 +124,8 @@ export default function SessionDetailPage() {
 
       {/* Main content — two columns on wider screens */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Waiting room — shown for draft (new) and waiting (legacy) pre-live states */}
-        {(session.status === 'draft' || session.status === 'waiting') && (
+        {/* Waiting room — shown for the pre-live state */}
+        {session.status === 'waiting' && (
           <div className="lg:col-span-2">
             <WaitingRoom
               sessionId={session.id}

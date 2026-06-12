@@ -150,7 +150,7 @@ function calculateSummaryStats(records: TokenUsage[], startDate: string) {
 
   // Calculate period-over-period change
   const periodLengthMs = Date.now() - new Date(startDate).getTime();
-  const prevPeriodStart = new Date(new Date(startDate).getTime() - periodLengthMs).toISOString().split('T')[0];
+  void new Date(new Date(startDate).getTime() - periodLengthMs).toISOString().split('T')[0];
 
   const prevRecords = records.filter(r => r.timestamp < startDate);
   const prevTokens = prevRecords.reduce((sum, r) => {

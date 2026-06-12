@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // MiniMax provider configuration from environment
-const LLM_ENV_MAP: Record<string, string> = {
-  MINIMAX: 'minimax',
-};
+void ({} as Record<string, string>);
 
 function getEnvProviders(): Record<string, { models?: string[]; baseUrl?: string }> {
   const result: Record<string, { models?: string[]; baseUrl?: string }> = {};

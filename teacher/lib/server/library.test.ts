@@ -35,9 +35,10 @@ describe('Library Domain', () => {
   });
 
   describe('saveGeneratedContent', () => {
-    it('creates asset and initial version', () => {
+    it('creates asset and initial version', async () => {
       const mockAsset: ContentAsset = {
         id: 'asset-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'slide_deck',
         title: 'Test Slides',
@@ -60,7 +61,8 @@ describe('Library Domain', () => {
         return { get: vi.fn().mockReturnValue(mockAsset) };
       });
 
-      const result = saveGeneratedContent({
+      const result = await saveGeneratedContent({
+        tenantId: 'tenant-1',
         teacherId: 'teacher-456',
         type: 'slide_deck',
         title: 'Test Slides',
@@ -73,9 +75,10 @@ describe('Library Domain', () => {
       expect(insertCallCount).toBe(1);
     });
 
-    it('creates quiz asset with correct type', () => {
+    it('creates quiz asset with correct type', async () => {
       const mockAsset: ContentAsset = {
         id: 'asset-quiz-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'quiz',
         title: 'Math Quiz',
@@ -96,7 +99,8 @@ describe('Library Domain', () => {
         return { get: vi.fn().mockReturnValue(mockAsset) };
       });
 
-      const result = saveGeneratedContent({
+      const result = await saveGeneratedContent({
+        tenantId: 'tenant-1',
         teacherId: 'teacher-456',
         type: 'quiz',
         title: 'Math Quiz',
@@ -108,7 +112,7 @@ describe('Library Domain', () => {
   });
 
   describe('getLibraryAssets', () => {
-    it('returns assets for teacher', () => {
+    it('returns assets for teacher', async () => {
       const mockAssets = [
         { id: 'asset-1', title: 'Slide Deck 1', type: 'slide_deck', subject_tag: 'Math', owner_teacher_id: 'teacher-456', source_kind: 'ai_generated', source_ref: '', created_at: '', updated_at: '', version_count: 2, latest_version_id: 'v2' },
         { id: 'asset-2', title: 'Quiz 1', type: 'quiz', subject_tag: 'Science', owner_teacher_id: 'teacher-456', source_kind: 'ai_generated', source_ref: '', created_at: '', updated_at: '', version_count: 1, latest_version_id: 'v1' }
@@ -119,13 +123,13 @@ describe('Library Domain', () => {
         all: () => mockAssets
       } as Record<string, unknown>);
 
-      const result = getLibraryAssets('teacher-456');
+      const result = await getLibraryAssets('teacher-456');
 
       expect(result.assets).toHaveLength(2);
       expect(result.total).toBe(2);
     });
 
-    it('filters by type', () => {
+    it('filters by type', async () => {
       const mockAssets = [
         { id: 'asset-1', title: 'Slide Deck 1', type: 'slide_deck', subject_tag: '', owner_teacher_id: 'teacher-456', source_kind: '', source_ref: '', created_at: '', updated_at: '', version_count: 1, latest_version_id: 'v1' }
       ];
@@ -135,12 +139,12 @@ describe('Library Domain', () => {
         all: () => mockAssets
       } as Record<string, unknown>);
 
-      const result = getLibraryAssets('teacher-456', { type: 'slide_deck' });
+      const result = await getLibraryAssets('teacher-456', { type: 'slide_deck' });
 
       expect(result.assets[0].type).toBe('slide_deck');
     });
 
-    it('filters by subject', () => {
+    it('filters by subject', async () => {
       const mockAssets = [
         { id: 'asset-1', title: 'Math Slides', type: 'slide_deck', subject_tag: 'Math', owner_teacher_id: 'teacher-456', source_kind: '', source_ref: '', created_at: '', updated_at: '', version_count: 1, latest_version_id: 'v1' }
       ];
@@ -150,12 +154,12 @@ describe('Library Domain', () => {
         all: () => mockAssets
       } as Record<string, unknown>);
 
-      const result = getLibraryAssets('teacher-456', { subject: 'Math' });
+      const result = await getLibraryAssets('teacher-456', { subject: 'Math' });
 
       expect(result.assets[0].subject_tag).toBe('Math');
     });
 
-    it('filters by search term', () => {
+    it('filters by search term', async () => {
       const mockAssets = [
         { id: 'asset-1', title: 'Algebra Slides', type: 'slide_deck', subject_tag: 'Math', owner_teacher_id: 'teacher-456', source_kind: '', source_ref: '', created_at: '', updated_at: '', version_count: 1, latest_version_id: 'v1' }
       ];
@@ -165,16 +169,17 @@ describe('Library Domain', () => {
         all: () => mockAssets
       } as Record<string, unknown>);
 
-      const result = getLibraryAssets('teacher-456', { search: 'Algebra' });
+      const result = await getLibraryAssets('teacher-456', { search: 'Algebra' });
 
       expect(result.assets[0].title).toContain('Algebra');
     });
   });
 
   describe('getAssetWithVersions', () => {
-    it('returns asset with versions', () => {
+    it('returns asset with versions', async () => {
       const mockAsset: ContentAsset = {
         id: 'asset-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'slide_deck',
         title: 'Test Slides',
@@ -200,7 +205,7 @@ describe('Library Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = getAssetWithVersions('asset-123');
+      const result = await getAssetWithVersions('asset-123');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('asset-123');
@@ -208,21 +213,22 @@ describe('Library Domain', () => {
       expect(result?.currentVersion?.version_number).toBe(2);
     });
 
-    it('returns null when asset not found', () => {
+    it('returns null when asset not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = getAssetWithVersions('non-existent');
+      const result = await getAssetWithVersions('non-existent');
 
       expect(result).toBeNull();
     });
   });
 
   describe('reuseAsset', () => {
-    it('creates assignment from asset', () => {
+    it('creates assignment from asset', async () => {
       const mockAsset: ContentAsset = {
         id: 'asset-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'slide_deck',
         title: 'Test Slides',
@@ -270,7 +276,7 @@ describe('Library Domain', () => {
         return { get: vi.fn().mockReturnValue(mockAssignment) };
       });
 
-      const result = reuseAsset('teacher-456', {
+      const result = await reuseAsset('teacher-456', {
         assetId: 'asset-123',
         targetClassId: 'class-789'
       });
@@ -293,6 +299,7 @@ describe('Library Domain', () => {
     it('throws when no version exists', () => {
       const mockAsset: ContentAsset = {
         id: 'asset-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'slide_deck',
         title: 'Test Slides',
@@ -318,9 +325,10 @@ describe('Library Domain', () => {
   });
 
   describe('tagAsset', () => {
-    it('updates subject tag', () => {
+    it('updates subject tag', async () => {
       const mockAsset: ContentAsset = {
         id: 'asset-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'slide_deck',
         title: 'Test Slides',
@@ -341,27 +349,28 @@ describe('Library Domain', () => {
         return { get: vi.fn(), run: vi.fn() };
       });
 
-      const result = tagAsset('teacher-456', { assetId: 'asset-123', subjectTag: 'Science' });
+      const result = await tagAsset('teacher-456', { assetId: 'asset-123', subjectTag: 'Science' });
 
       expect(result).not.toBeNull();
       expect(result?.subject_tag).toBe('Science');
     });
 
-    it('returns null when asset not found', () => {
+    it('returns null when asset not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = tagAsset('teacher-456', { assetId: 'non-existent', subjectTag: 'Math' });
+      const result = await tagAsset('teacher-456', { assetId: 'non-existent', subjectTag: 'Math' });
 
       expect(result).toBeNull();
     });
   });
 
   describe('updateAssetTitle', () => {
-    it('updates asset title', () => {
+    it('updates asset title', async () => {
       const mockAsset: ContentAsset = {
         id: 'asset-123',
+        tenant_id: 'tenant-1',
         owner_teacher_id: 'teacher-456',
         type: 'slide_deck',
         title: 'Updated Title',
@@ -382,17 +391,17 @@ describe('Library Domain', () => {
         return { get: vi.fn().mockReturnValue(mockAsset) };
       });
 
-      const result = updateAssetTitle('teacher-456', 'asset-123', 'Updated Title');
+      const result = await updateAssetTitle('teacher-456', 'asset-123', 'Updated Title');
 
       expect(result).not.toBeNull();
     });
 
-    it('returns null when asset not found', () => {
+    it('returns null when asset not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = updateAssetTitle('teacher-456', 'non-existent', 'New Title');
+      const result = await updateAssetTitle('teacher-456', 'non-existent', 'New Title');
 
       expect(result).toBeNull();
     });

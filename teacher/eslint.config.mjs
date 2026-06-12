@@ -10,6 +10,7 @@ export default [
       'dist/**',
       '**/*.test.ts',
       '**/*.test.tsx',
+      '**/*.js',
       '__mocks__/**',
     ],
   },
