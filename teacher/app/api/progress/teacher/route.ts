@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const classId = searchParams.get('classId')
-  const dateRange = searchParams.get('dateRange') || 'month'
+  void searchParams.get('classId')
+  void (searchParams.get('dateRange') || 'month')
 
   const students = [
     { id: '1', name: 'Alice Johnson', className: 'Mathematics 10A', completionRate: 85, avgQuizScore: 88, lastActive: new Date().toISOString() },

@@ -41,7 +41,7 @@ describe('Scheduler Domain', () => {
   });
 
   describe('createScheduleJob', () => {
-    it('creates a pending scheduler job for an assignment', () => {
+    it('creates a pending scheduler job for an assignment', async () => {
       const mockJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -67,14 +67,14 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn().mockReturnValue(mockJob), run: vi.fn() };
       });
 
-      const result = createScheduleJob('assign-1', '2026-04-27T10:00:00.000Z');
+      const result = await createScheduleJob('assign-1', '2026-04-27T10:00:00.000Z');
 
       expect(result.status).toBe('pending');
       expect(result.target_id).toBe('assign-1');
       expect(result.target_type).toBe('assignment');
     });
 
-    it('updates existing pending job instead of creating new one (idempotency)', () => {
+    it('updates existing pending job instead of creating new one (idempotency)', async () => {
       const existingJob: SchedulerJob = {
         id: 'existing-job',
         target_type: 'assignment',
@@ -105,7 +105,7 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn().mockReturnValue(updatedJob), run: vi.fn() };
       });
 
-      const result = createScheduleJob('assign-1', '2026-04-28T10:00:00.000Z');
+      const result = await createScheduleJob('assign-1', '2026-04-28T10:00:00.000Z');
 
       expect(result.id).toBe('existing-job');
       expect(result.run_at).toBe('2026-04-28T10:00:00.000Z');
@@ -113,7 +113,7 @@ describe('Scheduler Domain', () => {
   });
 
   describe('cancelScheduleJob', () => {
-    it('sets status to failed when cancelling a job', () => {
+    it('sets status to failed when cancelling a job', async () => {
       const existingJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -145,14 +145,14 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn().mockReturnValue(cancelledJob), run: vi.fn() };
       });
 
-      const result = cancelScheduleJob('assign-1');
+      const result = await cancelScheduleJob('assign-1');
 
       expect(result).not.toBeNull();
       expect(result?.status).toBe('failed');
       expect(result?.last_error).toBe('Cancelled by user');
     });
 
-    it('returns null when no pending job found', () => {
+    it('returns null when no pending job found', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT') && sql.includes('scheduler_jobs') && sql.includes('target_type')) {
           return { get: vi.fn().mockReturnValue(undefined) };
@@ -160,14 +160,14 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn(), run: vi.fn() };
       });
 
-      const result = cancelScheduleJob('assign-1');
+      const result = await cancelScheduleJob('assign-1');
 
       expect(result).toBeNull();
     });
   });
 
   describe('runPendingJobs', () => {
-    it('processes due jobs and releases assignments', () => {
+    it('processes due jobs and releases assignments', async () => {
       const dueJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -202,7 +202,7 @@ describe('Scheduler Domain', () => {
 
       vi.mocked(releaseAssignment).mockReturnValue(mockReleasedAssignment as any);
 
-      const result = runPendingJobs();
+      const result = await runPendingJobs();
 
       expect(result.processed).toBe(1);
       expect(result.succeeded).toBe(1);
@@ -210,7 +210,7 @@ describe('Scheduler Domain', () => {
       expect(releaseAssignment).toHaveBeenCalledWith('assign-1');
     });
 
-    it('increments retry_count on failure and reschedules', () => {
+    it('increments retry_count on failure and reschedules', async () => {
       const dueJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -252,14 +252,14 @@ describe('Scheduler Domain', () => {
         throw new Error('Assignment not found');
       });
 
-      const result = runPendingJobs();
+      const result = await runPendingJobs();
 
       expect(result.processed).toBe(1);
       expect(result.succeeded).toBe(0);
       expect(result.failed).toBe(1);
     });
 
-    it('marks job as permanently failed after max retries', () => {
+    it('marks job as permanently failed after max retries', async () => {
       const dueJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -301,7 +301,7 @@ describe('Scheduler Domain', () => {
         throw new Error('Max retries reached');
       });
 
-      const result = runPendingJobs();
+      const result = await runPendingJobs();
 
       expect(result.processed).toBe(1);
       expect(result.failed).toBe(1);
@@ -309,7 +309,7 @@ describe('Scheduler Domain', () => {
   });
 
   describe('getSchedule', () => {
-    it('returns the pending job for an assignment', () => {
+    it('returns the pending job for an assignment', async () => {
       const pendingJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -329,14 +329,14 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn(), run: vi.fn() };
       });
 
-      const result = getSchedule('assign-1');
+      const result = await getSchedule('assign-1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('job-1');
       expect(result?.status).toBe('pending');
     });
 
-    it('returns null when no pending job exists', () => {
+    it('returns null when no pending job exists', async () => {
       mockDb.prepare.mockImplementation((sql: string) => {
         if (sql.includes('SELECT') && sql.includes('scheduler_jobs') && sql.includes('target_type')) {
           return { get: vi.fn().mockReturnValue(undefined) };
@@ -344,14 +344,14 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn(), run: vi.fn() };
       });
 
-      const result = getSchedule('assign-1');
+      const result = await getSchedule('assign-1');
 
       expect(result).toBeNull();
     });
   });
 
   describe('updateSchedule', () => {
-    it('updates existing job with new release time', () => {
+    it('updates existing job with new release time', async () => {
       const existingJob: SchedulerJob = {
         id: 'job-1',
         target_type: 'assignment',
@@ -382,7 +382,7 @@ describe('Scheduler Domain', () => {
         return { get: vi.fn().mockReturnValue(updatedJob), run: vi.fn() };
       });
 
-      const result = updateSchedule('assign-1', '2026-04-28T10:00:00.000Z');
+      const result = await updateSchedule('assign-1', '2026-04-28T10:00:00.000Z');
 
       expect(result.id).toBe('job-1');
       expect(result.run_at).toBe('2026-04-28T10:00:00.000Z');

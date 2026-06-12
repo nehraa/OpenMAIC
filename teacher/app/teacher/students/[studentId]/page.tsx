@@ -258,8 +258,8 @@ export default function StudentProgressPage({ params }: { params: Promise<{ stud
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value} events`, 'Activity']}
-                  labelFormatter={(label: string) => new Date(label).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  formatter={(value) => [`${value} events`, 'Activity']}
+                  labelFormatter={(label) => new Date(String(label)).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
                   contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e5e7eb',

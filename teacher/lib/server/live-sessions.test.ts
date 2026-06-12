@@ -37,7 +37,7 @@ describe('Live Sessions Domain', () => {
   });
 
   describe('createLiveSession', () => {
-    it('creates a record with live status', () => {
+    it('creates a record with live status', async () => {
       const mockSession = {
         id: 'live-session-1',
         assignment_id: 'assignment-123',
@@ -64,7 +64,7 @@ describe('Live Sessions Domain', () => {
         return { get: getMock };
       });
 
-      const result = createLiveSession('assignment-123', 'teacher-456');
+      const result = await createLiveSession('assignment-123', 'teacher-456');
 
       expect(result.status).toBe('live');
       expect(result.assignment_id).toBe('assignment-123');
@@ -76,7 +76,7 @@ describe('Live Sessions Domain', () => {
       expect(parsedState.totalSlides).toBe(0);
     });
 
-    it('creates session with initial state containing timestamp', () => {
+    it('creates session with initial state containing timestamp', async () => {
       const mockSession = {
         id: 'live-session-2',
         assignment_id: 'assignment-123',
@@ -103,7 +103,7 @@ describe('Live Sessions Domain', () => {
         return { get: getMock };
       });
 
-      const result = createLiveSession('assignment-123', 'teacher-456');
+      const result = await createLiveSession('assignment-123', 'teacher-456');
       const parsedState = JSON.parse(result.state_snapshot_json);
 
       expect(parsedState.timestamp).toBeDefined();
@@ -112,7 +112,7 @@ describe('Live Sessions Domain', () => {
   });
 
   describe('updateSessionState', () => {
-    it('persists state changes', () => {
+    it('persists state changes', async () => {
       const currentSession = {
         state_snapshot_json: JSON.stringify({
           currentSlideIndex: 0,
@@ -147,26 +147,26 @@ describe('Live Sessions Domain', () => {
         return { get: vi.fn().mockReturnValue(updatedSession) };
       });
 
-      const result = updateSessionState('live-session-1', { currentSlideIndex: 2 });
+      const result = await updateSessionState('live-session-1', { currentSlideIndex: 2 });
 
       expect(result).not.toBeNull();
       const parsedState = JSON.parse(result!.state_snapshot_json);
       expect(parsedState.currentSlideIndex).toBe(2);
     });
 
-    it('returns null when session not found', () => {
+    it('returns null when session not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = updateSessionState('non-existent', { currentSlideIndex: 2 });
+      const result = await updateSessionState('non-existent', { currentSlideIndex: 2 });
 
       expect(result).toBeNull();
     });
   });
 
   describe('endSession', () => {
-    it('marks session as ended', () => {
+    it('marks session as ended', async () => {
       const currentSession = { status: 'live' };
 
       const endedSession = {
@@ -194,7 +194,7 @@ describe('Live Sessions Domain', () => {
         return { get: vi.fn().mockReturnValue(endedSession) };
       });
 
-      const result = endSession('live-session-1');
+      const result = await endSession('live-session-1');
 
       expect(result).not.toBeNull();
       expect(result!.status).toBe('ended');
@@ -209,19 +209,19 @@ describe('Live Sessions Domain', () => {
         .toThrow("Cannot end session with status 'ended'");
     });
 
-    it('returns null when session not found', () => {
+    it('returns null when session not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = endSession('non-existent');
+      const result = await endSession('non-existent');
 
       expect(result).toBeNull();
     });
   });
 
   describe('getSessionById', () => {
-    it('returns session when found', () => {
+    it('returns session when found', async () => {
       const mockSession = {
         id: 'live-session-1',
         status: 'live'
@@ -231,13 +231,13 @@ describe('Live Sessions Domain', () => {
         get: vi.fn().mockReturnValue(mockSession)
       });
 
-      const result = getSessionById('live-session-1');
+      const result = await getSessionById('live-session-1');
 
       expect(result).not.toBeNull();
       expect(result!.id).toBe('live-session-1');
     });
 
-    it('returns null when not found', () => {
+    it('returns null when not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
@@ -258,12 +258,12 @@ describe('Live Sessions Domain', () => {
         .toThrow('Cannot join ended session');
     });
 
-    it('returns null when session not found', () => {
+    it('returns null when session not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = joinSession('non-existent', 'student-789');
+      const result = await joinSession('non-existent', 'student-789');
 
       expect(result).toBeNull();
     });
@@ -281,7 +281,7 @@ describe('Live Sessions Domain', () => {
   });
 
   describe('getSessionWithParticipants', () => {
-    it('returns session with participants list', () => {
+    it('returns session with participants list', async () => {
       const mockSession = {
         id: 'live-session-1',
         assignment_id: 'assignment-123',
@@ -309,7 +309,7 @@ describe('Live Sessions Domain', () => {
         return { get: vi.fn(), all: vi.fn() };
       });
 
-      const result = getSessionWithParticipants('live-session-1');
+      const result = await getSessionWithParticipants('live-session-1');
 
       expect(result).not.toBeNull();
       expect(result!.participantCount).toBe(2);
@@ -317,7 +317,7 @@ describe('Live Sessions Domain', () => {
       expect(result!.participants[0].user_name).toBe('Student One');
     });
 
-    it('returns null when session not found', () => {
+    it('returns null when session not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
@@ -329,7 +329,7 @@ describe('Live Sessions Domain', () => {
   });
 
   describe('markParticipantComplete', () => {
-    it('updates participant completion state', () => {
+    it('updates participant completion state', async () => {
       const mockParticipant = {
         id: 'participant-1',
         live_session_id: 'live-session-1',
@@ -363,13 +363,13 @@ describe('Live Sessions Domain', () => {
         return { get: vi.fn(), run: vi.fn() };
       });
 
-      const result = markParticipantComplete('live-session-1', 'student-789');
+      const result = await markParticipantComplete('live-session-1', 'student-789');
 
       expect(result).not.toBeNull();
       expect(result!.completion_state).toBe('completed');
     });
 
-    it('returns null when participant not found', () => {
+    it('returns null when participant not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
@@ -381,7 +381,7 @@ describe('Live Sessions Domain', () => {
   });
 
   describe('getParticipantCompletionState', () => {
-    it('returns completed true when participant is completed', () => {
+    it('returns completed true when participant is completed', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue({
           completion_state: 'completed',
@@ -389,13 +389,13 @@ describe('Live Sessions Domain', () => {
         })
       });
 
-      const result = getParticipantCompletionState('live-session-1', 'student-789');
+      const result = await getParticipantCompletionState('live-session-1', 'student-789');
 
       expect(result.completed).toBe(true);
       expect(result.completed_at).toBe('2026-04-26T10:30:00.000Z');
     });
 
-    it('returns completed false when participant is pending', () => {
+    it('returns completed false when participant is pending', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue({
           completion_state: 'pending',
@@ -403,18 +403,18 @@ describe('Live Sessions Domain', () => {
         })
       });
 
-      const result = getParticipantCompletionState('live-session-1', 'student-789');
+      const result = await getParticipantCompletionState('live-session-1', 'student-789');
 
       expect(result.completed).toBe(false);
       expect(result.completed_at).toBeNull();
     });
 
-    it('returns completed false when participant not found', () => {
+    it('returns completed false when participant not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = getParticipantCompletionState('live-session-1', 'non-existent');
+      const result = await getParticipantCompletionState('live-session-1', 'non-existent');
 
       expect(result.completed).toBe(false);
       expect(result.completed_at).toBeNull();

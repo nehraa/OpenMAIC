@@ -72,7 +72,7 @@ interface QuizState {
 export default function QuizPage() {
   const params = useParams()
   const router = useRouter()
-  const quizId = params.quizId as string
+  const _quizId = (params.quizId as string) || ''
 
   const [state, setState] = useState<QuizState>({
     currentQuestion: 0,

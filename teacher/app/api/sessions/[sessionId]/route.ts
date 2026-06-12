@@ -7,18 +7,19 @@ import { getDb } from '@/lib/db'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const auth = await requireAuth(request)
   if (auth instanceof NextResponse) return auth
 
   try {
     const db = getDb()
+    const { sessionId } = await params
 
     // Verify session exists
     const check = await db.query(
       'SELECT * FROM classroom_sessions WHERE id = $1',
-      [params.sessionId]
+      [sessionId]
     )
 
     if (check.rows.length === 0) {
@@ -38,7 +39,7 @@ export async function POST(
     // Transition to live
     await db.query(
       `UPDATE classroom_sessions SET status = 'live', started_at = NOW() WHERE id = $1`,
-      [params.sessionId]
+      [sessionId]
     )
 
     return NextResponse.json({ ok: true, status: 'live' })
@@ -53,17 +54,18 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const auth = await requireAuth(request)
   if (auth instanceof NextResponse) return auth
 
   try {
     const db = getDb()
+    const { sessionId } = await params
 
     const sessionRes = await db.query(
       'SELECT * FROM classroom_sessions WHERE id = $1',
-      [params.sessionId]
+      [sessionId]
     )
 
     if (sessionRes.rows.length === 0) {
@@ -78,7 +80,7 @@ export async function GET(
          FROM live_session_participants lsp
          JOIN users u ON lsp.user_id = u.id
          WHERE lsp.live_session_id = $1 AND lsp.live_session_id IS NOT NULL`,
-        [params.sessionId]
+        [sessionId]
       )
       participants = partRes.rows
     } catch {

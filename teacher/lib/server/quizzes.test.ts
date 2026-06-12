@@ -40,7 +40,7 @@ describe('Quizzes Domain', () => {
   });
 
   describe('createQuiz', () => {
-    it('creates a new quiz with draft version', () => {
+    it('creates a new quiz with draft version', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-123',
         owner_teacher_id: 'teacher-456',
@@ -65,7 +65,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn().mockReturnValue(mockQuiz) };
       });
 
-      const result = createQuiz({
+      const result = await createQuiz({
         title: 'Test Quiz',
         teacherId: 'teacher-456'
       });
@@ -75,7 +75,7 @@ describe('Quizzes Domain', () => {
       expect(insertCount).toBe(2); // Asset + version
     });
 
-    it('creates quiz with subject tag when provided', () => {
+    it('creates quiz with subject tag when provided', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-123',
         owner_teacher_id: 'teacher-456',
@@ -97,7 +97,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn().mockReturnValue(mockQuiz) };
       });
 
-      const result = createQuiz({
+      const result = await createQuiz({
         title: 'Math Quiz',
         teacherId: 'teacher-456',
         subjectTag: 'Mathematics'
@@ -108,17 +108,17 @@ describe('Quizzes Domain', () => {
   });
 
   describe('getQuizById', () => {
-    it('returns null when quiz not found', () => {
+    it('returns null when quiz not found', async () => {
       mockDb.prepare.mockReturnValue({
         get: vi.fn().mockReturnValue(undefined)
       });
 
-      const result = getQuizById('non-existent-id');
+      const result = await getQuizById('non-existent-id');
 
       expect(result).toBeNull();
     });
 
-    it('returns quiz when found', () => {
+    it('returns quiz when found', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-1',
         owner_teacher_id: 'teacher-456',
@@ -134,7 +134,7 @@ describe('Quizzes Domain', () => {
         get: vi.fn().mockReturnValue(mockQuiz)
       });
 
-      const result = getQuizById('quiz-1');
+      const result = await getQuizById('quiz-1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('quiz-1');
@@ -142,7 +142,7 @@ describe('Quizzes Domain', () => {
   });
 
   describe('updateQuiz', () => {
-    it('updates quiz title when draft', () => {
+    it('updates quiz title when draft', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-1',
         owner_teacher_id: 'teacher-456',
@@ -178,7 +178,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn().mockReturnValue(updatedQuiz) };
       });
 
-      const result = updateQuiz('quiz-1', { title: 'Updated Title' });
+      const result = await updateQuiz('quiz-1', { title: 'Updated Title' });
 
       expect(result).not.toBeNull();
       expect(mockDb.prepare).toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe('Quizzes Domain', () => {
   });
 
   describe('publishQuiz', () => {
-    it('publishes draft quiz with questions', () => {
+    it('publishes draft quiz with questions', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-1',
         owner_teacher_id: 'teacher-456',
@@ -257,7 +257,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn().mockReturnValue(publishedQuiz) };
       });
 
-      const result = publishQuiz('quiz-1');
+      const result = await publishQuiz('quiz-1');
 
       expect(result).not.toBeNull();
     });
@@ -299,7 +299,7 @@ describe('Quizzes Domain', () => {
   });
 
   describe('addQuestion', () => {
-    it('adds MCQ question to draft quiz', () => {
+    it('adds MCQ question to draft quiz', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-1',
         owner_teacher_id: 'teacher-456',
@@ -333,7 +333,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn() };
       });
 
-      const result = addQuestion('quiz-1', {
+      const result = await addQuestion('quiz-1', {
         type: 'mcq',
         question: 'What is 2+2?',
         options: ['3', '4', '5', '6'],
@@ -346,7 +346,7 @@ describe('Quizzes Domain', () => {
       expect((result as any).options).toHaveLength(4);
     });
 
-    it('adds short answer question to draft quiz', () => {
+    it('adds short answer question to draft quiz', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-1',
         owner_teacher_id: 'teacher-456',
@@ -380,7 +380,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn() };
       });
 
-      const result = addQuestion('quiz-1', {
+      const result = await addQuestion('quiz-1', {
         type: 'short_answer',
         question: 'Explain photosynthesis.',
         sampleAnswer: 'Photosynthesis is the process by which plants convert sunlight into energy.',
@@ -433,7 +433,7 @@ describe('Quizzes Domain', () => {
   });
 
   describe('deleteQuestion', () => {
-    it('deletes question from draft quiz', () => {
+    it('deletes question from draft quiz', async () => {
       const mockVersion: QuizVersion = {
         id: 'version-1',
         asset_id: 'quiz-1',
@@ -458,12 +458,12 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn() };
       });
 
-      const result = deleteQuestion('q1');
+      const result = await deleteQuestion('quiz-1', 'q1');
 
       expect(result).toBe(true);
     });
 
-    it('returns false when question not found', () => {
+    it('returns false when question not found', async () => {
       const mockVersion: QuizVersion = {
         id: 'version-1',
         asset_id: 'quiz-1',
@@ -484,14 +484,14 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn() };
       });
 
-      const result = deleteQuestion('non-existent-id');
+      const result = await deleteQuestion('quiz-1', 'non-existent-id');
 
       expect(result).toBe(false);
     });
   });
 
   describe('duplicateQuiz', () => {
-    it('duplicates quiz with new draft version', () => {
+    it('duplicates quiz with new draft version', async () => {
       const mockQuiz: Quiz = {
         id: 'quiz-1',
         owner_teacher_id: 'teacher-456',
@@ -528,7 +528,7 @@ describe('Quizzes Domain', () => {
         return { get: vi.fn().mockReturnValue(mockQuiz) };
       });
 
-      const result = duplicateQuiz('quiz-1');
+      const result = await duplicateQuiz('quiz-1');
 
       expect(result).not.toBeNull();
     });
@@ -544,7 +544,7 @@ describe('Quizzes Domain', () => {
         .toThrow('Slide asset version not found');
     });
 
-    it('generates questions from slide content', () => {
+    it('generates questions from slide content', async () => {
       const mockSlideVersion = {
         payload_json: JSON.stringify({
           slides: [
@@ -558,7 +558,7 @@ describe('Quizzes Domain', () => {
         get: vi.fn().mockReturnValue(mockSlideVersion)
       });
 
-      const questions = generateQuizFromSlides('slide-version-123');
+      const questions = await generateQuizFromSlides('slide-version-123');
 
       expect(questions.length).toBeGreaterThan(0);
       expect(questions[0]).toHaveProperty('type');
@@ -568,7 +568,7 @@ describe('Quizzes Domain', () => {
   });
 
   describe('getQuizzesForTeacher', () => {
-    it('returns all quizzes for teacher', () => {
+    it('returns all quizzes for teacher', async () => {
       const mockRows = [
         {
           id: 'quiz-1',
@@ -608,13 +608,13 @@ describe('Quizzes Domain', () => {
         all: vi.fn().mockReturnValue(mockRows)
       });
 
-      const result = getQuizzesForTeacher('teacher-456');
+      const result = await getQuizzesForTeacher('teacher-456');
 
       expect(result).toHaveLength(2);
       expect(result[0]).toHaveProperty('questionCount');
     });
 
-    it('filters by status when provided', () => {
+    it('filters by status when provided', async () => {
       const mockRows = [
         {
           id: 'quiz-1',
@@ -638,7 +638,7 @@ describe('Quizzes Domain', () => {
         all: vi.fn().mockReturnValue(mockRows)
       });
 
-      const result = getQuizzesForTeacher('teacher-456', { status: 'draft' });
+      const result = await getQuizzesForTeacher('teacher-456', { status: 'draft' });
 
       expect(result).toHaveLength(1);
       expect(result[0].questionCount).toBe(1);

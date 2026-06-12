@@ -7,7 +7,7 @@ export interface RadioGroupProps extends React.ComponentPropsWithoutRef<"div"> {
 }
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ className, value, onValueChange, ...props }, ref) => {
+  ({ className, value: _value, onValueChange: _onValueChange, ...props }, ref) => {
     return (
       <div
         ref={ref}
