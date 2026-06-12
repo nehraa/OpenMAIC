@@ -12,7 +12,7 @@
     "start": "next start",
     "lint": "eslint",
     "tsc": "tsc --noEmit",
-    "test": "node --experimental-strip-types --no-warnings --test 'lib/**/*.test.ts'",
+    "test": "node --experimental-strip-types --no-warnings --import ./test/register.mjs --test 'lib/**/*.test.ts'",
     "check": "prettier . --check",
     "format": "prettier . --write"
   },
