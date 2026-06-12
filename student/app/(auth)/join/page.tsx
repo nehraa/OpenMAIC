@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 export default function JoinClassPage() {
   const router = useRouter()
   const [inviteCode, setInviteCode] = useState('')
+  const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
 
@@ -20,10 +22,10 @@ export default function JoinClassPage() {
     setIsJoining(true)
 
     try {
-      const response = await fetch('/api/student/classes/join', {
+      const response = await fetch('/api/auth/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteCode }),
+        body: JSON.stringify({ joinCode: inviteCode, phone, name }),
       })
 
       if (!response.ok) {
@@ -31,13 +33,20 @@ export default function JoinClassPage() {
         throw new Error(data.error || 'Failed to join class')
       }
 
-      const { classId } = await response.json()
+      const data = await response.json()
+      const classId = data?.class?.id
       router.push(`/dashboard?joined=${classId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid invite code')
       setIsJoining(false)
     }
   }
+
+  const canSubmit =
+    inviteCode.length >= 6 &&
+    phone.trim().length > 0 &&
+    name.trim().length > 0 &&
+    !isJoining
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -63,6 +72,32 @@ export default function JoinClassPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="name">Your Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Doe"
+                autoComplete="name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone (E.164, e.g. +15551234567)</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+15551234567"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+              />
+            </div>
+
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -73,7 +108,7 @@ export default function JoinClassPage() {
               type="submit"
               className="w-full"
               size="lg"
-              disabled={inviteCode.length < 6 || isJoining}
+              disabled={!canSubmit}
             >
               {isJoining ? 'Joining...' : 'Join Class'}
             </Button>
