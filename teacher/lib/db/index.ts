@@ -18,6 +18,24 @@ export function getDb() {
 }
 
 /**
+ * Acquire a connection, set the tenant context, run the callback, release.
+ * Use this for any tenant-scoped query path. Replaces ad-hoc
+ * getDb().query() calls when RLS is enforced.
+ */
+export async function withTenant<T>(
+  tenantId: string,
+  fn: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+    return await fn(client);
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Set the current tenant context for RLS policies.
  * Must be called before any tenant-scoped queries.
  */

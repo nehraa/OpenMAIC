@@ -441,7 +441,7 @@ export async function getQuizzesForTeacher(teacherId: string, filters?: ListQuiz
 
   const query = `
     SELECT ca.*, cav.id as v_id, cav.version_number, cav.payload_json, cav.status as v_status, cav.created_at as v_created_at,
-           JSON_EXTRACT(cav.payload_json, '$.questions') as questions_json
+           (cav.payload_json::jsonb -> 'questions') as questions_json
     FROM content_assets ca
     JOIN content_asset_versions cav ON ca.id = cav.asset_id
     WHERE ${conditions.join(' AND ')}
