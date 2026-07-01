@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '@/lib/auth/require-auth';
-import { getDb } from '@/lib/db';
+import { withTenant } from '@/lib/db';
 import {
   toClientQuestion,
   type QuizQuestionServer,
@@ -67,10 +67,10 @@ function parseQuestions(payloadJson: string | null): QuizQuestionServer[] {
 // GET /api/student/quizzes/[assignmentId]
 // Returns the quiz definition (without correct answers) plus the current attempt state.
 export const GET = async (
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ assignmentId: string }> }
 ) => {
-  const authResult = await requireAuth(_request);
+  const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
 
   const roleCheck = requireRole(authResult.user, ['student_classroom', 'student_b2c']);
@@ -81,57 +81,58 @@ export const GET = async (
     return NextResponse.json({ error: 'Assignment ID is required' }, { status: 400 });
   }
 
-  const db = getDb();
   const studentId = authResult.user.id;
 
-  // Verify assignment is assigned to this student and grab the quiz asset version.
-  const assignmentResult = await db.query<AssignmentRow>(
-    `SELECT a.id, a.title, a.quiz_asset_version_id
-     FROM assignments a
-     JOIN assignment_recipients ar ON a.id = ar.assignment_id
-     WHERE a.id = $1
-       AND ar.student_id = $2
-       AND a.status IN ('released', 'closed')`,
-    [assignmentId, studentId]
-  );
-  const assignment = assignmentResult.rows[0];
-  if (!assignment) {
+  const result = await withTenant(authResult.tenantId, async (client) => {
+    const assignmentResult = await client.query<AssignmentRow>(
+      `SELECT a.id, a.title, a.quiz_asset_version_id
+       FROM assignments a
+       JOIN assignment_recipients ar ON a.id = ar.assignment_id
+       WHERE a.id = $1
+         AND ar.student_id = $2
+         AND a.status IN ('released', 'closed')`,
+      [assignmentId, studentId]
+    );
+    const assignment = assignmentResult.rows[0];
+    if (!assignment) return { kind: 'not_found' as const };
+    if (!assignment.quiz_asset_version_id) return { kind: 'no_quiz' as const };
+
+    const versionResult = await client.query<QuizVersionRow>(
+      `SELECT payload_json FROM content_asset_versions WHERE id = $1`,
+      [assignment.quiz_asset_version_id]
+    );
+    const version = versionResult.rows[0];
+    const questions = parseQuestions(version?.payload_json ?? null);
+    if (questions.length === 0) return { kind: 'no_quiz' as const };
+
+    const attemptResult = await client.query<AttemptRow>(
+      `SELECT completion_state, submitted_at, score_percent
+       FROM assignment_attempts
+       WHERE assignment_id = $1 AND student_id = $2`,
+      [assignmentId, studentId]
+    );
+    return { kind: 'ok' as const, assignment, attempt: attemptResult.rows[0] ?? null, questions };
+  });
+
+  if (result.kind === 'not_found') {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
-
-  if (!assignment.quiz_asset_version_id) {
+  if (result.kind === 'no_quiz') {
     return NextResponse.json({ error: 'No quiz for this assignment' }, { status: 404 });
   }
-
-  const versionResult = await db.query<QuizVersionRow>(
-    `SELECT payload_json FROM content_asset_versions WHERE id = $1`,
-    [assignment.quiz_asset_version_id]
-  );
-  const version = versionResult.rows[0];
-  const questions = parseQuestions(version?.payload_json ?? null);
-
-  if (questions.length === 0) {
-    return NextResponse.json({ error: 'No quiz for this assignment' }, { status: 404 });
-  }
-
-  const attemptResult = await db.query<AttemptRow>(
-    `SELECT completion_state, submitted_at, score_percent
-     FROM assignment_attempts
-     WHERE assignment_id = $1 AND student_id = $2`,
-    [assignmentId, studentId]
-  );
-  const attempt = attemptResult.rows[0];
 
   const response = {
-    assignmentId: assignment.id,
-    title: assignment.title,
-    questions: questions.map(toClientQuestion),
+    assignmentId: result.assignment.id,
+    title: result.assignment.title,
+    questions: result.questions.map(toClientQuestion),
     timeLimit: TIME_LIMIT_SECONDS,
-    attempt: attempt
+    attempt: result.attempt
       ? {
-          submitted: attempt.completion_state === 'submitted' || attempt.completion_state === 'graded',
-          score: attempt.score_percent,
-          submittedAt: attempt.submitted_at,
+          submitted:
+            result.attempt.completion_state === 'submitted' ||
+            result.attempt.completion_state === 'graded',
+          score: result.attempt.score_percent,
+          submittedAt: result.attempt.submitted_at,
         }
       : null,
   };
