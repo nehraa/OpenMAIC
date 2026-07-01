@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
   endpoint TEXT NOT NULL,
   request_count INTEGER NOT NULL DEFAULT 1,
   window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  reset_at TIMESTAMPTZ NOT NULL
+  reset_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_auth_rl_ip_endpoint ON auth_rate_limits(ip_address, endpoint);

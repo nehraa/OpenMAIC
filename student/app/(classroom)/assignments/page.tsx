@@ -56,7 +56,7 @@ export default function StudentAssignmentsPage() {
 
     async function load() {
       try {
-        const res = await fetch('/api/student/assignments', {
+        const res = await fetch('/student/api/student/assignments', {
           credentials: 'include',
         })
         if (!res.ok) {

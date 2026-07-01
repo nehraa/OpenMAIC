@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/middleware';
+import { withTenant } from '@/lib/db';
 import { saveGeneratedContent } from '@/lib/server/library';
 import { recordUsage } from '@/lib/server/usage';
 import type { AuthContext } from '@/middleware/auth';
@@ -73,10 +74,20 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     jobId = startResult.jobId;
     pollUrl = startResult.pollUrl;
   } catch (err) {
-    // Network error, 5xx, timeout — fall back to a stub asset.
+    // Core returned a 4xx — surface the failure to the caller. Stub fallback is
+    // only appropriate for unreachable core (network error, 5xx, timeout) since
+    // a 4xx means core explicitly rejected the request and a stub would hide it.
+    if (err instanceof CoreClientError) {
+      return NextResponse.json(
+        { error: err.message || 'Core rejected the generation request' },
+        { status: 502 }
+      );
+    }
     const message = err instanceof Error ? err.message : 'Unknown core error';
+    // Log metadata only — teacher prompts can contain student names or class
+    // context that should not end up in server logs.
     console.warn(
-      `[generate-classroom] Core unreachable, creating stub asset. tenant=${ctx.tenantId} prompt="${prompt.substring(0, 40)}" reason=${message}`
+      `[generate-classroom] Core unreachable, creating stub asset. tenant=${ctx.tenantId} reason=${message}`
     );
     classroomId = `stub-${randomBytes(8).toString('hex')}`;
     warning =
@@ -101,6 +112,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown polling error';
+      // Log jobId only — don't include prompt content.
       console.warn(
         `[generate-classroom] Core polling failed, creating stub asset. jobId=${jobId} reason=${message}`
       );
@@ -113,47 +125,72 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   // 3) Persist the asset with `openmaicClassroomId` in the version payload.
   //    The student app reads `payload.openmaicClassroomId` and redirects to
   //    `${OPENMAIC_PUBLIC_URL}/classroom/${id}`.
-  const asset = await saveGeneratedContent({
-    tenantId: ctx.tenantId,
-    teacherId: ctx.user.id,
-    type: 'slide_deck',
-    title,
-    payload: {
-      openmaicClassroomId: classroomId,
-      prompt,
-      generatedAt: new Date().toISOString(),
-    },
-    sourceKind: 'ai_generated',
-    subjectTag: 'OpenMAIC Classroom',
-    sourceRef: isFallback ? 'stub-fallback' : `openmaic:${classroomId}`,
-  });
+  return withTenant(ctx.tenantId, async (client) => {
+    const asset = await saveGeneratedContent(client, {
+      tenantId: ctx.tenantId,
+      teacherId: ctx.user.id,
+      type: 'slide_deck',
+      title,
+      payload: {
+        openmaicClassroomId: classroomId,
+        prompt,
+        generatedAt: new Date().toISOString(),
+      },
+      sourceKind: 'ai_generated',
+      subjectTag: 'OpenMAIC Classroom',
+      sourceRef: isFallback ? 'stub-fallback' : `openmaic:${classroomId}`,
+    });
 
-  // 4) Record usage for analytics. Token counts are unknown (core is a black
-  //    box for now), so we record 0/0 with cost 0. The DB columns are
-  //    non-null with defaults, so this is safe.
-  await recordUsage({
-    tenantId: ctx.tenantId,
-    actorUserId: ctx.user.id,
-    actorRole: ctx.user.role,
-    provider: 'core',
-    model: 'multi-agent',
-    endpoint: '/api/teacher/library/generate-classroom',
-    inputTokens: 0,
-    outputTokens: 0,
-    costUsd: 0,
-    classId: classId,
-    feature: 'openmaic_classroom_generation',
-  });
+    // 4) Record usage for analytics. Token counts are unknown (core is a black
+    //    box for now), so we record 0/0 with cost 0. The DB columns are
+    //    non-null with defaults, so this is safe. Analytics is best-effort:
+    //    if the insert fails after the asset is already persisted, log and
+    //    continue rather than fail the whole response.
+    try {
+      await recordUsage(client, {
+        tenantId: ctx.tenantId,
+        actorUserId: ctx.user.id,
+        actorRole: ctx.user.role,
+        provider: 'core',
+        model: 'multi-agent',
+        endpoint: '/api/teacher/library/generate-classroom',
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        classId: classId,
+        feature: 'openmaic_classroom_generation',
+      });
+    } catch (analyticsErr) {
+      console.warn(
+        `[generate-classroom] Failed to record usage analytics (asset=${asset.id})`,
+        analyticsErr instanceof Error ? analyticsErr.message : analyticsErr
+      );
+    }
 
-  if (isFallback) {
-    return NextResponse.json({ asset, fallback: true, warning }, { status: 201 });
-  }
-  return NextResponse.json({ asset }, { status: 201 });
+    if (isFallback) {
+      return NextResponse.json({ asset, fallback: true, warning }, { status: 201 });
+    }
+    return NextResponse.json({ asset }, { status: 201 });
+  });
 });
 
 interface StartResult {
   jobId: string;
   pollUrl: string;
+}
+
+/**
+ * Thrown by startCoreJob when core rejected the request (HTTP 4xx). The route
+ * surfaces this to the teacher as a 502 — a 4xx means core explicitly said
+ * "no" and we should not silently fall back to a stub asset.
+ */
+class CoreClientError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'CoreClientError';
+  }
 }
 
 async function startCoreJob(
@@ -172,6 +209,12 @@ async function startCoreJob(
     });
 
     if (!res.ok) {
+      // 4xx means core rejected the request (bad payload, auth, etc.) — the
+      // caller asked for a real classroom so we surface the rejection. 5xx is
+      // treated as transient and falls back to stub at the call site.
+      if (res.status >= 400 && res.status < 500) {
+        throw new CoreClientError(res.status, `Core rejected request: HTTP ${res.status}`);
+      }
       throw new Error(`Core start failed: HTTP ${res.status}`);
     }
 
@@ -197,52 +240,57 @@ type PollResult = { kind: 'done'; classroomId: string } | { kind: 'failed'; erro
 
 async function pollCoreJob(pollUrl: string, jobId: string): Promise<PollResult> {
   const deadline = Date.now() + POLL_TIMEOUT_MS;
-  const abortController = new AbortController();
-  // Hard ceiling on each individual GET (slightly longer than the poll
-  // interval so a single slow request doesn't kill the loop).
-  const perFetchTimeout = setTimeout(() => abortController.abort(), POLL_INTERVAL_MS * 3);
 
-  try {
-    while (Date.now() < deadline) {
-      const res = await fetch(pollUrl, { signal: abortController.signal });
-      if (!res.ok) {
-        throw new Error(`Core poll failed: HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as {
-        done?: boolean;
-        status?: string;
-        result?: { classroomId?: string };
-        error?: string;
-        data?: {
-          done?: boolean;
-          status?: string;
-          result?: { classroomId?: string };
-          error?: string;
-        };
-      };
-      const body = (json.data ?? json) as {
-        done?: boolean;
-        status?: string;
-        result?: { classroomId?: string };
-        error?: string;
-      };
-
-      if (body.done) {
-        if (body.status === 'failed') {
-          return { kind: 'failed', error: body.error || 'Job failed' };
-        }
-        const classroomId = body.result?.classroomId;
-        if (!classroomId) {
-          return { kind: 'failed', error: 'Job completed without a classroomId' };
-        }
-        return { kind: 'done', classroomId };
-      }
-
-      // Not done yet — wait before the next attempt.
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  while (Date.now() < deadline) {
+    // Fresh AbortController + per-fetch timeout per iteration; otherwise the
+    // shared controller is permanently aborted after the first window and
+    // every later fetch fails (intended total window is ~120s).
+    const abortController = new AbortController();
+    const perFetchTimeout = setTimeout(
+      () => abortController.abort(),
+      POLL_INTERVAL_MS * 3
+    );
+    let res: Response;
+    try {
+      res = await fetch(pollUrl, { signal: abortController.signal });
+    } finally {
+      clearTimeout(perFetchTimeout);
     }
-    throw new Error(`Polling timed out after ${POLL_TIMEOUT_MS}ms (jobId=${jobId})`);
-  } finally {
-    clearTimeout(perFetchTimeout);
+    if (!res.ok) {
+      throw new Error(`Core poll failed: HTTP ${res.status}`);
+    }
+    const json = (await res.json()) as {
+      done?: boolean;
+      status?: string;
+      result?: { classroomId?: string };
+      error?: string;
+      data?: {
+        done?: boolean;
+        status?: string;
+        result?: { classroomId?: string };
+        error?: string;
+      };
+    };
+    const body = (json.data ?? json) as {
+      done?: boolean;
+      status?: string;
+      result?: { classroomId?: string };
+      error?: string;
+    };
+
+    if (body.done) {
+      if (body.status === 'failed') {
+        return { kind: 'failed', error: body.error || 'Job failed' };
+      }
+      const classroomId = body.result?.classroomId;
+      if (!classroomId) {
+        return { kind: 'failed', error: 'Job completed without a classroomId' };
+      }
+      return { kind: 'done', classroomId };
+    }
+
+    // Not done yet — wait before the next attempt.
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
+  throw new Error(`Polling timed out after ${POLL_TIMEOUT_MS}ms (jobId=${jobId})`);
 }

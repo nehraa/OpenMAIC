@@ -470,10 +470,11 @@ export async function getQuizzesForTeacher(teacherId: string, filters?: ListQuiz
   }>;
 
   return rows.map(row => {
-    let questions: QuizQuestion[] = [];
-    try {
-      questions = JSON.parse(row.questions_json || '[]');
-    } catch { /* empty */ }
+    // `cav.payload_json::jsonb -> 'questions'` returns jsonb which `pg`
+    // already decodes to a JS value — no JSON.parse needed.
+    const questions: QuizQuestion[] = Array.isArray(row.questions_json)
+      ? (row.questions_json as QuizQuestion[])
+      : [];
 
     return {
       id: row.id,
