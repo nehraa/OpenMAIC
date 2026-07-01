@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
-import type { AuthContext } from '@/middleware/auth';
+import { withRole } from '@/lib/server/middleware';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { canViewAssignment } from '@student/lib/server/access-control';
 import { recordSlideView, getAssignmentStatus } from '@student/lib/server/attempts';
 import { z } from 'zod';

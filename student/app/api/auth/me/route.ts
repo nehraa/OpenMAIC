@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth/jwt';
-import { getDb } from '@/lib/db';
+import { withTenant } from '@/lib/db';
 
 interface TokenPayload {
   userId: string;
@@ -16,6 +16,17 @@ interface StudentRow {
   status: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ClassRow {
+  id: string;
+  name: string;
+  subject: string;
+  batch: string;
+  join_code: string;
+  peer_visibility_enabled: boolean;
+  enrolled_at: string;
+  source: string;
 }
 
 /**
@@ -43,46 +54,53 @@ export const GET = async (request: NextRequest) => {
       );
     }
 
-    const db = getDb();
+    // Both the user lookup and the class lookup are tenant-scoped via RLS:
+    // tenantId in the JWT is the teacher's id, which matches `users.tenant_id`
+    // and the tenant boundary enforced by class_memberships.
+    const data = await withTenant(payload.tenantId, async (client) => {
+      const studentResult = await client.query<StudentRow>(
+        `SELECT id, role, phone_e164, name, status, created_at, updated_at
+         FROM users
+         WHERE id = $1 AND role = 'student_classroom'`,
+        [payload.userId]
+      );
+      const student = studentResult.rows[0];
 
-    // Get full student info from database
-    const studentResult = await db.query(
-      `SELECT id, role, phone_e164, name, status, created_at, updated_at
-       FROM users
-       WHERE id = $1 AND role = 'student_classroom'`,
-      [payload.userId]
-    );
-    const student = studentResult.rows[0] as StudentRow | undefined;
+      if (!student) {
+        return { student: null, classes: [] as ClassRow[] };
+      }
 
-    if (!student) {
+      const classesResult = await client.query<ClassRow>(
+        `SELECT c.id, c.name, c.subject, c.batch, c.join_code, c.peer_visibility_enabled,
+                cm.enrolled_at, cm.source
+         FROM classes c
+         JOIN class_memberships cm ON c.id = cm.class_id
+         WHERE cm.student_id = $1
+         ORDER BY cm.enrolled_at DESC`,
+        [payload.userId]
+      );
+
+      return { student, classes: classesResult.rows };
+    });
+
+    if (!data.student) {
       return NextResponse.json(
         { error: 'Student not found' },
         { status: 404 }
       );
     }
 
-    // Get classes the student is enrolled in
-    const classesResult = await db.query(
-      `SELECT c.id, c.name, c.subject, c.batch, c.join_code, c.peer_visibility_enabled,
-              cm.enrolled_at, cm.source
-       FROM classes c
-       JOIN class_memberships cm ON c.id = cm.class_id
-       WHERE cm.student_id = $1
-       ORDER BY cm.enrolled_at DESC`,
-      [payload.userId]
-    );
-
     return NextResponse.json({
       user: {
-        id: student.id,
-        name: student.name,
-        phone_e164: student.phone_e164,
-        role: student.role,
-        status: student.status,
-        created_at: student.created_at,
+        id: data.student.id,
+        name: data.student.name,
+        phone_e164: data.student.phone_e164,
+        role: data.student.role,
+        status: data.student.status,
+        created_at: data.student.created_at,
       },
       tenantId: payload.tenantId, // This is the teacherId
-      classes: classesResult.rows,
+      classes: data.classes,
     });
   } catch (error) {
     console.error('Auth me error:', error);

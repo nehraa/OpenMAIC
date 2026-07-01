@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth/jwt';
-import { setCurrentTenant } from '@/lib/db';
 import type { User } from '../../shared/types/roles';
 
 export interface AuthContext {
@@ -8,7 +7,14 @@ export interface AuthContext {
   tenantId: string;
 }
 
-// Middleware that validates JWT from cookie and adds user to request context
+interface JwtPayload {
+  userId: string;
+  role: string;
+  tenantId?: string;
+}
+
+// Middleware that validates JWT from cookie and adds user to request context.
+// Routes are responsible for scoping DB queries via `withTenant(tenantId, fn)`.
 export function withAuth(
   handler: (req: NextRequest, ctx: AuthContext) => Promise<NextResponse>
 ) {
@@ -19,20 +25,14 @@ export function withAuth(
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    let payload;
+    let payload: JwtPayload;
     try {
-      payload = await verifyAccessToken(accessToken);
+      payload = (await verifyAccessToken(accessToken)) as JwtPayload;
     } catch {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
-    const tenantId = (payload as any).tenantId;
-
-    // Set tenant context for RLS
-    if (tenantId) {
-      await setCurrentTenant(tenantId);
-    }
-
+    const tenantId = payload.tenantId ?? '';
     const user: User = {
       id: payload.userId,
       role: payload.role as User['role'],
@@ -43,6 +43,6 @@ export function withAuth(
       updated_at: '',
     };
 
-    return handler(req, { user, tenantId: tenantId || '' });
+    return handler(req, { user, tenantId });
   };
 }

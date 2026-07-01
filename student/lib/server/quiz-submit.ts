@@ -4,7 +4,7 @@
  * without spinning up a Next.js request.
  */
 
-import { getDb } from '../db/index.ts';
+import type { PoolClient } from 'pg';
 import { gradeQuiz, type QuizQuestionServer, type GradedQuiz } from './quiz-grading.ts';
 
 export type SubmitError =
@@ -58,19 +58,19 @@ function parseQuestions(payloadJson: string | null): QuizQuestionServer[] {
 
 /**
  * Grade the student's answers against the assignment's quiz payload and
- * upsert the assignment_attempts row.
+ * upsert the assignment_attempts row on the supplied client. The caller is
+ * responsible for opening the tenant-scoped transaction (via `withTenant`).
  *
  * The attempts table has UNIQUE(assignment_id, student_id), so we UPSERT
  * rather than INSERT — a resubmit replaces the prior score, with started_at
  * preserved on the original row (or NOW() if it's the first attempt).
  */
 export async function submitQuizAttempt(
+  client: PoolClient,
   args: SubmitArgs
 ): Promise<SubmitSuccess | SubmitError> {
-  const db = getDb();
-
   // Verify the assignment is released/closed and assigned to this student.
-  const assignmentResult = await db.query<AssignmentRow>(
+  const assignmentResult = await client.query<AssignmentRow>(
     `SELECT a.id, a.quiz_asset_version_id
      FROM assignments a
      JOIN assignment_recipients ar ON a.id = ar.assignment_id
@@ -83,7 +83,7 @@ export async function submitQuizAttempt(
   if (!assignment) return { kind: 'assignment_not_found' };
   if (!assignment.quiz_asset_version_id) return { kind: 'no_quiz' };
 
-  const versionResult = await db.query<QuizVersionRow>(
+  const versionResult = await client.query<QuizVersionRow>(
     `SELECT payload_json FROM content_asset_versions WHERE id = $1`,
     [assignment.quiz_asset_version_id]
   );
@@ -93,7 +93,7 @@ export async function submitQuizAttempt(
   const graded = gradeQuiz(questions, args.answers);
 
   try {
-    const upsertResult = await db.query<UpsertedAttemptRow>(
+    const upsertResult = await client.query<UpsertedAttemptRow>(
       `INSERT INTO assignment_attempts (
          tenant_id,
          assignment_id,

@@ -145,7 +145,14 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   // Build payload (mock quiz data for quizzes, real slides stored in OpenMAIC)
-  let payload: any;
+  let payload:
+    | {
+        openmaicClassroomId: string;
+        openmaicUrl: string;
+        prompt: string;
+        generatedAt: string;
+      }
+    | { questions: Array<Record<string, unknown>> };
   if (type === 'slide_deck') {
     // For slides, payload stores reference to OpenMAIC classroom
     // The actual content is in OpenMAIC

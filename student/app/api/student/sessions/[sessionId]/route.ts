@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth/require-auth';
-import { getDb } from '@/lib/db';
+import { withTenant } from '@/lib/db';
+
+interface ClassroomSessionRow {
+  id: string;
+  class_id: string;
+  teacher_id: string;
+  status: string;
+  class_name: string;
+  class_join_code: string;
+  teacher_name: string;
+}
+
+interface ParticipationRow {
+  id: string;
+  session_id: string;
+  user_id: string;
+  completion_state: string;
+  joined_at: string;
+  left_at: string | null;
+  [key: string]: unknown;
+}
 
 // GET /api/student/sessions/[sessionId]
 export const GET = async (
@@ -19,43 +39,47 @@ export const GET = async (
     return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
   }
 
-  const db = getDb();
+  const studentId = authResult.user.id;
 
-  const sessionResult = await db.query(`
-    SELECT cs.*,
-           c.name as class_name,
-           c.join_code as class_join_code,
-           u.name as teacher_name
-    FROM classroom_sessions cs
-    JOIN classes c ON cs.class_id = c.id
-    JOIN users u ON cs.teacher_id = u.id
-    WHERE cs.id = $1
-  `, [sessionId]);
+  const result = await withTenant(authResult.tenantId, async (client) => {
+    const sessionResult = await client.query<ClassroomSessionRow>(
+      `SELECT cs.id, cs.class_id, cs.teacher_id, cs.status,
+              c.name as class_name,
+              c.join_code as class_join_code,
+              u.name as teacher_name
+       FROM classroom_sessions cs
+       JOIN classes c ON cs.class_id = c.id
+       JOIN users u ON cs.teacher_id = u.id
+       WHERE cs.id = $1`,
+      [sessionId]
+    );
+    const session = sessionResult.rows[0];
+    if (!session) {
+      return { notFound: true as const };
+    }
 
-  const session = sessionResult.rows[0] as any;
+    const membershipResult = await client.query(
+      `SELECT * FROM class_memberships WHERE class_id = $1 AND student_id = $2`,
+      [session.class_id, studentId]
+    );
+    if (membershipResult.rows.length === 0) {
+      return { notEnrolled: true as const };
+    }
 
-  if (!session) {
+    const participationResult = await client.query<ParticipationRow>(
+      `SELECT * FROM session_participants WHERE session_id = $1 AND user_id = $2`,
+      [sessionId, studentId]
+    );
+
+    return { session, participation: participationResult.rows[0] ?? null };
+  });
+
+  if ('notFound' in result && result.notFound) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
-
-  // Verify student is enrolled in the class
-  const membershipResult = await db.query(`
-    SELECT * FROM class_memberships
-    WHERE class_id = $1 AND student_id = $2
-  `, [session.class_id, authResult.user.id]);
-
-  const membership = membershipResult.rows[0];
-
-  if (!membership) {
+  if ('notEnrolled' in result && result.notEnrolled) {
     return NextResponse.json({ error: 'You are not enrolled in this class' }, { status: 403 });
   }
 
-  const participationResult = await db.query(`
-    SELECT * FROM session_participants
-    WHERE session_id = $1 AND user_id = $2
-  `, [sessionId, authResult.user.id]);
-
-  const participation = participationResult.rows[0] || null;
-
-  return NextResponse.json({ session, participation });
+  return NextResponse.json(result);
 };

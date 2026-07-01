@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { getAssetWithVersions, tagAsset, updateAssetTitle } from '@/lib/server/library';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { z } from 'zod';
 
 const UpdateAssetSchema = z.object({

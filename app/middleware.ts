@@ -7,19 +7,48 @@ const SECURITY_HEADERS = {
   'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
 } as const;
 
+// URL-level auth lock + security headers for the main app service.
+//
+// Public routes: `/`, `/login/*`. Everything else requires `access_token`.
+// API routes enforce auth themselves and must stay reachable from the
+// login page (which fetches `/api/auth/request-otp` before a cookie
+// exists), so the URL lock skips them. Security headers still apply.
+const PUBLIC_PATHS = new Set<string>(['/', '/login', '/login/teacher', '/login/student', '/login/individual']);
+
 export async function middleware(request: NextRequest) {
-  // Only apply security headers to API routes
-  if (!request.nextUrl.pathname.startsWith('/api/')) {
+  const { pathname } = request.nextUrl;
+
+  // Skip Next.js internals and static assets.
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico' ||
+    pathname.startsWith('/public/')
+  ) {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next();
+  // API routes handle their own auth — leave them reachable.
+  if (pathname.startsWith('/api/')) {
+    const response = NextResponse.next();
+    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
+  }
 
-  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
+  if (PUBLIC_PATHS.has(pathname)) {
+    return NextResponse.next();
+  }
 
-  return response;
+  const accessToken = request.cookies.get('access_token')?.value;
+  if (accessToken) {
+    return NextResponse.next();
+  }
+
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = '/login';
+  loginUrl.search = `?next=${encodeURIComponent(pathname)}`;
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

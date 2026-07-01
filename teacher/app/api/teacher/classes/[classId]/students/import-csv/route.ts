@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { getDb } from '@/lib/db';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 
 // POST /api/teacher/classes/[classId]/students/import-csv - Import students from CSV
 export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
@@ -76,8 +76,9 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
       }
 
       results.success++;
-    } catch (err: any) {
-      results.errors.push({ row: i + 1, phone, error: err.message || 'Unknown error' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      results.errors.push({ row: i + 1, phone, error: message });
     }
   }
 

@@ -26,11 +26,17 @@ export async function POST(request: NextRequest) {
     const db = getDb();
 
     // Find or create user
-    const existingUser = await db.query(
-      'SELECT * FROM users WHERE phone_e164 = $1',
+    interface UserRow {
+      id: string;
+      role: string;
+      phone_e164: string;
+      name: string;
+    }
+    const existingUser = await db.query<UserRow>(
+      'SELECT id, role, phone_e164, name FROM users WHERE phone_e164 = $1',
       [phone]
     );
-    let user = existingUser.rows[0] as any;
+    let user: UserRow | undefined = existingUser.rows[0];
 
     if (!user) {
       // Create new user - OTP users get a tenant created for them
@@ -46,11 +52,11 @@ export async function POST(request: NextRequest) {
       );
 
       // Re-query to get the created user
-      const newUser = await db.query(
-        'SELECT * FROM users WHERE phone_e164 = $1',
+      const newUser = await db.query<UserRow>(
+        'SELECT id, role, phone_e164, name FROM users WHERE phone_e164 = $1',
         [phone]
       );
-      user = newUser.rows[0] as any;
+      user = newUser.rows[0];
     }
 
     // Create session

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth/require-auth';
-import { getDb } from '@/lib/db';
+import { withTenant } from '@/lib/db';
 import { QUESTION_RATE_LIMIT_MINUTES } from '@shared/constants';
 
 // POST /api/student/sessions/[sessionId]/questions
@@ -26,44 +26,45 @@ export const POST = async (
     return NextResponse.json({ error: 'Question must be 1000 characters or less' }, { status: 400 });
   }
 
-  const db = getDb();
+  const result = await withTenant(authResult.tenantId, async (client) => {
+    const sessionResult = await client.query<{ id: string; status: string }>(
+      `SELECT id, status FROM classroom_sessions WHERE id = $1`,
+      [sessionId]
+    );
+    const sessionData = sessionResult.rows[0];
+    if (!sessionData) return { kind: 'not_found' as const };
+    if (sessionData.status !== 'live') return { kind: 'not_live' as const };
 
-  const sessionResult = await db.query(`
-    SELECT id, status FROM classroom_sessions WHERE id = $1
-  `, [sessionId]);
+    const oneMinuteAgo = new Date(Date.now() - QUESTION_RATE_LIMIT_MINUTES * 60 * 1000).toISOString();
+    const recentQuestionResult = await client.query(
+      `SELECT id FROM question_messages
+       WHERE session_id = $1 AND student_id = $2 AND created_at > $3
+       ORDER BY created_at DESC LIMIT 1`,
+      [sessionId, authResult.user.id, oneMinuteAgo]
+    );
+    if (recentQuestionResult.rows.length > 0) {
+      return { kind: 'rate_limited' as const };
+    }
 
-  const sessionData = sessionResult.rows[0] as { id: string; status: string } | undefined;
+    const createdQuestionResult = await client.query(
+      `INSERT INTO question_messages (session_id, student_id, question_text)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [sessionId, authResult.user.id, trimmedQuestion]
+    );
+    return { kind: 'ok' as const, question: createdQuestionResult.rows[0] };
+  });
 
-  if (!sessionData) {
+  if (result.kind === 'not_found') {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
-
-  if (sessionData.status !== 'live') {
+  if (result.kind === 'not_live') {
     return NextResponse.json({ error: 'Questions can only be asked during live sessions' }, { status: 400 });
   }
-
-  // Rate limit check
-  const oneMinuteAgo = new Date(Date.now() - QUESTION_RATE_LIMIT_MINUTES * 60 * 1000).toISOString();
-
-  const recentQuestionResult = await db.query(`
-    SELECT id FROM question_messages
-    WHERE session_id = $1 AND student_id = $2 AND created_at > $3
-    ORDER BY created_at DESC LIMIT 1
-  `, [sessionId, authResult.user.id, oneMinuteAgo]);
-
-  if (recentQuestionResult.rows.length > 0) {
+  if (result.kind === 'rate_limited') {
     return NextResponse.json({ error: 'Please wait before asking another question' }, { status: 429 });
   }
-
-  const createdQuestionResult = await db.query(`
-    INSERT INTO question_messages (session_id, student_id, question_text)
-    VALUES ($1, $2, $3)
-    RETURNING *
-  `, [sessionId, authResult.user.id, trimmedQuestion]);
-
-  const createdQuestion = createdQuestionResult.rows[0];
-
-  return NextResponse.json({ question: createdQuestion }, { status: 201 });
+  return NextResponse.json({ question: result.question }, { status: 201 });
 };
 
 // GET /api/student/sessions/[sessionId]/questions
@@ -79,27 +80,28 @@ export const GET = async (
 
   const { sessionId } = await context.params;
 
-  const db = getDb();
+  const result = await withTenant(authResult.tenantId, async (client) => {
+    const sessionResult = await client.query<{ class_id: string }>(
+      `SELECT cs.class_id FROM classroom_sessions cs
+       JOIN class_memberships cm ON cm.class_id = cs.class_id
+       WHERE cs.id = $1 AND cm.student_id = $2`,
+      [sessionId, authResult.user.id]
+    );
+    const session = sessionResult.rows[0];
+    if (!session) return { kind: 'not_found' as const };
 
-  // Verify enrollment in the session's class before returning questions
-  const sessionResult = await db.query(`
-    SELECT cs.class_id FROM classroom_sessions cs
-    JOIN class_memberships cm ON cm.class_id = cs.class_id
-    WHERE cs.id = $1 AND cm.student_id = $2
-  `, [sessionId, authResult.user.id]);
+    const questionsResult = await client.query(
+      `SELECT id, session_id, student_id, question_text, answer_text, created_at, answered_at
+       FROM question_messages
+       WHERE session_id = $1
+       ORDER BY created_at ASC`,
+      [sessionId]
+    );
+    return { kind: 'ok' as const, questions: questionsResult.rows };
+  });
 
-  const session = sessionResult.rows[0] as { class_id: string } | undefined;
-
-  if (!session) {
+  if (result.kind === 'not_found') {
     return NextResponse.json({ error: 'Session not found or not enrolled' }, { status: 404 });
   }
-
-  const questionsResult = await db.query(`
-    SELECT id, session_id, student_id, question_text, answer_text, created_at, answered_at
-    FROM question_messages
-    WHERE session_id = $1
-    ORDER BY created_at ASC
-  `, [sessionId]);
-
-  return NextResponse.json({ questions: questionsResult.rows });
+  return NextResponse.json({ questions: result.questions });
 };

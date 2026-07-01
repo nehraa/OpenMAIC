@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { getDb } from '@/lib/db';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 
 // GET /api/teacher/classes/[classId]/students - List enrolled students
 export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {

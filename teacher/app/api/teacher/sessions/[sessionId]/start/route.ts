@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { getDb } from '@/lib/db';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 
 // POST /api/teacher/sessions/[sessionId]/start - Change status to 'live', sets started_at
 export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx: { params: Promise<Record<string, string>> }) => {
@@ -9,7 +9,15 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   const db = getDb();
 
   // Get the session and verify ownership
-  const sessionResult = await db.query(`
+  interface SessionRow {
+    id: string;
+    class_id: string;
+    status: string;
+    started_at: string | null;
+    class_teacher_id: string;
+    [key: string]: unknown;
+  }
+  const sessionResult = await db.query<SessionRow>(`
     SELECT cs.*, c.teacher_id as class_teacher_id
     FROM classroom_sessions cs
     JOIN classes c ON cs.class_id = c.id
@@ -20,7 +28,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  const session = sessionResult.rows[0] as any;
+  const session = sessionResult.rows[0];
 
   if (session.class_teacher_id !== ctx.user.id) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });

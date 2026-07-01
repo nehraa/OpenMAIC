@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
-import type { AuthContext } from '@/middleware/auth';
+import { withRole } from '@/lib/server/middleware';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { endSession, getSessionById } from '@/lib/server/live-sessions';
 
 // POST /api/teacher/live-sessions/[sessionId]/end - End a live session

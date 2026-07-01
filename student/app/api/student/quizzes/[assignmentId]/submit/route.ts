@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '@/lib/auth/require-auth';
+import { withTenant } from '@/lib/db';
 import { submitQuizAttempt } from '@/lib/server/quiz-submit';
 
 const SubmitBodySchema = z.object({
@@ -44,12 +45,14 @@ export const POST = async (
     );
   }
 
-  const result = await submitQuizAttempt({
-    assignmentId,
-    studentId: authResult.user.id,
-    answers: parsed.data.answers,
-    startedAt: parsed.data.startedAt,
-  });
+  const result = await withTenant(authResult.tenantId, async (client) =>
+    submitQuizAttempt(client, {
+      assignmentId,
+      studentId: authResult.user.id,
+      answers: parsed.data.answers,
+      startedAt: parsed.data.startedAt,
+    })
+  );
 
   if (result.kind === 'assignment_not_found') {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });

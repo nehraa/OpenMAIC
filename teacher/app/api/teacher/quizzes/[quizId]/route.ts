@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
-import type { AuthContext } from '@/middleware/auth';
+import { withRole } from '@/lib/server/middleware';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { getQuizById, getQuizWithVersion, updateQuiz } from '@/lib/server/quizzes';
 import { getDb } from '@/lib/db';
 import { z } from 'zod';
