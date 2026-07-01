@@ -124,53 +124,49 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   // 3) Persist the asset with `openmaicClassroomId` in the version payload.
   //    The student app reads `payload.openmaicClassroomId` and redirects to
   //    `${OPENMAIC_PUBLIC_URL}/classroom/${id}`.
-  return withTenant(ctx.tenantId, async (client) => {
-    const asset = await saveGeneratedContent(client, {
-      tenantId: ctx.tenantId,
-      teacherId: ctx.user.id,
-      type: 'slide_deck',
-      title,
-      payload: {
-        openmaicClassroomId: classroomId,
-        prompt,
-        generatedAt: new Date().toISOString(),
-      },
-      sourceKind: 'ai_generated',
-      subjectTag: 'OpenMAIC Classroom',
-      sourceRef: isFallback ? 'stub-fallback' : `openmaic:${classroomId}`,
-    });
-
-    // 4) Record usage for analytics. Token counts are unknown (core is a black
-    //    box for now), so we record 0/0 with cost 0. The DB columns are
-    //    non-null with defaults, so this is safe. Analytics is best-effort:
-    //    if the insert fails after the asset is already persisted, log and
-    //    continue rather than fail the whole response.
-    try {
-      await recordUsage(client, {
-        tenantId: ctx.tenantId,
-        actorUserId: ctx.user.id,
-        actorRole: ctx.user.role,
-        provider: 'core',
-        model: 'multi-agent',
-        endpoint: '/api/teacher/library/generate-classroom',
-        inputTokens: 0,
-        outputTokens: 0,
-        costUsd: 0,
-        classId: classId,
-        feature: 'openmaic_classroom_generation',
-      });
-    } catch (analyticsErr) {
-      console.warn(
-        `[generate-classroom] Failed to record usage analytics (asset=${asset.id})`,
-        analyticsErr instanceof Error ? analyticsErr.message : analyticsErr
-      );
-    }
-
-    if (isFallback) {
-      return NextResponse.json({ asset, fallback: true, warning }, { status: 201 });
-    }
-    return NextResponse.json({ asset }, { status: 201 });
+  const asset = await saveGeneratedContent({
+    tenantId: ctx.tenantId,
+    teacherId: ctx.user.id,
+    type: 'slide_deck',
+    title,
+    payload: {
+      openmaicClassroomId: classroomId,
+      prompt,
+      generatedAt: new Date().toISOString(),
+    },
+    sourceKind: 'ai_generated',
+    subjectTag: 'OpenMAIC Classroom',
+    sourceRef: isFallback ? 'stub-fallback' : `openmaic:${classroomId}`,
   });
+
+  // 4) Record usage for analytics. Token counts are unknown (core is a black
+  //    box for now), so we record 0/0 with cost 0. Analytics is best-effort:
+  //    log on failure rather than fail the response.
+  try {
+    await recordUsage({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.user.id,
+      actorRole: ctx.user.role,
+      provider: 'core',
+      model: 'multi-agent',
+      endpoint: '/api/teacher/library/generate-classroom',
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+      classId: classId,
+      feature: 'openmaic_classroom_generation',
+    });
+  } catch (analyticsErr) {
+    console.warn(
+      `[generate-classroom] Failed to record usage analytics (asset=${asset.id})`,
+      analyticsErr instanceof Error ? analyticsErr.message : analyticsErr
+    );
+  }
+
+  if (isFallback) {
+    return NextResponse.json({ asset, fallback: true, warning }, { status: 201 });
+  }
+  return NextResponse.json({ asset }, { status: 201 });
 });
 
 interface StartResult {
