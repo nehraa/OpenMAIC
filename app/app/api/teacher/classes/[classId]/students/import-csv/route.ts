@@ -102,8 +102,9 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
       }
 
       results.success++;
-    } catch (err: any) {
-      results.errors.push({ row: i + 1, phone, error: err.message || 'Unknown error' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      results.errors.push({ row: i + 1, phone, error: message });
     }
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { getDb } from '@/lib/db';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 
 // GET /api/teacher/usage/weekly?week=2026-W17
 // Returns: { week, total_tokens, total_cost, daily_breakdown: [...], by_model: {...} }
@@ -104,7 +104,15 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     ORDER BY date(timestamp) ASC
   `, params);
 
-  const daily_breakdown = dailyResult.rows.map((row: any) => ({
+  interface DailyBreakdownRow {
+    day: string;
+    input_tokens: number;
+    output_tokens: number;
+    cached_tokens: number;
+    reasoning_tokens: number;
+    cost: number;
+  }
+  const daily_breakdown = dailyResult.rows.map((row: DailyBreakdownRow) => ({
     date: row.day,
     total_tokens:
       row.input_tokens +
