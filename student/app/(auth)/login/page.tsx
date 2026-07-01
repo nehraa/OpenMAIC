@@ -23,10 +23,10 @@ export default function StudentLoginPage() {
 
     async function checkSession() {
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' })
+        const res = await fetch('/student/api/auth/me', { credentials: 'include' })
         if (cancelled) return
         if (res.ok) {
-          router.replace('/assignments')
+          router.replace('/')
         }
       } catch {
         // Ignore — unauthenticated is the expected state on this page.
@@ -47,7 +47,7 @@ export default function StudentLoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/student/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -64,7 +64,7 @@ export default function StudentLoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      router.push('/assignments')
+      router.push('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {

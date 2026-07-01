@@ -37,7 +37,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
 
   async function fetchClassData() {
     try {
-      const res = await fetch(`/api/teacher/classes/${classId}`, {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}`, {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -51,7 +51,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
 
   async function fetchStudents() {
     try {
-      const res = await fetch(`/api/teacher/classes/${classId}/students`, {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}/students`, {
         headers: { 'x-session-id': getSessionId() }
       });
       if (res.ok) {
@@ -69,7 +69,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
     e.preventDefault();
 
     try {
-      const res = await fetch(`/api/teacher/classes/${classId}/students`, {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}/students`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
     e.preventDefault();
 
     try {
-      const res = await fetch(`/api/teacher/classes/${classId}/students/import-csv`, {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}/students/import-csv`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
     if (!confirm('Remove this student from the class?')) return;
 
     try {
-      const res = await fetch(`/api/teacher/classes/${classId}/students/${studentId}`, {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}/students/${studentId}`, {
         method: 'DELETE',
         headers: { 'x-session-id': getSessionId() }
       });

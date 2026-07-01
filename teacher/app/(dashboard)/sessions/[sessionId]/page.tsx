@@ -35,7 +35,7 @@ export default function SessionDetailPage() {
   useEffect(() => {
     async function fetchSession() {
       try {
-        const res = await fetch(`/api/sessions/${sessionId}`)
+        const res = await fetch(`/teacher/api/sessions/${sessionId}`)
         if (res.ok) {
           const data = await res.json()
           setSession(data.session)
@@ -52,7 +52,7 @@ export default function SessionDetailPage() {
 
   const handleStart = async () => {
     try {
-      const res = await fetch(`/api/sessions/${sessionId}/start`, {
+      const res = await fetch(`/teacher/api/sessions/${sessionId}/start`, {
         method: 'POST',
         credentials: 'include',
       })
