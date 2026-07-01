@@ -1,17 +1,18 @@
 // In-memory test stub for student/lib/db.
 //
-// The production module's exports are { getDb, setCurrentTenant, getDbWithTenant, default }.
-// We mirror that surface, but getDb() returns a queryable whose behaviour
-// is driven by a global the test file controls. This lets the test cases
-// stub responses per-case without ever touching the real `pg` module
-// (which can't be loaded by node --experimental-strip-types at the moment).
+// The production module's exports are { getDb, setCurrentTenant, getDbWithTenant, withTenant, default }.
+// We mirror that surface, but getDb() and withTenant() return a queryable
+// whose behaviour is driven by a global the test file controls. This lets the
+// test cases stub responses per-case without ever touching the real `pg`
+// module (which can't be loaded by node --experimental-strip-types at the
+// moment).
 
 const g = globalThis;
 if (!g.__OPENMAIC_STUDENT_DB_MOCK__) {
   g.__OPENMAIC_STUDENT_DB_MOCK__ = { handler: null };
 }
 
-export function getDb() {
+function makeQueryable() {
   const mock = g.__OPENMAIC_STUDENT_DB_MOCK__;
   return {
     async query(sql, params) {
@@ -25,12 +26,20 @@ export function getDb() {
   };
 }
 
+export function getDb() {
+  return makeQueryable();
+}
+
 export async function setCurrentTenant(_tenantId) {
   // No-op for tests.
 }
 
 export async function getDbWithTenant(_tenantId) {
-  return getDb();
+  return makeQueryable();
 }
 
-export default { getDb, setCurrentTenant, getDbWithTenant };
+export async function withTenant(_tenantId, fn) {
+  return fn(makeQueryable());
+}
+
+export default { getDb, setCurrentTenant, getDbWithTenant, withTenant };

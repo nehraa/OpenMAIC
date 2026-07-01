@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth/require-auth';
-import { getDb } from '@/lib/db';
+import { withTenant } from '@/lib/db';
 import { QUESTION_RATE_LIMIT_MINUTES } from '@shared/constants';
 
 // POST /api/student/live-sessions/[sessionId]/questions
@@ -26,59 +26,57 @@ export const POST = async (
     return NextResponse.json({ error: 'Question must be 1000 characters or less' }, { status: 400 });
   }
 
-  const db = getDb();
+  const studentId = authResult.user.id;
 
-  // Get the live session and verify it exists and is live
-  const sessionResult = await db.query(`
-    SELECT id, status, assignment_id FROM live_sessions WHERE id = $1
-  `, [sessionId]);
+  const result = await withTenant(authResult.tenantId, async (client) => {
+    const sessionResult = await client.query<{ id: string; status: string; assignment_id: string }>(
+      `SELECT id, status, assignment_id FROM live_sessions WHERE id = $1`,
+      [sessionId]
+    );
+    const session = sessionResult.rows[0];
+    if (!session) return { kind: 'not_found' as const };
+    if (session.status !== 'live') return { kind: 'not_live' as const };
 
-  const session = sessionResult.rows[0] as { id: string; status: string; assignment_id: string } | undefined;
+    const enrollmentResult = await client.query(
+      `SELECT ar.id FROM assignment_recipients ar
+       JOIN assignments a ON ar.assignment_id = a.id
+       JOIN class_memberships cm ON cm.class_id = a.class_id
+       WHERE ar.assignment_id = $1 AND ar.student_id = $2 AND cm.student_id = $3`,
+      [session.assignment_id, studentId, studentId]
+    );
+    if (enrollmentResult.rows.length === 0) return { kind: 'not_enrolled' as const };
 
-  if (!session) {
+    const oneMinuteAgo = new Date(Date.now() - QUESTION_RATE_LIMIT_MINUTES * 60 * 1000).toISOString();
+    const recentQuestionResult = await client.query(
+      `SELECT id FROM live_session_questions
+       WHERE session_id = $1 AND student_id = $2 AND created_at > $3
+       ORDER BY created_at DESC LIMIT 1`,
+      [sessionId, studentId, oneMinuteAgo]
+    );
+    if (recentQuestionResult.rows.length > 0) return { kind: 'rate_limited' as const };
+
+    const insertResult = await client.query(
+      `INSERT INTO live_session_questions (session_id, student_id, question_text)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [sessionId, studentId, trimmedQuestion]
+    );
+    return { kind: 'ok' as const, question: insertResult.rows[0] };
+  });
+
+  if (result.kind === 'not_found') {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
-
-  if (session.status !== 'live') {
+  if (result.kind === 'not_live') {
     return NextResponse.json({ error: 'Questions can only be asked during live sessions' }, { status: 400 });
   }
-
-  // Verify student is enrolled in the assignment's class and is a recipient of the assignment
-  const enrollmentResult = await db.query(`
-    SELECT ar.id FROM assignment_recipients ar
-    JOIN assignments a ON ar.assignment_id = a.id
-    JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ar.assignment_id = $1 AND ar.student_id = $2 AND cm.student_id = $3
-  `, [session.assignment_id, authResult.user.id, authResult.user.id]);
-
-  const enrollment = enrollmentResult.rows[0];
-
-  if (!enrollment) {
+  if (result.kind === 'not_enrolled') {
     return NextResponse.json({ error: 'Not enrolled in this class' }, { status: 403 });
   }
-
-  // Rate limit check
-  const oneMinuteAgo = new Date(Date.now() - QUESTION_RATE_LIMIT_MINUTES * 60 * 1000).toISOString();
-
-  const recentQuestionResult = await db.query(`
-    SELECT id FROM live_session_questions
-    WHERE session_id = $1 AND student_id = $2 AND created_at > $3
-    ORDER BY created_at DESC LIMIT 1
-  `, [sessionId, authResult.user.id, oneMinuteAgo]);
-
-  if (recentQuestionResult.rows.length > 0) {
+  if (result.kind === 'rate_limited') {
     return NextResponse.json({ error: 'Please wait before asking another question' }, { status: 429 });
   }
-
-  const insertResult = await db.query(`
-    INSERT INTO live_session_questions (session_id, student_id, question_text)
-    VALUES ($1, $2, $3)
-    RETURNING *
-  `, [sessionId, authResult.user.id, trimmedQuestion]);
-
-  const createdQuestion = insertResult.rows[0];
-
-  return NextResponse.json({ question: createdQuestion }, { status: 201 });
+  return NextResponse.json({ question: result.question }, { status: 201 });
 };
 
 // GET /api/student/live-sessions/[sessionId]/questions
@@ -93,31 +91,35 @@ export const GET = async (
   if (roleCheck) return roleCheck;
 
   const { sessionId } = await context.params;
+  const studentId = authResult.user.id;
 
-  const db = getDb();
+  const result = await withTenant(authResult.tenantId, async (client) => {
+    const sessionResult = await client.query<{ assignment_id: string }>(
+      `SELECT ls.assignment_id FROM live_sessions ls
+       JOIN assignment_recipients ar ON ar.assignment_id = ls.assignment_id
+       JOIN assignments a ON a.id = ls.assignment_id
+       JOIN class_memberships cm ON cm.class_id = a.class_id
+       WHERE ls.id = $1 AND ar.student_id = $2 AND cm.student_id = $3`,
+      [sessionId, studentId, studentId]
+    );
+    const session = sessionResult.rows[0];
+    if (!session) return { kind: 'not_found' as const };
 
-  // Get the live session and verify enrollment
-  const sessionResult = await db.query(`
-    SELECT ls.assignment_id FROM live_sessions ls
-    JOIN assignment_recipients ar ON ar.assignment_id = ls.assignment_id
-    JOIN assignments a ON a.id = ls.assignment_id
-    JOIN class_memberships cm ON cm.class_id = a.class_id
-    WHERE ls.id = $1 AND ar.student_id = $2 AND cm.student_id = $3
-  `, [sessionId, authResult.user.id, authResult.user.id]);
+    const questionsResult = await client.query(
+      `SELECT ls_q.id, ls_q.session_id, ls_q.student_id, ls_q.question_text,
+              ls_q.answer_text, ls_q.created_at, ls_q.answered_at,
+              u.name as student_name
+       FROM live_session_questions ls_q
+       JOIN users u ON ls_q.student_id = u.id
+       WHERE ls_q.session_id = $1
+       ORDER BY ls_q.created_at ASC`,
+      [sessionId]
+    );
+    return { kind: 'ok' as const, questions: questionsResult.rows };
+  });
 
-  const session = sessionResult.rows[0] as { assignment_id: string } | undefined;
-
-  if (!session) {
+  if (result.kind === 'not_found') {
     return NextResponse.json({ error: 'Session not found or not enrolled' }, { status: 404 });
   }
-
-  const questionsResult = await db.query(`
-    SELECT ls_q.id, ls_q.session_id, ls_q.student_id, ls_q.question_text, ls_q.answer_text, ls_q.created_at, ls_q.answered_at, u.name as student_name
-    FROM live_session_questions ls_q
-    JOIN users u ON ls_q.student_id = u.id
-    WHERE ls_q.session_id = $1
-    ORDER BY ls_q.created_at ASC
-  `, [sessionId]);
-
-  return NextResponse.json({ questions: questionsResult.rows });
+  return NextResponse.json({ questions: result.questions });
 };

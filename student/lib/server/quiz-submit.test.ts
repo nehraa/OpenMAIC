@@ -50,6 +50,12 @@ const handler: QueryHandler = async (sql, params) => {
 // which reads the handler we just installed.
 const { submitQuizAttempt } = await import('./quiz-submit.ts');
 
+// Minimal client stub: submitQuizAttempt only calls .query(); delegate to
+// the per-test handler installed above so query() returns the stubbed rows.
+const client = {
+  query: (sql: string, params: unknown[]) => handler(sql, params),
+} as unknown as Parameters<typeof submitQuizAttempt>[0];
+
 const QUIZ_PAYLOAD = JSON.stringify({
   questions: [
     {
@@ -85,7 +91,7 @@ test('submitQuizAttempt: happy path grades and upserts', async () => {
   state.assignmentRow = { id: 'a1', quiz_asset_version_id: 'v1' };
   state.versionPayload = QUIZ_PAYLOAD;
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '4', q2: true },
@@ -112,7 +118,7 @@ test('submitQuizAttempt: missing assignment returns assignment_not_found', async
   state.assignmentRow = null;
   state.versionPayload = QUIZ_PAYLOAD;
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'missing',
     studentId: 's1',
     answers: { q1: '4', q2: true },
@@ -127,7 +133,7 @@ test('submitQuizAttempt: missing quiz_asset_version_id returns no_quiz', async (
   state.assignmentRow = { id: 'a1', quiz_asset_version_id: null };
   state.versionPayload = QUIZ_PAYLOAD;
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '4', q2: true },
@@ -142,7 +148,7 @@ test('submitQuizAttempt: empty questions array returns no_quiz', async () => {
   state.assignmentRow = { id: 'a1', quiz_asset_version_id: 'v1' };
   state.versionPayload = JSON.stringify({ questions: [] });
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '4' },
@@ -156,7 +162,7 @@ test('submitQuizAttempt: empty answers grades to 0% but still upserts', async ()
   state.assignmentRow = { id: 'a1', quiz_asset_version_id: 'v1' };
   state.versionPayload = QUIZ_PAYLOAD;
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: {},
@@ -175,7 +181,7 @@ test('submitQuizAttempt: resubmit replaces prior score (UPSERT path)', async () 
   state.assignmentRow = { id: 'a1', quiz_asset_version_id: 'v1' };
   state.versionPayload = QUIZ_PAYLOAD;
 
-  const first = await submitQuizAttempt({
+  const first = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '4', q2: true },
@@ -186,7 +192,7 @@ test('submitQuizAttempt: resubmit replaces prior score (UPSERT path)', async () 
   assert.equal(state.upsertCalls, 1);
 
   // Student re-submits with a worse answer; same (assignment, student) pair.
-  const second = await submitQuizAttempt({
+  const second = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '3', q2: false },
@@ -204,7 +210,7 @@ test('submitQuizAttempt: startedAt is passed through to the UPSERT', async () =>
   state.assignmentRow = { id: 'a1', quiz_asset_version_id: 'v1' };
   state.versionPayload = QUIZ_PAYLOAD;
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '4', q2: true },
@@ -221,7 +227,7 @@ test('submitQuizAttempt: db error during UPSERT surfaces a typed error', async (
   state.versionPayload = QUIZ_PAYLOAD;
   state.upsertError = new Error('connection lost');
 
-  const result = await submitQuizAttempt({
+  const result = await submitQuizAttempt(client, {
     assignmentId: 'a1',
     studentId: 's1',
     answers: { q1: '4', q2: true },
