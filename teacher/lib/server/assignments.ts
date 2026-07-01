@@ -57,9 +57,20 @@ export async function updateAssignment(id: string, data: UpdateAssignmentData): 
     return null;
   }
 
-  // Can only update draft or scheduled assignments
-  if (current.status !== 'draft' && current.status !== 'scheduled') {
-    throw new Error(`Cannot update assignment with status '${current.status}'`);
+  // Once released, only the close transition (released → closed) is permitted.
+  // Content fields (title, description, slides, quizzes, dates) are frozen.
+  if (current.status === 'released' || current.status === 'closed') {
+    const requestedKeys = Object.keys(data).filter(
+      (k) => (data as Record<string, unknown>)[k] !== undefined
+    );
+    const isCloseOnly =
+      current.status === 'released' &&
+      requestedKeys.length === 1 &&
+      requestedKeys[0] === 'status' &&
+      data.status === 'closed';
+    if (!isCloseOnly) {
+      throw new Error(`Cannot update assignment with status '${current.status}'`);
+    }
   }
 
   const fields: string[] = [];

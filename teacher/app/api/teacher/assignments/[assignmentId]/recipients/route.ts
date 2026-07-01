@@ -40,7 +40,7 @@ export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthCont
     }
   }
 
-  // Get recipients with student names and their slide progress
+  // Get recipients with student names, slide progress, and quiz attempt scores
   const result = await db.query(`
     SELECT
       ar.id,
@@ -52,9 +52,14 @@ export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthCont
         (SELECT COUNT(*) FROM assignment_slide_progress asp
          WHERE asp.assignment_id = ar.assignment_id AND asp.student_id = ar.student_id),
         0
-      ) as viewed_count
+      ) as viewed_count,
+      aa.completion_state as attempt_state,
+      aa.score_percent,
+      aa.submitted_at as submitted_at
     FROM assignment_recipients ar
     JOIN users u ON ar.student_id = u.id
+    LEFT JOIN assignment_attempts aa
+      ON aa.assignment_id = ar.assignment_id AND aa.student_id = ar.student_id
     WHERE ar.assignment_id = $1
     ORDER BY u.name ASC
   `, [assignmentId]);
@@ -66,6 +71,9 @@ export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthCont
     visibility_status: string;
     assigned_at: string;
     viewed_count: string;
+    attempt_state: string | null;
+    score_percent: number | null;
+    submitted_at: string | null;
   }
   const recipients = result.rows.map((row: RecipientRow) => ({
     student_id: row.student_id,
@@ -76,7 +84,14 @@ export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthCont
       viewed_count: parseInt(row.viewed_count, 10),
       total_slides: totalSlides,
       is_complete: totalSlides > 0 && parseInt(row.viewed_count, 10) >= totalSlides
-    }
+    },
+    attempt: row.attempt_state
+      ? {
+          completion_state: row.attempt_state,
+          score_percent: row.score_percent,
+          submitted_at: row.submitted_at,
+        }
+      : null
   }));
 
   return NextResponse.json({ recipients });
