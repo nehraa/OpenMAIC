@@ -9,7 +9,17 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   const db = getDb();
 
   // Get the session and verify ownership
-  const sessionResult = await db.query(`
+  interface SessionRow {
+    id: string;
+    class_id: string;
+    status: string;
+    started_at: string | null;
+    max_duration_minutes: number;
+    ended_at: string | null;
+    class_teacher_id: string;
+    [key: string]: unknown;
+  }
+  const sessionResult = await db.query<SessionRow>(`
     SELECT cs.*, c.teacher_id as class_teacher_id
     FROM classroom_sessions cs
     JOIN classes c ON cs.class_id = c.id
@@ -20,7 +30,7 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  const session = sessionResult.rows[0] as any;
+  const session = sessionResult.rows[0];
 
   if (session.class_teacher_id !== ctx.user.id) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -54,11 +64,22 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
     ORDER BY sp.joined_at DESC
   `, [sessionId]);
 
-  const participants = participantsResult.rows;
+  interface ParticipantRow {
+    id: string;
+    session_id: string;
+    user_id: string;
+    completion_state: string;
+    joined_at: string;
+    left_at: string | null;
+    name: string;
+    phone_e164: string;
+    [key: string]: unknown;
+  }
+  const participants = participantsResult.rows as ParticipantRow[];
 
   // Calculate completion stats
   const totalParticipants = participants.length;
-  const completedParticipants = participants.filter((p: any) => p.completion_state === 'completed').length;
+  const completedParticipants = participants.filter((p) => p.completion_state === 'completed').length;
   const pendingParticipants = totalParticipants - completedParticipants;
 
   const completionStats = {

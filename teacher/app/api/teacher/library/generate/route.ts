@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { saveGeneratedContent } from '@/lib/server/library';
 import { recordUsage, estimateCost } from '@/lib/server/usage';
 import { generateSlideDeck, generateQuiz } from '@/lib/server/ai-providers';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { z } from 'zod';
 
 const GenerateSchema = z.object({
@@ -26,7 +26,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
 
   const { type, prompt, classId } = parsed.data;
 
-  let payload: any;
+  let payload: { slides?: unknown[] } | { questions?: unknown[] };
   let inputTokens = 0;
   let outputTokens = 0;
 

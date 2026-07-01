@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
-import type { AuthContext } from '@/middleware/auth';
+import { withRole } from '@/lib/server/middleware';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { getDb } from '@/lib/db';
 
 interface RouteContext {
@@ -93,7 +93,7 @@ async function getTeacherProgressData(
     INNER JOIN classes c ON c.id = cm.class_id
     WHERE c.teacher_id = $1
   `;
-  const studentParams: any[] = [teacherId];
+  const studentParams: (string | number)[] = [teacherId];
 
   if (filters.classId) {
     studentQuery += ' AND c.id = $2';
@@ -143,7 +143,9 @@ async function getTeacherProgressData(
         WHERE assignment_id = $1 AND student_id = $2
       `, [assignment.id, student.student_id]);
 
-      const slidesViewed = (slideProgressResult.rows[0] as any)?.slides_viewed || 0;
+      const slidesViewed = Number(
+        (slideProgressResult.rows[0] as { slides_viewed: string | number } | undefined)?.slides_viewed ?? 0
+      );
       totalSlidesViewed += slidesViewed;
 
       // Get total slides for this assignment
@@ -206,7 +208,7 @@ async function getTeacherProgressData(
         WHERE assignment_id = $1 AND student_id = $2
       `, [assignment.id, student.student_id]);
 
-      const lastView = (lastViewResult.rows[0] as any)?.last_view;
+      const lastView = (lastViewResult.rows[0] as { last_view: string | null } | undefined)?.last_view ?? null;
       if (lastView && (!lastActive || lastView > lastActive)) {
         lastActive = lastView;
       }

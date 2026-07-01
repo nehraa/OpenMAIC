@@ -59,7 +59,15 @@ export const GET = withRole(['teacher'], async (_req: NextRequest, ctx: AuthCont
     ORDER BY u.name ASC
   `, [assignmentId]);
 
-  const recipients = result.rows.map((row: any) => ({
+  interface RecipientRow {
+    id: string;
+    student_id: string;
+    student_name: string;
+    visibility_status: string;
+    assigned_at: string;
+    viewed_count: string;
+  }
+  const recipients = result.rows.map((row: RecipientRow) => ({
     student_id: row.student_id,
     student_name: row.student_name,
     visibility_status: row.visibility_status,
