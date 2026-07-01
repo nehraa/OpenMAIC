@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomInt } from 'node:crypto';
-import { withRole } from '@/middleware';
+import { withRole } from '@/lib/server/middleware';
 import { getDb } from '@/lib/db';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 
 interface RouteContext {
   params: Promise<Record<string, string>>;

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { Modal } from './Modal';
 
 // Session ID helper - works on client side
 function getSessionId(): string {
@@ -40,6 +41,7 @@ function ReuseModal({ asset, classes, onClose, onSuccess }: ReuseModalProps) {
   const [dueAt, setDueAt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const titleId = useId();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,82 +78,88 @@ function ReuseModal({ asset, classes, onClose, onSuccess }: ReuseModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Create Assignment from {asset.type === 'slide_deck' ? 'Slide Deck' : 'Quiz'}</h2>
+    <Modal
+      isOpen
+      onClose={onClose}
+      titleId={titleId}
+      closeDisabled={loading}
+      panelClassName="bg-white rounded-lg shadow-xl w-full max-w-md p-6"
+    >
+      <h2 id={titleId} className="text-xl font-semibold mb-4">
+        Create Assignment from {asset.type === 'slide_deck' ? 'Slide Deck' : 'Quiz'}
+      </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+          <select
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            className="w-full px-3 py-2 border rounded-lg"
+            required
+          >
+            <option value="">Select a class</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>{cls.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Release Date</label>
             <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              type="datetime-local"
+              value={releaseAt}
+              onChange={(e) => setReleaseAt(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
-              required
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <input
+              type="datetime-local"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg"
-              required
-            >
-              <option value="">Select a class</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
-              ))}
-            </select>
+            />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Release Date</label>
-              <input
-                type="datetime-local"
-                value={releaseAt}
-                onChange={(e) => setReleaseAt(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-              <input
-                type="datetime-local"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            </div>
-          </div>
+        {error && (
+          <p className="text-red-600 text-sm">{error}</p>
+        )}
 
-          {error && (
-            <p className="text-red-600 text-sm">{error}</p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-              disabled={loading || !selectedClassId}
-            >
-              {loading ? 'Creating...' : 'Create Assignment'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+            disabled={loading || !selectedClassId}
+          >
+            {loading ? 'Creating...' : 'Create Assignment'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -166,6 +174,7 @@ function OpenmaicGenerateModal({ classes, onClose, onSuccess }: OpenmaicGenerate
   const [classId, setClassId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const titleId = useId();
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -203,85 +212,83 @@ function OpenmaicGenerateModal({ classes, onClose, onSuccess }: OpenmaicGenerate
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">
-            M
-          </div>
-          <h2 className="text-2xl font-bold">Generate OpenMAIC Classroom</h2>
+    <Modal isOpen onClose={onClose} titleId={titleId} closeDisabled={loading}>
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+          M
         </div>
-        <p className="text-gray-500 mb-6 text-sm">
-          Sends your topic to the OpenMAIC multi-agent pipeline and creates a real interactive
-          classroom. Generation may take up to 2 minutes.
-        </p>
-
-        <form onSubmit={handleGenerate} className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Topic</label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all resize-none h-32 text-sm"
-              placeholder="e.g., Photosynthesis for 8th graders"
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Class <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <select
-              value={classId}
-              onChange={(e) => setClassId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm"
-              disabled={loading}
-            >
-              <option value="">— Skip for now —</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          {loading && (
-            <div className="p-4 bg-purple-50 text-purple-700 rounded-lg text-sm flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-700 rounded-full animate-spin" />
-              <div>
-                <div className="font-semibold">Generating classroom...</div>
-                <div className="text-purple-600/80 text-xs mt-0.5">Up to 2 minutes</div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-purple-500/20"
-              disabled={loading || !prompt.trim()}
-            >
-              {loading ? 'Generating...' : 'Generate Classroom'}
-            </button>
-          </div>
-        </form>
+        <h2 id={titleId} className="text-2xl font-bold">Generate OpenMAIC Classroom</h2>
       </div>
-    </div>
+      <p className="text-gray-500 mb-6 text-sm">
+        Sends your topic to the OpenMAIC multi-agent pipeline and creates a real interactive
+        classroom. Generation may take up to 2 minutes.
+      </p>
+
+      <form onSubmit={handleGenerate} className="space-y-6">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Topic</label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all resize-none h-32 text-sm"
+            placeholder="e.g., Photosynthesis for 8th graders"
+            required
+            disabled={loading}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Class <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <select
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm"
+            disabled={loading}
+          >
+            <option value="">— Skip for now —</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>{cls.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
+        {loading && (
+          <div className="p-4 bg-purple-50 text-purple-700 rounded-lg text-sm flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-700 rounded-full animate-spin" />
+            <div>
+              <div className="font-semibold">Generating classroom...</div>
+              <div className="text-purple-600/80 text-xs mt-0.5">Up to 2 minutes</div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-purple-500/20"
+            disabled={loading || !prompt.trim()}
+          >
+            {loading ? 'Generating...' : 'Generate Classroom'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -295,6 +302,7 @@ function GenerateModal({ onClose, onSuccess }: GenerateModalProps) {
   const [type, setType] = useState<'slide_deck' | 'quiz'>('slide_deck');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const titleId = useId();
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -329,74 +337,72 @@ function GenerateModal({ onClose, onSuccess }: GenerateModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
-        <h2 className="text-2xl font-bold mb-2">Generate with AI</h2>
-        <p className="text-gray-500 mb-6 text-sm">Describe the topic and learning level to create content instantly.</p>
+    <Modal isOpen onClose={onClose} titleId={titleId} closeDisabled={loading}>
+      <h2 id={titleId} className="text-2xl font-bold mb-2">Generate with AI</h2>
+      <p className="text-gray-500 mb-6 text-sm">Describe the topic and learning level to create content instantly.</p>
 
-        <form onSubmit={handleGenerate} className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">I want to create a...</label>
-            <div className="flex gap-3 p-1 bg-gray-100 rounded-xl mb-4">
-              <button
-                type="button"
-                onClick={() => setType('slide_deck')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  type === 'slide_deck' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Slide Deck
-              </button>
-              <button
-                type="button"
-                onClick={() => setType('quiz')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  type === 'quiz' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Quiz
-              </button>
-            </div>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-32 text-sm"
-              placeholder={type === 'slide_deck' ? "e.g., Introduction to Algebra for 8th Grade" : "e.g., 10 multiple choice questions on photosynthesis"}
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3">
+      <form onSubmit={handleGenerate} className="space-y-6">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">I want to create a...</label>
+          <div className="flex gap-3 p-1 bg-gray-100 rounded-xl mb-4">
             <button
               type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium"
-              disabled={loading}
+              onClick={() => setType('slide_deck')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                type === 'slide_deck' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              Cancel
+              Slide Deck
             </button>
             <button
-              type="submit"
-              className="px-6 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-primary/20"
-              disabled={loading || !prompt.trim()}
+              type="button"
+              onClick={() => setType('quiz')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                type === 'quiz' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : 'Generate Now'}
+              Quiz
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-32 text-sm"
+            placeholder={type === 'slide_deck' ? "e.g., Introduction to Algebra for 8th Grade" : "e.g., 10 multiple choice questions on photosynthesis"}
+            required
+          />
+        </div>
+
+        {error && (
+          <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-6 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-primary/20"
+            disabled={loading || !prompt.trim()}
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Generating...
+              </>
+            ) : 'Generate Now'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
