@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withRole } from '@/middleware';
-import { withTenant } from '@/lib/db';
+import { withRole } from '@/lib/server/middleware';
 import { saveGeneratedContent } from '@/lib/server/library';
 import { recordUsage } from '@/lib/server/usage';
-import type { AuthContext } from '@/middleware/auth';
+import type { AuthContext } from '@/lib/server/middleware/auth';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 
