@@ -21,7 +21,7 @@ const navItems = [
   { href: '/quizzes', label: 'Quizzes', icon: BookOpen },
   { href: '/sessions', label: 'Live Sessions', icon: Play },
   { href: '/library', label: 'Library', icon: Library },
-  { href: '/progress', label: 'Progress', icon: BarChart3 },
+  { href: '/teacher/progress', label: 'Progress', icon: BarChart3 },
   { href: '/usage', label: 'Usage', icon: CreditCard },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
