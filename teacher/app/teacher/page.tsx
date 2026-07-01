@@ -52,13 +52,13 @@ export default function TeacherDashboard() {
   useEffect(() => {
     // Fetch dashboard data using cookies for authentication
     Promise.all([
-      fetch('/api/teacher/classes', {
+      fetch('/teacher/api/teacher/classes', {
         credentials: 'include'
       }).then(res => {
         if (!res.ok) throw new Error(`Failed to fetch classes: ${res.status}`);
         return res.json();
       }).then(data => data.classes || []).catch(() => []),
-      fetch('/api/teacher/assignments', {
+      fetch('/teacher/api/teacher/assignments', {
         credentials: 'include'
       }).then(res => {
         if (!res.ok) throw new Error(`Failed to fetch assignments: ${res.status}`);

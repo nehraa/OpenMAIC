@@ -13,7 +13,7 @@ export default function TeacherLoginPage() {
     const sessionId = localStorage.getItem('session_id');
     if (sessionId) {
       // Validate session with API then redirect to teacher dashboard
-      fetch('/api/auth/me', {
+      fetch('/teacher/api/auth/me', {
         headers: { 'x-session-id': sessionId }
       }).then(res => {
         if (res.ok) {
@@ -34,7 +34,7 @@ export default function TeacherLoginPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/teacher/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -82,6 +82,7 @@ export default function TeacherLoginPage() {
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Email</label>
             <input
+              id="email"
               type="email"
               name="email"
               required
@@ -92,6 +93,7 @@ export default function TeacherLoginPage() {
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Password</label>
             <input
+              id="password"
               type="password"
               name="password"
               required

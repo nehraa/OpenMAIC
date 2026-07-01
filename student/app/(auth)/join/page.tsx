@@ -22,7 +22,7 @@ export default function JoinClassPage() {
     setIsJoining(true)
 
     try {
-      const response = await fetch('/api/auth/join', {
+      const response = await fetch('/student/api/auth/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ joinCode: inviteCode, phone, name }),

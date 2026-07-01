@@ -61,7 +61,7 @@ interface UsageData {
 }
 
 async function fetchTeacherUsage(): Promise<UsageData> {
-  const response = await fetch('/api/analytics/usage?range=month');
+  const response = await fetch('/teacher/api/analytics/usage?range=month');
   if (!response.ok) {
     throw new Error('Failed to fetch usage data');
   }

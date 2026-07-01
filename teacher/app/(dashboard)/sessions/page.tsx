@@ -27,7 +27,7 @@ export default function SessionsListPage() {
 
   async function fetchSessions() {
     try {
-      const res = await fetch('/api/sessions')
+      const res = await fetch('/teacher/api/sessions')
       if (res.ok) {
         const data = await res.json()
         setSessions(data.sessions || [])

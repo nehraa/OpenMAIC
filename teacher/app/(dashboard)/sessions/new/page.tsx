@@ -53,7 +53,7 @@ export default function NewSessionPage() {
   const handleLaunch = async () => {
     setIsLaunching(true)
     try {
-      const response = await fetch('/api/sessions', {
+      const response = await fetch('/teacher/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

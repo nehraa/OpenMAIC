@@ -89,7 +89,7 @@ export default function QuizPage() {
       return
     }
     setIsLoading(true)
-    fetch(`/api/student/quizzes/${quizId}`, { credentials: 'include' })
+    fetch(`/student/api/student/quizzes/${quizId}`, { credentials: 'include' })
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
@@ -122,7 +122,7 @@ export default function QuizPage() {
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      const res = await fetch(`/api/student/quizzes/${quizId}/submit`, {
+      const res = await fetch(`/student/api/student/quizzes/${quizId}/submit`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
