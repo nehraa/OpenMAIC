@@ -186,6 +186,17 @@ export async function releaseAssignment(id: string): Promise<Assignment | null> 
     UPDATE assignment_recipients SET visibility_status = 'visible' WHERE assignment_id = $1
   `, [id]);
 
+  // In-app notification: one row per student recipient. There is no email/SMTP
+  // transport yet; future SMS/email adapters can read from this same table.
+  await db.query(
+    `INSERT INTO notifications (tenant_id, student_id, assignment_id, type, title, body)
+     SELECT ar.tenant_id, ar.student_id, ar.assignment_id,
+            'assignment_released', $2, $3
+     FROM assignment_recipients ar
+     WHERE ar.assignment_id = $1`,
+    [id, `New assignment: ${assignment.title}`, `Your teacher released "${assignment.title}". Tap to start.`]
+  );
+
   const result = await db.query('SELECT * FROM assignments WHERE id = $1', [id]);
   return result.rows[0] as Assignment;
 }
