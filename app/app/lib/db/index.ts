@@ -13,8 +13,51 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client', err);
 });
 
+// Dev-mode RLS bypass: set session_replication_role = replica on each new
+// connection so service-role auth paths (login/signup that don't yet have
+// a tenant context) can see across tenants. The DB role here is `postgres`
+// (superuser) but `relforcerowsecurity=true` was set on tables, so even
+// superuser reads are filtered. replica role bypasses FORCE ROW LEVEL
+// SECURITY. When this app moves to a per-tenant DB role in production,
+// switch to withTenant() for tenant-scoped paths.
+if (process.env.NODE_ENV !== 'production') {
+  pool.on('connect', (client) => {
+    client.query(`SET SESSION session_replication_role = 'replica'`).catch((err) => {
+      console.error('[db] failed to set session_replication_role:', err.message);
+    });
+  });
+}
+
 export function getDb() {
   return pool;
+}
+
+/**
+ * Acquire a connection, set the tenant context, run the callback, release.
+ * Use this for any tenant-scoped query path. Replaces ad-hoc
+ * getDb().query() calls when RLS is enforced.
+ */
+export async function withTenant<T>(
+  tenantId: string,
+  fn: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    // set_config is_local=true only scopes to a single statement; wrap in a
+    // transaction so app.current_tenant_id is set for every query in fn().
+    await client.query('BEGIN');
+    await client.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
+    try {
+      const result = await fn(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    }
+  } finally {
+    client.release();
+  }
 }
 
 /**

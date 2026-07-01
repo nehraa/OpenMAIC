@@ -63,7 +63,7 @@ export const GET = async (
       try {
         const payload = JSON.parse(version.payload_json);
         if (payload.openmaicClassroomId) {
-          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL || 'http://localhost:3002';
+          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL || 'http://localhost:3000';
           openmaicUrl = `${baseUrl}/classroom/${payload.openmaicClassroomId}`;
         } else {
           slides = Array.isArray(payload.slides) ? payload.slides : [];

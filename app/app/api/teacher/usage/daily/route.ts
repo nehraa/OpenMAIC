@@ -22,16 +22,23 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
 
   const classIds = teacherClassesResult.rows.map((c: { id: string }) => c.id);
 
-  // Build parameterized query
-  const params: (string | number)[] = [date, ctx.user.id, ...classIds];
-  const classIdParams = classIds.length > 0 ? classIds.map((_, i) => `$${i + 3}`).join(',') : "'__no_classes__'";
+  // Build parameterized query. Sentinel is unused since the IN clause is
+  // conditionally omitted when the teacher has no classes — SQL only uses $1+$2.
+  const params: (string | number)[] = [date, ctx.user.id];
+  const classIdPlaceholders = classIds.length > 0
+    ? classIds.map((_, i) => `$${i + 3}`).join(',')
+    : '';
+  if (classIds.length > 0) {
+    classIds.forEach((cid) => params.push(cid));
+  }
 
   const userCondition = `
     (
       actor_user_id = $2
+      ${classIds.length > 0 ? `
       OR actor_user_id IN (
-        SELECT student_id FROM class_memberships WHERE class_id IN (${classIdParams})
-      )
+        SELECT student_id FROM class_memberships WHERE class_id IN (${classIdPlaceholders})
+      )` : ''}
     )
   `;
 

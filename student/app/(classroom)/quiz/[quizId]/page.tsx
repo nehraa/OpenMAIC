@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,61 +10,52 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ChevronLeft, ChevronRight, Clock, AlertCircle } from 'lucide-react'
 
-interface QuizQuestion {
+// The /api/student/quizzes/[id] GET response. Kept loose on the client because
+// the API zod-validates before responding; we trust the shape but type it
+// for editor support.
+interface ClientQuestion {
   id: string
+  type: 'mcq' | 'short_answer' | 'multiple_choice' | 'true_false'
   question: string
-  options: string[]
-  correctAnswer: string
+  options?: string[]
+  points: number
 }
 
-interface Quiz {
-  id: string
+interface QuizResponse {
+  assignmentId: string
   title: string
-  questions: QuizQuestion[]
-  timeLimit: number // minutes
+  questions: ClientQuestion[]
+  timeLimit: number
+  attempt: {
+    submitted: boolean
+    score: number | null
+    submittedAt: string | null
+  } | null
 }
 
-const MOCK_QUIZ: Quiz = {
-  id: 'quiz-1',
-  title: 'Mathematics Quiz - Quadratic Equations',
-  timeLimit: 15,
-  questions: [
-    {
-      id: 'q1',
-      question: 'What is the standard form of a quadratic equation?',
-      options: ['ax + b = 0', 'ax² + bx + c = 0', 'ax³ + bx² + cx + d = 0', 'a/x = b'],
-      correctAnswer: 'ax² + bx + c = 0',
-    },
-    {
-      id: 'q2',
-      question: 'What is the discriminant in a quadratic equation?',
-      options: ['b² - 4ac', 'b² + 4ac', 'b - 4ac', 'b + 4ac'],
-      correctAnswer: 'b² - 4ac',
-    },
-    {
-      id: 'q3',
-      question: 'If discriminant > 0, the equation has:',
-      options: ['One real root', 'Two real roots', 'No real roots', 'Complex roots'],
-      correctAnswer: 'Two real roots',
-    },
-    {
-      id: 'q4',
-      question: 'The vertex of a parabola represents:',
-      options: ['Axis of symmetry', 'Maximum or minimum point', 'Y-intercept', 'X-intercept'],
-      correctAnswer: 'Maximum or minimum point',
-    },
-    {
-      id: 'q5',
-      question: 'Formula for quadratic roots is:',
-      options: ['x = -b ± √(b²-4ac) / 2a', 'x = -b ± √(b²+4ac) / 2a', 'x = b ± √(b²-4ac) / 2a', 'x = -b ± √(b²-4ac) / a'],
-      correctAnswer: 'x = -b ± √(b²-4ac) / 2a',
-    },
-  ],
+interface GradedQuestion {
+  id: string
+  type: ClientQuestion['type']
+  pointsEarned: number
+  totalPoints: number
+  isCorrect: boolean
+  openEnded: boolean
 }
+
+interface SubmitResponse {
+  attemptId: string
+  scorePercent: number
+  pointsEarned: number
+  totalPoints: number
+  results: GradedQuestion[]
+}
+
+type AnswerValue = string | number | boolean | null
+type AnswersMap = Record<string, AnswerValue>
 
 interface QuizState {
   currentQuestion: number
-  answers: Record<string, string>
+  answers: AnswersMap
   timeRemaining: number
   submitted: boolean
 }
@@ -72,80 +63,143 @@ interface QuizState {
 export default function QuizPage() {
   const params = useParams()
   const router = useRouter()
-  const _quizId = (params.quizId as string) || ''
+  const quizId = (params.quizId as string) || ''
+
+  const [quiz, setQuiz] = useState<QuizResponse | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   const [state, setState] = useState<QuizState>({
     currentQuestion: 0,
     answers: {},
-    timeRemaining: MOCK_QUIZ.timeLimit * 60,
+    timeRemaining: 0,
     submitted: false,
   })
 
-  const [score, setScore] = useState<{ correct: number; total: number } | null>(null)
+  const [result, setResult] = useState<SubmitResponse | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // ---- Fetch the quiz definition on mount ----------------------------------
   useEffect(() => {
-    if (state.submitted || state.timeRemaining <= 0) return
-
-    const timer = setInterval(() => {
-      setState((prev) => ({
-        ...prev,
-        timeRemaining: prev.timeRemaining - 1,
-      }))
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [state.submitted, state.timeRemaining])
-
-  const handleAnswer = (questionId: string, answer: string) => {
-    setState((prev) => ({
-      ...prev,
-      answers: { ...prev.answers, [questionId]: answer },
-    }))
-  }
-
-  const handleNext = () => {
-    setState((prev) => ({
-      ...prev,
-      currentQuestion: Math.min(prev.currentQuestion + 1, MOCK_QUIZ.questions.length - 1),
-    }))
-  }
-
-  const handlePrev = () => {
-    setState((prev) => ({
-      ...prev,
-      currentQuestion: Math.max(prev.currentQuestion - 1, 0),
-    }))
-  }
-
-  const handleSubmit = () => {
-    if (!confirm('Are you sure you want to submit? You cannot change your answers.')) {
+    let cancelled = false
+    if (!quizId) {
+      setLoadError('Missing quiz id')
+      setIsLoading(false)
       return
     }
-
-    let correct = 0
-    for (const q of MOCK_QUIZ.questions) {
-      if (state.answers[q.id] === q.correctAnswer) {
-        correct++
-      }
+    setIsLoading(true)
+    fetch(`/api/student/quizzes/${quizId}`, { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error || `Request failed (${res.status})`)
+        }
+        return res.json() as Promise<QuizResponse>
+      })
+      .then((data) => {
+        if (cancelled) return
+        setQuiz(data)
+        setState((prev) => ({
+          ...prev,
+          timeRemaining: data.timeLimit,
+        }))
+        setIsLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setLoadError(err instanceof Error ? err.message : 'Failed to load quiz')
+        setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
-    setScore({ correct, total: MOCK_QUIZ.questions.length })
-    setState((prev) => ({ ...prev, submitted: true }))
+  }, [quizId])
+
+  // ---- Submit helper (used by timer auto-submit and the manual button) ----
+  const handleSubmit = useCallback(async () => {
+    if (!quiz || state.submitted || isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch(`/api/student/quizzes/${quizId}/submit`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: state.answers }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Submit failed (${res.status})`)
+      }
+      const data = (await res.json()) as SubmitResponse
+      setResult(data)
+      setState((prev) => ({ ...prev, submitted: true }))
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [quiz, quizId, state.answers, state.submitted, isSubmitting])
+
+  // ---- Countdown timer -----------------------------------------------------
+  useEffect(() => {
+    if (!quiz) return
+    if (state.submitted) return
+    if (state.timeRemaining <= 0) {
+      void handleSubmit()
+      return
+    }
+    const timer = setInterval(() => {
+      setState((prev) =>
+        prev.submitted ? prev : { ...prev, timeRemaining: prev.timeRemaining - 1 }
+      )
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [quiz, state.submitted, state.timeRemaining, handleSubmit])
+
+  // ---- Render: loading / error --------------------------------------------
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg text-muted-foreground">Loading quiz…</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="h-4 bg-muted rounded animate-pulse" />
+                <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+                <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
-  const currentQ = MOCK_QUIZ.questions[state.currentQuestion]
-  const progress = ((state.currentQuestion + 1) / MOCK_QUIZ.questions.length) * 100
-  const answeredCount = Object.keys(state.answers).length
-  const allAnswered = answeredCount === MOCK_QUIZ.questions.length
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container py-8 max-w-2xl">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{loadError}</AlertDescription>
+          </Alert>
+          <Button className="mt-4" variant="outline" onClick={() => router.push('/assignments')}>
+            Back to Assignments
+          </Button>
+        </div>
+      </div>
+    )
   }
 
-  if (state.submitted && score) {
-    const percentage = Math.round((score.correct / score.total) * 100)
+  if (!quiz) return null
 
+  // ---- Render: submitted results ------------------------------------------
+  if (state.submitted && result) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container py-8 max-w-2xl">
@@ -155,33 +209,49 @@ export default function QuizPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-center">
-                <p className="text-6xl font-bold">{percentage}%</p>
+                <p className="text-6xl font-bold">{result.scorePercent}%</p>
                 <p className="text-muted-foreground mt-2">
-                  {score.correct} out of {score.total} correct
+                  {result.pointsEarned} out of {result.totalPoints} points
                 </p>
-                <p className={`text-lg font-semibold mt-2 ${percentage >= 70 ? 'text-green-600' : 'text-red-600'}`}>
-                  {percentage >= 70 ? 'Great job!' : 'Keep practicing!'}
+                <p
+                  className={`text-lg font-semibold mt-2 ${
+                    result.scorePercent >= 70 ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {result.scorePercent >= 70 ? 'Great job!' : 'Keep practicing!'}
                 </p>
               </div>
 
               <div className="space-y-2">
-                {MOCK_QUIZ.questions.map((q, i) => (
-                  <div
-                    key={q.id}
-                    className={`p-3 rounded-lg border ${
-                      state.answers[q.id] === q.correctAnswer
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-red-500 bg-red-50'
-                    }`}
-                  >
-                    <p className="text-sm font-medium">Question {i + 1}: {state.answers[q.id] === q.correctAnswer ? 'Correct' : 'Incorrect'}</p>
-                    <p className="text-xs text-muted-foreground">Your answer: {state.answers[q.id] || 'Not answered'}</p>
-                  </div>
-                ))}
+                {quiz.questions.map((q, i) => {
+                  const r = result.results.find((x) => x.id === q.id)
+                  const isCorrect = r?.isCorrect ?? false
+                  return (
+                    <div
+                      key={q.id}
+                      className={`p-3 rounded-lg border ${
+                        isCorrect
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                      }`}
+                    >
+                      <p className="text-sm font-medium">
+                        Question {i + 1}: {isCorrect ? 'Correct' : 'Incorrect'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Your answer:{' '}
+                        {state.answers[q.id] !== undefined && state.answers[q.id] !== null
+                          ? String(state.answers[q.id])
+                          : 'Not answered'}
+                        {r ? ` (${r.pointsEarned}/${r.totalPoints} pts)` : ''}
+                      </p>
+                    </div>
+                  )
+                })}
               </div>
 
-              <Button className="w-full" onClick={() => router.back()}>
-                Back to Dashboard
+              <Button className="w-full" onClick={() => router.push('/assignments')}>
+                Back to Assignments
               </Button>
             </CardContent>
           </Card>
@@ -190,24 +260,48 @@ export default function QuizPage() {
     )
   }
 
+  // ---- Render: in-progress quiz -------------------------------------------
+  const currentQ = quiz.questions[state.currentQuestion]
+  const total = quiz.questions.length
+  const progress = ((state.currentQuestion + 1) / total) * 100
+  const answeredCount = Object.keys(state.answers).length
+  const allAnswered = answeredCount === total
+
+  const setAnswer = (questionId: string, value: AnswerValue) => {
+    setState((prev) => ({
+      ...prev,
+      answers: { ...prev.answers, [questionId]: value },
+    }))
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 bg-background z-10">
         <div className="container flex items-center justify-between py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => router.back()}>
+            <Button variant="ghost" onClick={() => router.push('/assignments')}>
               <ChevronLeft className="w-4 h-4 mr-2" />
               Exit
             </Button>
             <div>
-              <h1 className="font-semibold">{MOCK_QUIZ.title}</h1>
+              <h1 className="font-semibold">{quiz.title}</h1>
               <p className="text-sm text-muted-foreground">
-                Question {state.currentQuestion + 1} of {MOCK_QUIZ.questions.length}
+                Question {state.currentQuestion + 1} of {total}
               </p>
             </div>
           </div>
 
-          <div className={`flex items-center gap-2 ${state.timeRemaining < 60 ? 'text-red-500' : ''}`}>
+          <div
+            className={`flex items-center gap-2 ${
+              state.timeRemaining < 60 ? 'text-red-500' : ''
+            }`}
+          >
             <Clock className="w-4 h-4" />
             <span className="font-mono">{formatTime(state.timeRemaining)}</span>
           </div>
@@ -221,54 +315,120 @@ export default function QuizPage() {
             <CardTitle className="text-lg">{currentQ.question}</CardTitle>
           </CardHeader>
           <CardContent>
-            <RadioGroup
-              value={state.answers[currentQ.id] || ''}
-              onValueChange={(value) => handleAnswer(currentQ.id, value)}
-            >
-              <div className="space-y-3">
-                {currentQ.options.map((option, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
-                    onClick={() => handleAnswer(currentQ.id, option)}
-                  >
-                    <RadioGroupItem value={option} id={`option-${i}`} />
-                    <Label htmlFor={`option-${i}`} className="flex-1 cursor-pointer">
-                      {option}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </RadioGroup>
+            {currentQ.type === 'short_answer' ? (
+              <textarea
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                value={(state.answers[currentQ.id] as string) ?? ''}
+                onChange={(e) => setAnswer(currentQ.id, e.target.value)}
+                placeholder="Type your answer…"
+              />
+            ) : currentQ.type === 'true_false' ? (
+              <RadioGroup
+                value={
+                  state.answers[currentQ.id] === undefined
+                    ? ''
+                    : String(state.answers[currentQ.id])
+                }
+                onValueChange={(value) =>
+                  setAnswer(currentQ.id, value === 'true')
+                }
+              >
+                <div className="space-y-3">
+                  {['True', 'False'].map((label, i) => {
+                    const boolValue = i === 0
+                    return (
+                      <div
+                        key={label}
+                        className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                        onClick={() => setAnswer(currentQ.id, boolValue)}
+                      >
+                        <RadioGroupItem value={String(boolValue)} id={`option-${i}`} />
+                        <Label htmlFor={`option-${i}`} className="flex-1 cursor-pointer">
+                          {label}
+                        </Label>
+                      </div>
+                    )
+                  })}
+                </div>
+              </RadioGroup>
+            ) : (
+              <RadioGroup
+                value={
+                  state.answers[currentQ.id] === undefined
+                    ? ''
+                    : String(state.answers[currentQ.id])
+                }
+                onValueChange={(value) => {
+                  // The server accepts either an option text or an index string.
+                  // Send the option text so the API can match against correct
+                  // option text for backward-compat with AI format payloads.
+                  setAnswer(currentQ.id, value)
+                }}
+              >
+                <div className="space-y-3">
+                  {(currentQ.options ?? []).map((option, i) => (
+                    <div
+                      key={`${currentQ.id}-${i}`}
+                      className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                      onClick={() => setAnswer(currentQ.id, option)}
+                    >
+                      <RadioGroupItem value={option} id={`option-${i}`} />
+                      <Label htmlFor={`option-${i}`} className="flex-1 cursor-pointer">
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            )}
           </CardContent>
         </Card>
 
         <div className="flex justify-between mt-6">
           <Button
             variant="outline"
-            onClick={handlePrev}
+            onClick={() =>
+              setState((prev) => ({
+                ...prev,
+                currentQuestion: Math.max(prev.currentQuestion - 1, 0),
+              }))
+            }
             disabled={state.currentQuestion === 0}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous
           </Button>
 
-          {state.currentQuestion < MOCK_QUIZ.questions.length - 1 ? (
-            <Button onClick={handleNext}>
+          {state.currentQuestion < total - 1 ? (
+            <Button
+              onClick={() =>
+                setState((prev) => ({
+                  ...prev,
+                  currentQuestion: Math.min(prev.currentQuestion + 1, total - 1),
+                }))
+              }
+            >
               Next
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
             <Button
-              onClick={handleSubmit}
-              disabled={!allAnswered}
+              onClick={() => void handleSubmit()}
+              disabled={!allAnswered || isSubmitting}
             >
-              Submit Quiz
+              {isSubmitting ? 'Submitting…' : 'Submit Quiz'}
             </Button>
           )}
         </div>
 
-        {state.timeRemaining < 60 && (
+        {submitError && (
+          <Alert className="mt-4" variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
+
+        {state.timeRemaining < 60 && state.timeRemaining > 0 && (
           <Alert className="mt-4" variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -277,13 +437,15 @@ export default function QuizPage() {
           </Alert>
         )}
 
-        <div className="mt-4 flex justify-center gap-2">
-          {MOCK_QUIZ.questions.map((q, i) => (
+        <div className="mt-4 flex justify-center gap-2 flex-wrap">
+          {quiz.questions.map((q, i) => (
             <Button
               key={q.id}
-              variant={state.answers[q.id] ? 'default' : 'outline'}
+              variant={state.answers[q.id] !== undefined ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setState((prev) => ({ ...prev, currentQuestion: i }))}
+              onClick={() =>
+                setState((prev) => ({ ...prev, currentQuestion: i }))
+              }
             >
               {i + 1}
             </Button>
