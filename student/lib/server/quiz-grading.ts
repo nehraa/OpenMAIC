@@ -92,14 +92,25 @@ export function normalizeIndex(value: unknown): number | null {
 export function getCorrectIndex(q: QuizQuestionServer): number | null {
   if (typeof q.correctIndex === 'number') return q.correctIndex;
   if (typeof q.correct_index === 'number') return q.correct_index;
+  // Fallback: derive the index from a string correct_answer that matches an option's text.
+  if (typeof q.correct_answer === 'string' && Array.isArray(q.options)) {
+    const target = normalizeString(q.correct_answer);
+    const found = q.options.findIndex((opt) => normalizeString(opt) === target);
+    if (found >= 0) return found;
+  }
   return null;
 }
 
 /** Resolve the canonical correct option text for a multiple-choice question. */
 export function getCorrectOptionText(q: QuizQuestionServer): string | null {
   const idx = getCorrectIndex(q);
-  if (idx === null || !Array.isArray(q.options) || idx >= q.options.length) return null;
-  return q.options[idx] ?? null;
+  if (idx !== null && Array.isArray(q.options) && idx < q.options.length) {
+    return q.options[idx] ?? null;
+  }
+  if (typeof q.correct_answer === 'string' && q.correct_answer.trim() !== '') {
+    return q.correct_answer;
+  }
+  return null;
 }
 
 /** Resolve the canonical answer key for a true_false question. */

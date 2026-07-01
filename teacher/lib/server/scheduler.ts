@@ -20,6 +20,16 @@ const MAX_RETRIES = 4;
 export async function createScheduleJob(assignmentId: string, releaseAt: string): Promise<SchedulerJob> {
   const db = getDb();
 
+  // scheduler_jobs.tenant_id is NOT NULL — look it up from the assignment.
+  const tenantResult = await db.query(
+    'SELECT tenant_id FROM assignments WHERE id = $1',
+    [assignmentId]
+  );
+  const tenantId = (tenantResult.rows[0] as { tenant_id: string } | undefined)?.tenant_id;
+  if (!tenantId) {
+    throw new Error(`Assignment ${assignmentId} not found`);
+  }
+
   const existingResult = await db.query(`
     SELECT * FROM scheduler_jobs
     WHERE target_type = 'assignment' AND target_id = $1 AND status = 'pending'
@@ -44,10 +54,10 @@ export async function createScheduleJob(assignmentId: string, releaseAt: string)
   }
 
   const jobResult = await db.query(`
-    INSERT INTO scheduler_jobs (target_type, target_id, run_at, status)
-    VALUES ('assignment', $1, $2, 'pending')
+    INSERT INTO scheduler_jobs (tenant_id, target_type, target_id, run_at, status)
+    VALUES ($1, 'assignment', $2, $3, 'pending')
     RETURNING *
-  `, [assignmentId, releaseAt]);
+  `, [tenantId, assignmentId, releaseAt]);
 
   const job = jobResult.rows[0] as SchedulerJob;
 
