@@ -31,7 +31,7 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/access-code/verify', {
+      const res = await fetch('/classroom/api/access-code/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),

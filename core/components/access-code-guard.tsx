@@ -12,7 +12,7 @@ export function AccessCodeGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/access-code/status')
+    fetch('/classroom/api/access-code/status')
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) {
