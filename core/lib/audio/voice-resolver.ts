@@ -53,7 +53,7 @@ export function resolveAgentVoice(
     };
   }
 
-  return { providerId: 'browser-native-tts', voiceId: 'default' };
+  return { providerId: 'minimax-tts', voiceId: 'female-yujie' };
 }
 
 /**
