@@ -35,7 +35,9 @@ export default function JoinClassPage() {
 
       const data = await response.json()
       const classId = data?.class?.id
-      router.push(`/dashboard?joined=${classId}`)
+      // Root path renders the student dashboard (app/page.tsx). The previous
+      // /dashboard?joined=... target 404'd because no /dashboard route exists.
+      router.push(`/?joined=${classId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid invite code')
       setIsJoining(false)

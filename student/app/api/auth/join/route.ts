@@ -128,11 +128,14 @@ export const POST = async (request: NextRequest) => {
     const refreshToken = await generateRefreshToken(student.id);
 
     // Step 6: Set httpOnly cookies
+    // No `domain` set in production — host-only cookies match whatever host
+    // served the response, which works across dev (localhost) and prod
+    // (study.devstudios.me). The hardcoded `domain: 'localhost'` from the
+    // original implementation dropped the cookie on every non-localhost host.
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      domain: 'localhost',
       path: '/',
     };
 
