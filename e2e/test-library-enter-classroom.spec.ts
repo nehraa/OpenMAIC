@@ -1,87 +1,99 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Teacher Library - Enter Classroom Flow', () => {
+const classroomAsset = {
+  id: 'asset-1',
+  type: 'slide_deck',
+  title: 'Photosynthesis classroom',
+  subject_tag: 'OpenMAIC',
+  source_kind: 'ai_generated',
+  source_ref: 'openmaic:room-1',
+  created_at: '2026-07-23T10:00:00.000Z',
+  updated_at: '2026-07-23T10:00:00.000Z',
+  version_count: 1,
+  latest_version_id: 'version-1',
+  latest_payload: { openmaicClassroomId: 'room-1' },
+};
 
-  test.beforeEach(async ({ page }) => {
-    // Navigate directly to library page
-    await page.goto('http://localhost:3000/teacher/library');
-    // Wait for page to load
-    await page.waitForLoadState('networkidle');
+test.describe('Teacher Library generation feedback', () => {
+  test.beforeEach(async ({ page, context }) => {
+    await context.addCookies([
+      { name: 'access_token', value: 'test-token', url: 'http://localhost:3002' },
+    ]);
+    await page.addInitScript(() => localStorage.setItem('session_id', 'teacher-session'));
+    await page.route('**/teacher/api/auth/me', async (route) => {
+      await route.fulfill({
+        json: {
+          id: 'teacher-1',
+          email: 'teacher@example.com',
+          role: 'teacher',
+          name: 'Test Teacher',
+        },
+      });
+    });
+    await page.route('**/teacher/api/teacher/library/assets?**', async (route) => {
+      await route.fulfill({ json: { assets: [classroomAsset], total: 1 } });
+    });
+    await page.route('**/teacher/api/teacher/classes', async (route) => {
+      await route.fulfill({ json: { classes: [] } });
+    });
+    await page.route('**/teacher/api/teacher/access-code', async (route) => {
+      await route.fulfill({ json: { enabled: true, code: 'CLASS-2026' } });
+    });
   });
 
-  test('should show Enter Classroom button on AI-generated assets', async ({ page }) => {
-    // Wait for assets to load
-    await page.waitForSelector('[class*="AssetCard"], .grid > div, [class*="asset"]', { timeout: 10000 }).catch(() => {});
+  test('shows and copies the access code beside Enter Classroom', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/teacher/teacher/library');
 
-    // Look for slide deck assets with AI badge
-    const aiAssets = await page.locator('text=AI').first();
+    const code = page.getByTestId('library-access-code');
+    await expect(code).toContainText('CLASS-2026');
+    await code.getByRole('button', { name: 'Copy access code' }).click();
 
-    if (await aiAssets.isVisible()) {
-      console.log('Found AI-generated asset');
-
-      // Find the preview/Enter Classroom button
-      const enterButton = page.locator('text=Enter Classroom');
-      const previewButton = page.locator('text=Preview Slides');
-
-      const hasEnterClassroom = await enterButton.isVisible().catch(() => false);
-      const hasPreviewSlides = await previewButton.isVisible().catch(() => false);
-
-      console.log(`Enter Classroom button visible: ${hasEnterClassroom}`);
-      console.log(`Preview Slides button visible: ${hasPreviewSlides}`);
-
-      // Check if Enter Classroom button exists anywhere in the page
-      const pageContent = await page.content();
-      const hasEnterClassroomInHTML = pageContent.includes('Enter Classroom');
-      console.log(`Enter Classroom in page HTML: ${hasEnterClassroomInHTML}`);
-
-      // Hover over an asset card to see overlay
-      const assetCard = page.locator('[class*="group"][class*="border"]').first();
-      if (await assetCard.isVisible()) {
-        await assetCard.hover();
-        await page.waitForTimeout(500);
-
-        // Check for external link icon that indicates OpenMAIC URL
-        const externalLinkIcon = page.locator('[data-testid="external-link"], svg[class*="ExternalLink"]');
-        console.log(`External link icon visible on hover: ${await externalLinkIcon.isVisible().catch(() => false)}`);
-      }
-    } else {
-      console.log('No AI-generated assets found on the page');
-      // Take a screenshot to see what's there
-      await page.screenshot({ path: '/tmp/library-screenshot.png' });
-      console.log('Screenshot saved to /tmp/library-screenshot.png');
-    }
+    await expect(code.getByRole('button', { name: 'Copy access code' })).toHaveText('Copied');
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('CLASS-2026');
   });
 
-  test('clicking Enter Classroom should open OpenMAIC', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
+  test('shows real Core progress for OpenMAIC generation', async ({ page }) => {
+    await page.route('**/teacher/api/teacher/library/generate-classroom', async (route) => {
+      await route.fulfill({ status: 202, json: { jobId: 'openmaic-job-1', status: 'pending' } });
+    });
+    await page.route('**/teacher/api/teacher/library/generate-classroom-status/openmaic-job-1', async (route) => {
+      await route.fulfill({
+        json: {
+          status: 'pending',
+          progress: 54,
+          step: 'generating_scenes',
+          message: 'Generating scene 3 of 5',
+          scenesGenerated: 3,
+          totalScenes: 5,
+        },
+      });
+    });
+    await page.goto('/teacher/teacher/library');
 
-    // Find Enter Classroom button
-    const enterButton = page.locator('button:has-text("Enter Classroom"), a:has-text("Enter Classroom")');
+    await page.getByRole('button', { name: 'Generate OpenMAIC Classroom' }).click();
+    await page.getByPlaceholder('Photosynthesis for 8th graders').fill('Photosynthesis');
+    await page.getByRole('button', { name: 'Generate Classroom' }).click();
 
-    if (await enterButton.isVisible()) {
-      console.log('Found Enter Classroom button, clicking...');
+    const progress = page.getByRole('progressbar');
+    await expect(progress).toHaveAttribute('aria-valuenow', '54');
+    await expect(page.getByText('Generating scene 3 of 5')).toBeVisible();
+    await expect(page.getByText('3/5 scenes')).toBeVisible();
+  });
 
-      // Set up popup listener
-      const popupPromise = page.waitForEvent('popup').catch(() => null);
+  test('shows an indeterminate bar for opaque AI generation', async ({ page }) => {
+    await page.route('**/teacher/api/teacher/library/generate', async (route) => {
+      await route.fulfill({ status: 202, json: { jobId: 'ai-job-1', status: 'pending' } });
+    });
+    await page.route('**/teacher/api/teacher/library/generate-status/ai-job-1', async (route) => {
+      await route.fulfill({ json: { status: 'pending' } });
+    });
+    await page.goto('/teacher/teacher/library');
 
-      await enterButton.click();
+    await page.getByRole('button', { name: 'Generate with AI' }).click();
+    await page.getByPlaceholder('Introduction to Algebra for 8th Grade').fill('Algebra for eighth grade');
+    await page.getByRole('button', { name: 'Generate Now' }).click();
 
-      const popup = await popupPromise;
-      if (popupUrl) {
-        console.log(`Opened URL: ${popupUrl}`);
-        expect(popupUrl).toContain('/classroom/');
-      }
-    } else {
-      console.log('Enter Classroom button not found - checking for Preview Slides');
-      const previewButton = page.locator('button:has-text("Preview Slides")');
-      if (await previewButton.isVisible()) {
-        console.log('Found Preview Slides button instead');
-        const isPurpleGradient = await previewButton.evaluate(el => {
-          const style = window.getComputedStyle(el);
-          return style.background.includes('gradient') || el.className.includes('purple');
-        });
-        console.log(`Preview button is purple (Enter Classroom style): ${isPurpleGradient}`);
-      }
-    }
+    await expect(page.locator('progress:not([value])')).toBeVisible();
   });
 });
