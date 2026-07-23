@@ -297,7 +297,10 @@ const useStageStoreBase = create<StageState>()((set, get) => ({
         });
         log.info('Loaded from storage:', stageId);
       } else {
-        log.warn('No data found for stage:', stageId);
+        // IndexedDB miss is normal for teacher-shared classrooms — the
+        // caller in classroom/[id]/page.tsx falls back to /api/classroom.
+        // Log at debug to avoid spamming the console on every refresh.
+        log.debug('No data found for stage:', stageId);
       }
     } catch (error) {
       log.error('Failed to load from storage:', error);

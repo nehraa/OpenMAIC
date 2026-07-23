@@ -26,9 +26,10 @@ import { useExportClassroom } from '@/lib/export/use-export-classroom';
 
 interface HeaderProps {
   readonly currentSceneTitle: string;
+  readonly hideBackButton?: boolean;
 }
 
-export function Header({ currentSceneTitle }: HeaderProps) {
+export function Header({ currentSceneTitle, hideBackButton }: HeaderProps) {
   const { t } = useI18n();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -77,13 +78,15 @@ export function Header({ currentSceneTitle }: HeaderProps) {
     <>
       <header className="h-20 px-8 flex items-center justify-between z-10 bg-transparent gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <button
-            onClick={() => router.push('/')}
-            className="shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-            title={t('generation.backToHome')}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          {!hideBackButton && (
+            <button
+              onClick={() => router.push('/')}
+              className="shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              title={t('generation.backToHome')}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
           <div className="flex flex-col min-w-0">
             <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500 mb-0.5">
               {t('stage.currentScene')}
