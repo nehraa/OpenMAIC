@@ -888,7 +888,12 @@ export const useSettingsStore = create<SettingsState>()(
         // Fetch server-configured providers and merge into local state
         fetchServerProviders: async () => {
           try {
-            const res = await fetch('/api/server-providers');
+            // Skip until access cookie is set; otherwise middleware returns 401
+            // on the pre-auth page load and the layout never re-mounts to retry.
+            if (typeof document !== 'undefined' && !document.cookie.includes('openmaic_access=')) {
+              return;
+            }
+            const res = await fetch('/classroom/api/server-providers');
             if (!res.ok) return;
             const data = (await res.json()) as {
               providers: Record<string, { models?: string[]; baseUrl?: string }>;

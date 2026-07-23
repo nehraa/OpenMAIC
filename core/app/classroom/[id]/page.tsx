@@ -40,7 +40,7 @@ export default function ClassroomDetailPage() {
       if (!useStageStore.getState().stage) {
         log.info('No IndexedDB data, trying server-side storage for:', classroomId);
         try {
-          const res = await fetch(`/api/classroom?id=${encodeURIComponent(classroomId)}`);
+          const res = await fetch(`/classroom/api/classroom?id=${encodeURIComponent(classroomId)}`);
           if (res.ok) {
             const json = await res.json();
             if (json.success && json.classroom) {
@@ -129,6 +129,21 @@ export default function ClassroomDetailPage() {
     };
   }, [classroomId, loadClassroom, stop]);
 
+  // Sandbox: prevent the browser Back button from leaving the classroom
+  // and exposing core controls (outlines, scene list, etc.).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SENTINEL = '#sandbox';
+    if (window.location.hash !== SENTINEL) {
+      window.history.pushState(null, '', window.location.pathname + window.location.search + SENTINEL);
+    }
+    const onPopState = () => {
+      window.history.pushState(null, '', window.location.pathname + window.location.search + SENTINEL);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [classroomId]);
+
   // Auto-resume generation for pending outlines
   useEffect(() => {
     if (loading || error || generationStartedRef.current) return;
@@ -204,7 +219,7 @@ export default function ClassroomDetailPage() {
               </div>
             </div>
           ) : (
-            <Stage onRetryOutline={retrySingleOutline} />
+            <Stage onRetryOutline={retrySingleOutline} hideBackButton />
           )}
         </div>
       </MediaStageProvider>

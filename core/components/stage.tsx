@@ -43,8 +43,10 @@ import { VisuallyHidden } from 'radix-ui';
  */
 export function Stage({
   onRetryOutline,
+  hideBackButton,
 }: {
   onRetryOutline?: (outlineId: string) => Promise<void>;
+  hideBackButton?: boolean;
 }) {
   const { t } = useI18n();
   const {
@@ -296,7 +298,7 @@ export function Stage({
       // Escape is handled manually in our keydown handler instead
       // Note: keyboard.lock is not supported in all browsers (e.g., Firefox) - gracefully ignore failure
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (navigator as any).keyboard?.lock?.(['Escape']).catch((error) => {
+      await (navigator as any).keyboard?.lock?.(['Escape']).catch((error: unknown) => {
         console.warn('[Presentation] Keyboard lock failed — browser may not support this API:', error);
       });
       setSidebarCollapsed(true);
@@ -977,6 +979,7 @@ export function Stage({
               currentScene?.title ||
               (isCourseComplete && isPendingScene ? t('stage.courseComplete') : '')
             }
+            hideBackButton={hideBackButton}
           />
         )}
 
