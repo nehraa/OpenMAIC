@@ -75,9 +75,10 @@ export default function StudentClassesPage() {
         ) : (
           <div className="grid gap-4">
             {classes.map(cls => (
-              <div
+              <Link
                 key={cls.id}
-                className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all"
+                href={`/classes/${cls.id}`}
+                className="block bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -98,18 +99,15 @@ export default function StudentClassesPage() {
                       </p>
                     )}
                   </div>
-                  <Link
-                    href={`/classes/${cls.id}`}
-                    className="flex items-center gap-1 text-primary font-medium hover:gap-2 transition-all"
-                  >
+                  <span className="flex items-center gap-1 text-primary font-medium">
                     View
                     <ArrowRight size={16} />
-                  </Link>
+                  </span>
                 </div>
                 <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
                   Enrolled: {new Date(cls.enrolled_at).toLocaleDateString()}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
