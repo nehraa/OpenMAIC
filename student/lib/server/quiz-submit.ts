@@ -102,6 +102,7 @@ export async function submitQuizAttempt(
          submitted_at,
          score_percent,
          answers_json,
+         per_question_json,
          completion_state
        )
        VALUES (
@@ -112,6 +113,7 @@ export async function submitQuizAttempt(
          NOW(),
          $4,
          $5,
+         $6,
          'graded'
        )
        ON CONFLICT (assignment_id, student_id)
@@ -119,6 +121,7 @@ export async function submitQuizAttempt(
          submitted_at = NOW(),
          score_percent = EXCLUDED.score_percent,
          answers_json = EXCLUDED.answers_json,
+         per_question_json = EXCLUDED.per_question_json,
          completion_state = 'graded'
        RETURNING id`,
       [
@@ -127,6 +130,7 @@ export async function submitQuizAttempt(
         args.startedAt ?? null,
         graded.scorePercent,
         JSON.stringify(args.answers),
+        JSON.stringify(graded.results),
       ]
     );
     const attemptId = upsertResult.rows[0]?.id;

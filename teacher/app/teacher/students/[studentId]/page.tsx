@@ -53,6 +53,35 @@ interface StudentSummary {
   sparkline: Array<{ date: string; count: number }>;
 }
 
+interface QuestionTypeBreakdown {
+  type: string;
+  total: number;
+  correct: number;
+  accuracy: number | null;
+  pointsEarned: number;
+  totalPoints: number;
+}
+
+interface WeaknessProfile {
+  studentId: string;
+  classId: string;
+  className: string;
+  attemptsAnalyzed: number;
+  totalQuestions: number;
+  overallAccuracy: number | null;
+  weakestType: QuestionTypeBreakdown | null;
+  strongestType: QuestionTypeBreakdown | null;
+  byType: QuestionTypeBreakdown[];
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  mcq: 'Multiple choice',
+  multiple_choice: 'Multiple choice',
+  true_false: 'True / false',
+  short_answer: 'Short answer',
+  unknown: 'Other',
+};
+
 const EVENT_CONFIG: Record<string, { label: string; icon: typeof Activity; color: string }> = {
   login: { label: 'Logged in', icon: LogIn, color: 'bg-gray-100 text-gray-600' },
   session_joined: { label: 'Joined session', icon: PlayCircle, color: 'bg-purple-100 text-purple-600' },
@@ -69,6 +98,7 @@ function getSessionId() {
 export default function StudentProgressPage({ params }: { params: Promise<{ studentId: string }> }) {
   const [studentId, setStudentId] = useState<string>('');
   const [summary, setSummary] = useState<StudentSummary | null>(null);
+  const [weakness, setWeakness] = useState<WeaknessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -83,16 +113,25 @@ export default function StudentProgressPage({ params }: { params: Promise<{ stud
       setLoading(true);
       setError('');
       try {
-        const res = await fetch(`/teacher/api/teacher/progress/student/${studentId}?days=30`, {
-          headers: { 'x-session-id': getSessionId() },
-        });
-        if (!res.ok) {
+        const [eventsRes, weaknessRes] = await Promise.all([
+          fetch(`/teacher/api/teacher/progress/student/${studentId}?days=30`, {
+            headers: { 'x-session-id': getSessionId() },
+          }),
+          fetch(`/teacher/api/teacher/progress/student/${studentId}/weakness`, {
+            headers: { 'x-session-id': getSessionId() },
+          }),
+        ]);
+        if (!eventsRes.ok) {
           setError('Student not found or access denied');
           setLoading(false);
           return;
         }
-        const data = await res.json();
-        setSummary(data.summary);
+        const eventsData = await eventsRes.json();
+        setSummary(eventsData.summary);
+        if (weaknessRes.ok) {
+          const weaknessData = await weaknessRes.json();
+          setWeakness(weaknessData.profile);
+        }
       } catch {
         setError('Failed to load student progress');
       } finally {
@@ -234,6 +273,73 @@ export default function StudentProgressPage({ params }: { params: Promise<{ stud
             <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Weakness Profile */}
+      <div className="bg-white border rounded-xl p-5 mb-8">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+          <Trophy size={15} className="text-amber-500" />
+          Weakness Profile
+        </h2>
+        {!weakness || weakness.totalQuestions === 0 ? (
+          <div className="h-[80px] flex items-center justify-center text-gray-400 text-sm">
+            No quiz attempts yet — strengths and weaknesses will appear once the student submits quizzes.
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            <div className="flex items-baseline gap-6">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Overall accuracy</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {weakness.overallAccuracy !== null ? `${weakness.overallAccuracy}%` : '—'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {weakness.totalQuestions} questions across {weakness.attemptsAnalyzed} attempts
+                </p>
+              </div>
+              {weakness.weakestType && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider">Weakest area</p>
+                  <p className="text-base font-semibold text-red-700">
+                    {TYPE_LABELS[weakness.weakestType.type] ?? weakness.weakestType.type}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {weakness.weakestType.correct}/{weakness.weakestType.total} correct
+                  </p>
+                </div>
+              )}
+              {weakness.strongestType && weakness.strongestType.type !== weakness.weakestType?.type && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider">Strongest area</p>
+                  <p className="text-base font-semibold text-green-700">
+                    {TYPE_LABELS[weakness.strongestType.type] ?? weakness.strongestType.type}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {weakness.strongestType.correct}/{weakness.strongestType.total} correct
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              {weakness.byType.map((b) => (
+                <div key={b.type} className="flex items-center gap-3">
+                  <span className="text-sm text-gray-700 w-40 shrink-0">
+                    {TYPE_LABELS[b.type] ?? b.type}
+                  </span>
+                  <div className="flex-1 h-2 bg-gray-100 rounded overflow-hidden">
+                    <div
+                      className={`h-full ${b.accuracy !== null && b.accuracy >= 70 ? 'bg-green-500' : b.accuracy !== null && b.accuracy >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                      style={{ width: `${b.accuracy ?? 0}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500 w-20 text-right shrink-0">
+                    {b.correct}/{b.total} ({b.accuracy ?? 0}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Activity Sparkline */}

@@ -11,7 +11,7 @@ export const GET = withRole(
     const { studentId } = await routeCtx.params;
     const url = new URL(req.url);
     const classId = url.searchParams.get('classId') || undefined;
-    const days = Number(url.searchParams.get('days') || 30);
+    const days = Math.min(Math.max(Number(url.searchParams.get('days') || 30), 1), 365);
 
     // Verify the student belongs to one of the teacher's classes
     const db = getDb();
@@ -28,7 +28,7 @@ export const GET = withRole(
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    const summary = await getStudentProgressEvents(studentId, classId, days);
+    const summary = await getStudentProgressEvents(studentId, classId, ctx.user.id, days);
 
     if (!summary) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });

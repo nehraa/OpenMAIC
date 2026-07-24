@@ -53,7 +53,7 @@ export default function QuizzesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        window.location.href = `/quizzes/${data.quiz.id}/edit`;
+        window.location.href = `quizzes/${data.quiz.id}/edit`;
       }
     } finally {
       setCreating(false);

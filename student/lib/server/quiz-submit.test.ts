@@ -104,13 +104,17 @@ test('submitQuizAttempt: happy path grades and upserts', async () => {
   assert.equal(result.graded.totalPoints, 3);
   assert.equal(result.attemptId, 'attempt-1');
   assert.equal(state.upsertCalls, 1);
-  // params order: assignmentId, studentId, startedAt, scorePercent, JSON.stringify(answers)
+  // params order: assignmentId, studentId, startedAt, scorePercent, JSON.stringify(answers), JSON.stringify(graded.results)
   const p = state.upsertedAttempts[0].params;
   assert.equal(p[0], 'a1');
   assert.equal(p[1], 's1');
   assert.equal(p[2], null); // no startedAt
   assert.equal(p[3], 100);
   assert.deepEqual(JSON.parse(p[4] as string), { q1: '4', q2: true });
+  assert.deepEqual(JSON.parse(p[5] as string), [
+    { id: 'q1', type: 'mcq', totalPoints: 2, pointsEarned: 2, isCorrect: true, openEnded: false },
+    { id: 'q2', type: 'true_false', totalPoints: 1, pointsEarned: 1, isCorrect: true, openEnded: false },
+  ]);
 });
 
 test('submitQuizAttempt: missing assignment returns assignment_not_found', async () => {

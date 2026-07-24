@@ -14,11 +14,19 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
   }
 
   const studentsResult = await db.query(`
-    SELECT u.id, u.name, u.phone_e164, cm.enrolled_at, cm.source
+    SELECT u.id, u.name, u.phone_e164, cm.enrolled_at, cm.source, cm.status, cm.id as membership_id
     FROM users u
     JOIN class_memberships cm ON u.id = cm.student_id
     WHERE cm.class_id = $1
-    ORDER BY cm.enrolled_at DESC
+    ORDER BY
+      CASE cm.status
+        WHEN 'pending' THEN 0
+        WHEN 'active' THEN 1
+        WHEN 'restricted' THEN 2
+        WHEN 'rejected' THEN 3
+        ELSE 4
+      END,
+      cm.enrolled_at DESC
   `, [classId]);
 
   return NextResponse.json({ students: studentsResult.rows });

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import { Settings } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -9,6 +10,8 @@ interface Student {
   phone_e164: string;
   enrolled_at: string;
   source: string;
+  status: 'pending' | 'active' | 'rejected' | 'restricted';
+  membership_id: string;
 }
 
 interface ClassData {
@@ -20,6 +23,8 @@ interface ClassData {
   student_count: number;
 }
 
+type StatusFilter = 'all' | 'pending' | 'active' | 'restricted' | 'rejected';
+
 export default function ClassDetailPage({ params }: { params: Promise<{ classId: string }> }) {
   const { classId } = use(params);
   const [classData, setClassData] = useState<ClassData | null>(null);
@@ -29,6 +34,8 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
   const [showImportModal, setShowImportModal] = useState(false);
   const [newStudent, setNewStudent] = useState({ phone: '', name: '' });
   const [csvContent, setCsvContent] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClassData();
@@ -62,6 +69,29 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
       console.error('Failed to fetch students:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function setMembershipStatus(studentId: string, status: Student['status']) {
+    setProcessingId(studentId);
+    try {
+      const res = await fetch(`/teacher/api/teacher/classes/${classId}/students/${studentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-id': getSessionId()
+        },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to update student');
+      }
+      fetchStudents();
+    } catch (error) {
+      console.error('Failed to update student:', error);
+    } finally {
+      setProcessingId(null);
     }
   }
 
@@ -144,6 +174,11 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
     return <div className="p-8">Loading...</div>;
   }
 
+  const pending = students.filter((s) => s.status === 'pending');
+  const filteredStudents = statusFilter === 'all'
+    ? students
+    : students.filter((s) => s.status === statusFilter);
+
   return (
     <div className="p-8">
       <Link href="classes" className="text-blue-600 hover:underline mb-4 inline-block">
@@ -155,9 +190,17 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
           <h1 className="text-2xl font-bold">{classData.name}</h1>
           <p className="text-gray-600">{classData.subject} • {classData.batch}</p>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-gray-500">Join Code</div>
-          <div className="font-mono text-xl font-bold">{classData.join_code}</div>
+        <div className="flex items-start gap-6">
+          <div className="text-right">
+            <div className="text-sm text-gray-500">Join Code</div>
+            <div className="font-mono text-xl font-bold">{classData.join_code}</div>
+          </div>
+          <Link
+            href={`/teacher/classes/${classId}/settings`}
+            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted"
+          >
+            <Settings size={14} /> Settings
+          </Link>
         </div>
       </div>
 
@@ -176,29 +219,90 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
         </button>
       </div>
 
+      {pending.length > 0 && (
+        <div className="mb-8 border rounded-lg bg-amber-50">
+          <div className="px-4 py-3 border-b bg-amber-100 flex justify-between items-center">
+            <h2 className="font-semibold">Pending Join Requests ({pending.length})</h2>
+            <span className="text-xs text-amber-800">Self-joins await your approval</span>
+          </div>
+          <ul className="divide-y">
+            {pending.map((s) => (
+              <li key={s.id} className="px-4 py-3 flex justify-between items-center">
+                <div>
+                  <div className="font-medium">{s.name || 'Unnamed'}</div>
+                  <div className="text-sm text-gray-600 font-mono">{s.phone_e164}</div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setMembershipStatus(s.id, 'active')}
+                    disabled={processingId === s.id}
+                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => setMembershipStatus(s.id, 'rejected')}
+                    disabled={processingId === s.id}
+                    className="px-3 py-1.5 border border-red-600 text-red-600 text-sm rounded hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mb-3 flex gap-2 text-sm">
+        {(['all', 'active', 'pending', 'restricted', 'rejected'] as StatusFilter[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setStatusFilter(f)}
+            className={`px-3 py-1 rounded border ${statusFilter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'}`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-white border rounded-lg">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Name</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Phone</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Enrolled</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Source</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {students.length === 0 ? (
+            {filteredStudents.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                  No students enrolled yet
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  No students match this filter
                 </td>
               </tr>
             ) : (
-              students.map((student) => (
+              filteredStudents.map((student) => (
                 <tr key={student.id}>
                   <td className="px-4 py-3">{student.name || 'Unnamed'}</td>
                   <td className="px-4 py-3 font-mono text-sm">{student.phone_e164}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      student.status === 'active'
+                        ? 'bg-green-100 text-green-700'
+                        : student.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : student.status === 'restricted'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-red-100 text-red-700'
+                    }`}>
+                      {student.status}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {new Date(student.enrolled_at).toLocaleDateString()}
                   </td>
@@ -210,12 +314,32 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleRemoveStudent(student.id)}
-                      className="text-red-600 hover:underline text-sm"
-                    >
-                      Remove
-                    </button>
+                    <div className="flex gap-2">
+                      {student.status === 'active' && (
+                        <button
+                          onClick={() => setMembershipStatus(student.id, 'restricted')}
+                          disabled={processingId === student.id}
+                          className="text-orange-600 hover:underline text-sm disabled:opacity-50"
+                        >
+                          Restrict
+                        </button>
+                      )}
+                      {student.status === 'restricted' && (
+                        <button
+                          onClick={() => setMembershipStatus(student.id, 'active')}
+                          disabled={processingId === student.id}
+                          className="text-green-600 hover:underline text-sm disabled:opacity-50"
+                        >
+                          Restore
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRemoveStudent(student.id)}
+                        className="text-red-600 hover:underline text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

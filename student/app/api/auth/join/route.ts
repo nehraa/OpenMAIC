@@ -104,19 +104,26 @@ export const POST = async (request: NextRequest) => {
       student = newStudentResult.rows[0] as StudentRow;
     }
 
-    // Step 4: Create class_membership if not already a member
+    // Step 4: Create class_membership if not already a member. Self-joins via
+    // a join code start as 'pending' so the teacher can approve before the
+    // student gains access. Existing rows are preserved (re-join is a no-op).
     const existingMembershipResult = await db.query(
-      `SELECT id FROM class_memberships
+      `SELECT id, status FROM class_memberships
        WHERE class_id = $1 AND student_id = $2`,
       [classRow.id, student.id]
     );
 
+    let membershipStatus: 'pending' | 'active' = 'pending';
     if (existingMembershipResult.rows.length === 0) {
       await db.query(
-        `INSERT INTO class_memberships (tenant_id, class_id, student_id, source)
-         VALUES ($1, $2, $3, 'manual')`,
+        `INSERT INTO class_memberships (tenant_id, class_id, student_id, source, status)
+         VALUES ($1, $2, $3, 'manual', 'pending')`,
         [classRow.tenant_id, classRow.id, student.id]
       );
+    } else {
+      membershipStatus = (existingMembershipResult.rows[0] as { status: 'pending' | 'active' | 'rejected' | 'restricted' }).status === 'active'
+        ? 'active'
+        : 'pending';
     }
 
     // Step 5: Generate JWT tokens
@@ -149,6 +156,7 @@ export const POST = async (request: NextRequest) => {
         name: classRow.name,
         subject: classRow.subject,
         teacherId: classRow.teacher_id,
+        membershipStatus,
       },
     });
 
