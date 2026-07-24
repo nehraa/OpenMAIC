@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth/jwt';
+import { getAllowedOrigin, sessionCookieOptions } from '@/lib/auth/http';
 
 const joinSchema = z.object({
   joinCode: z.string().min(1, 'Join code is required'),
@@ -128,16 +129,10 @@ export const POST = async (request: NextRequest) => {
     const refreshToken = await generateRefreshToken(student.id);
 
     // Step 6: Set httpOnly cookies
-    // No `domain` set in production — host-only cookies match whatever host
-    // served the response, which works across dev (localhost) and prod
-    // (study.devstudios.me). The hardcoded `domain: 'localhost'` from the
-    // original implementation dropped the cookie on every non-localhost host.
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-    };
+    // `domain` is only set when SESSION_COOKIE_DOMAIN is configured for
+    // production. The previous hardcoded `domain: 'localhost'` dropped the
+    // cookie on every non-localhost host.
+    const cookieOptions = sessionCookieOptions();
 
     // Step 7: Return student info
     const response = NextResponse.json({
@@ -158,7 +153,7 @@ export const POST = async (request: NextRequest) => {
     });
 
     // Add CORS headers for cross-origin requests from the student app
-    const allowedOrigin = process.env.OPENMAIC_PUBLIC_URL || process.env.STUDENT_APP_ORIGIN || 'http://localhost:3001';
+    const allowedOrigin = getAllowedOrigin();
     response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.append('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -185,7 +180,7 @@ export const POST = async (request: NextRequest) => {
 };
 
 export async function OPTIONS(_request: NextRequest) {
-  const allowedOrigin = process.env.OPENMAIC_PUBLIC_URL || process.env.STUDENT_APP_ORIGIN || 'http://localhost:3001';
+  const allowedOrigin = getAllowedOrigin();
   return new NextResponse(null, {
     status: 204,
     headers: {

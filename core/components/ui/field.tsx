@@ -12,7 +12,7 @@ function FieldSet({ className, ...props }: React.ComponentProps<'fieldset'>) {
     <fieldset
       data-slot="field-set"
       className={cn(
-        'gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col',
+        'gap-6 has-[[data-slot=checkbox-group]]:gap-3 has-[[data-slot=radio-group]]:gap-3 flex flex-col',
         className,
       )}
       {...props}
@@ -56,9 +56,9 @@ const fieldVariants = cva('data-[invalid=true]:text-destructive gap-3 group/fiel
     orientation: {
       vertical: 'flex-col [&>*]:w-full [&>.sr-only]:w-auto',
       horizontal:
-        'flex-row items-center [&>[data-slot=field-label]]:flex-auto has-[>[data-slot=field-content]]:items-start has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px',
+        'flex-row items-center [&>[data-slot=field-label]]:flex-auto has-[[data-slot=field-content]]:items-start has-[[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px',
       responsive:
-        'flex-col [&>*]:w-full [&>.sr-only]:w-auto @md/field-group:flex-row @md/field-group:items-center @md/field-group:[&>*]:w-auto @md/field-group:[&>[data-slot=field-label]]:flex-auto @md/field-group:has-[>[data-slot=field-content]]:items-start @md/field-group:has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px',
+        'flex-col [&>*]:w-full [&>.sr-only]:w-auto @md/field-group:flex-row @md/field-group:items-center @md/field-group:[&>*]:w-auto @md/field-group:[&>[data-slot=field-label]]:flex-auto @md/field-group:has-[[data-slot=field-content]]:items-start @md/field-group:has-[[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px',
     },
   },
   defaultVariants: {
@@ -97,8 +97,8 @@ function FieldLabel({ className, ...props }: React.ComponentProps<typeof Label>)
     <Label
       data-slot="field-label"
       className={cn(
-        'has-data-checked:bg-primary/5 has-data-checked:border-primary dark:has-data-checked:bg-primary/10 gap-2 group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border [&>*]:data-[slot=field]:p-3 group/field-label peer/field-label flex w-fit leading-snug',
-        'has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col',
+        'has-data-checked:bg-primary/5 has-data-checked:border-primary dark:has-data-checked:bg-primary/10 gap-2 group-data-[disabled=true]/field:opacity-50 has-[[data-slot=field]]:rounded-md has-[[data-slot=field]]:border [&>*]:data-[slot=field]:p-3 group/field-label peer/field-label flex w-fit leading-snug',
+        'has-[[data-slot=field]]:w-full has-[[data-slot=field]]:flex-col',
         className,
       )}
       {...props}

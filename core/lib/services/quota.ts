@@ -1,6 +1,3 @@
-import { db } from '@/lib/db'
-import { eq, and, sql } from 'drizzle-orm'
-
 export type QuotaType = 'questions' | 'images' | 'videos'
 
 export interface QuotaCheck {
@@ -11,23 +8,11 @@ export interface QuotaCheck {
 }
 
 export async function checkQuota(userId: string, quotaType: QuotaType): Promise<QuotaCheck> {
-  const quota = await db.query.userQuotas?.findFirst({
-    where: eq(sql`user_id`, userId),
-  })
-
-  if (!quota) {
-    return { allowed: true, used: 0, limit: 50, remaining: 50 }
-  }
-
-  const used = getUsedCount(quota, quotaType)
-  const limit = getLimit(quota, quotaType)
-
-  return {
-    allowed: used < limit,
-    used,
-    limit,
-    remaining: Math.max(0, limit - used),
-  }
+  // Core's self-hosted deployment has no user DB. Keep quota enforcement at
+  // the authenticated portal/teacher layer until a shared quota store exists.
+  void userId
+  void quotaType
+  return { allowed: true, used: 0, limit: 50, remaining: 50 }
 }
 
 export async function consumeQuota(
@@ -39,26 +24,6 @@ export async function consumeQuota(
 
   if (!check.allowed) {
     throw new QuotaExceededError(quotaType, check.remaining)
-  }
-
-  const fieldMap: Record<QuotaType, string> = {
-    questions: 'questions_used',
-    images: 'images_used',
-    videos: 'videos_used',
-  }
-
-  const field = fieldMap[quotaType]
-
-  try {
-    await db.query.userQuotas?.update({
-      where: eq(sql`user_id`, userId),
-      set: {
-        [field]: sql`${field} + ${amount}`,
-        updatedAt: new Date(),
-      },
-    })
-  } catch {
-    // Quota table might not exist yet - skip
   }
 
   return { success: true, remaining: check.remaining - amount }
@@ -78,20 +43,3 @@ export class QuotaExceededError extends Error {
   }
 }
 
-function getLimit(quota: any, quotaType: QuotaType): number {
-  const limits: Record<QuotaType, string> = {
-    questions: 'questions_limit',
-    images: 'images_limit',
-    videos: 'videos_limit',
-  }
-  return quota[limits[quotaType]] || 50
-}
-
-function getUsedCount(quota: any, quotaType: QuotaType): number {
-  const used: Record<QuotaType, string> = {
-    questions: 'questions_used',
-    images: 'images_used',
-    videos: 'videos_used',
-  }
-  return quota[used[quotaType]] || 0
-}

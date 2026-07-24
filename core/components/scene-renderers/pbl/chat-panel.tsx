@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
 import type { PBLChatMessage, PBLIssue } from '@/lib/pbl/types';
 import { useI18n } from '@/lib/hooks/use-i18n';
-import { MessageResponse } from '@/components/ai-elements/message';
+import { MessageResponse } from '@/components/chat/message-response';
 import { useDraftCache } from '@/lib/hooks/use-draft-cache';
 import { SpeechButton } from '@/components/audio/speech-button';
 

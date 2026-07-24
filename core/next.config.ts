@@ -1,9 +1,14 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: process.env.VERCEL ? undefined : 'standalone',
+  basePath: '/classroom',
   transpilePackages: ['mathml2omml', 'pptxgenjs'],
   serverExternalPackages: [],
+  turbopack: {
+    root: path.join(import.meta.dirname, '.'),
+  },
   experimental: {
     proxyClientMaxBodySize: '200mb',
   },

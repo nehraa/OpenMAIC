@@ -283,7 +283,7 @@ export default function StudentsPage() {
                               </span>
                             </div>
                             <div>
-                              <Link href={`/teacher/students/${student.id}`} className="font-medium hover:text-primary">
+                              <Link href={`students/${student.id}`} className="font-medium hover:text-primary">
                                 {student.name}
                               </Link>
                               <p className="text-xs text-gray-500">{student.phone_e164}</p>
@@ -328,7 +328,7 @@ export default function StudentsPage() {
                         </span>
                       </div>
                       <div>
-                        <Link href={`/teacher/students/${student.id}`} className="font-medium hover:text-primary">
+                        <Link href={`students/${student.id}`} className="font-medium hover:text-primary">
                           {student.name}
                         </Link>
                         <p className="text-xs text-gray-500">{student.phone_e164}</p>

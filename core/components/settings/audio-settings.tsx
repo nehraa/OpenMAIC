@@ -338,7 +338,7 @@ export function AudioSettings({ onSave }: AudioSettingsProps = {}) {
             }
 
             try {
-              const response = await fetch('/api/transcription', {
+              const response = await fetch('/classroom/api/transcription', {
                 method: 'POST',
                 body: formData,
               });

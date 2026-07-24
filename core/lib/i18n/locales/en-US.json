@@ -940,6 +940,8 @@
   "accessCode": {
     "title": "Enter Access Code",
     "placeholder": "Access code",
-    "error": "Invalid access code. Please try again."
+    "error": "Invalid access code. Please try again.",
+    "codeLabel": "Code",
+    "shareHint": "Share this code with students so they can join"
   }
 }

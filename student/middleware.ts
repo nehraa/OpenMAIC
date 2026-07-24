@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // in the edge runtime and the verification path is shared with the API.
 // The page renders, then client-side `/api/auth/me` confirms the session is
 // still live and triggers a logout+redirect if not.
-const PUBLIC_PATHS = new Set<string>(['/login', '/join']);
+const PUBLIC_PATHS = new Set<string>(['/login', '/join', '/auth/sso']);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

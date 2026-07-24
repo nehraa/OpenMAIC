@@ -85,3 +85,5 @@ reasoning/
 *.tsbuildinfo
 next-env.d.ts
 .coderag/
+.coderag.json
+secrets/

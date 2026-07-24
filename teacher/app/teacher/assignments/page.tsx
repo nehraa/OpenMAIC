@@ -77,18 +77,18 @@ export default function AssignmentsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Assignments</h1>
         <Link
-          href="/teacher/assignments/new"
+          href="/teacher/library"
           className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
         >
-          Create Assignment
+          Create from Library
         </Link>
       </div>
 
       {assignments.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p className="mb-4">No assignments yet</p>
-          <Link href="/teacher/assignments/new" className="text-primary hover:underline">
-            Create your first assignment
+          <Link href="/teacher/library" className="text-primary hover:underline">
+            Create your first assignment from the library
           </Link>
         </div>
       ) : (
@@ -107,7 +107,7 @@ export default function AssignmentsPage() {
               {assignments.map((assignment) => (
                 <tr key={assignment.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <Link href={`/teacher/assignments/${assignment.id}`} className="text-primary hover:underline font-medium">
+                    <Link href={`assignments/${assignment.id}`} className="text-primary hover:underline font-medium">
                       {assignment.title}
                     </Link>
                   </td>

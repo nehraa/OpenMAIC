@@ -70,7 +70,7 @@ export function usePBLChat({ projectConfig, userRole, onConfigUpdate }: UsePBLCh
 
         const isJudgeAgent = currentIssue && targetAgent.name === currentIssue.judge_agent_name;
 
-        const response = await fetch('/api/pbl/chat', {
+        const response = await fetch('/classroom/api/pbl/chat', {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -205,7 +205,7 @@ async function handleIssueComplete(
           .filter(Boolean)
           .join('\n');
 
-        const resp = await fetch('/api/pbl/chat', {
+        const resp = await fetch('/classroom/api/pbl/chat', {
           method: 'POST',
           headers,
           body: JSON.stringify({

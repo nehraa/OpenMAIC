@@ -509,7 +509,7 @@ export function useChatSessions(options: UseChatSessionsOptions = {}) {
           },
 
           fetchChat: (body, signal) =>
-            fetch('/api/chat', {
+            fetch('/classroom/api/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(body),

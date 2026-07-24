@@ -1,4 +1,4 @@
-import type { UserRole } from '../../shared/types/roles';
+import type { UserRole } from '@shared/types/roles';
 import type { AuthContext } from './auth';
 import { NextResponse } from 'next/server';
 

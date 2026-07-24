@@ -33,7 +33,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
   }
 
   try {
-    const assignment = reuseAsset(ctx.user.id, {
+    const assignment = await reuseAsset(ctx.user.id, {
       assetId,
       targetClassId: data.classId,
       title: data.title,

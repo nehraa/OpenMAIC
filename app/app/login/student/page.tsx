@@ -61,8 +61,10 @@ export default function StudentLoginPage() {
     setError('');
 
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiBase = baseUrl && baseUrl.length > 0 ? baseUrl : '';
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/join`,
+        `${apiBase}/api/auth/join`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -76,8 +78,13 @@ export default function StudentLoginPage() {
         throw new Error(data.error || 'Failed to join classroom');
       }
 
+      const data = (await res.json()) as { session_id?: string };
+      if (!data.session_id) {
+        throw new Error('Student session was not created');
+      }
+      const studentBase = process.env.NEXT_PUBLIC_STUDENT_URL || 'https://study.devstudios.me';
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push(`${process.env.NEXT_PUBLIC_STUDENT_URL || 'http://localhost:3002'}/student/`);
+      window.location.href = `${studentBase}/student/auth/sso?token=${encodeURIComponent(data.session_id)}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join classroom');
     } finally {

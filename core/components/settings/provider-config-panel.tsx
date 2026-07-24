@@ -122,7 +122,7 @@ export function ProviderConfigPanel({
     const testModelId = availableModels[0].id;
 
     try {
-      const response = await fetch('/api/verify-model', {
+      const response = await fetch('/classroom/api/verify-model', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(

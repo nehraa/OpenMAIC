@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const usePublicStack = process.env.OPENMAIC_E2E_PUBLIC === '1';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +10,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? 'html' : 'list',
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: usePublicStack ? 'https://openmaic.devstudios.me' : 'http://localhost:3001',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -18,7 +20,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: [
+  webServer: usePublicStack ? undefined : [
     {
       command: 'cd teacher && pnpm dev',
       url: 'http://localhost:3001',

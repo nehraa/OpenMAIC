@@ -9,10 +9,10 @@
 -- Also adds the late-grading close notification (assignment_closed).
 
 CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
-  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  assignment_id UUID REFERENCES assignments(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
+  student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  assignment_id TEXT REFERENCES assignments(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('assignment_released', 'assignment_closed', 'grade_available')),
   title TEXT NOT NULL,
   body TEXT NOT NULL DEFAULT '',

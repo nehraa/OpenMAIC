@@ -46,8 +46,8 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       try {
         const payload = JSON.parse(version.payload_json);
         if (payload.openmaicClassroomId) {
-          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL || 'http://localhost:3002';
-          slideOpenmaicUrl = `${baseUrl}/classroom/${payload.openmaicClassroomId}`;
+          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL;
+          slideOpenmaicUrl = baseUrl ? `${baseUrl}/classroom/${payload.openmaicClassroomId}` : null;
         }
       } catch {
         // ignore parse errors
@@ -65,8 +65,8 @@ export const GET = withRole(['teacher'], async (req: NextRequest, ctx: AuthConte
       try {
         const payload = JSON.parse(version.payload_json);
         if (payload.openmaicClassroomId) {
-          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL || 'http://localhost:3002';
-          quizOpenmaicUrl = `${baseUrl}/classroom/${payload.openmaicClassroomId}`;
+          const baseUrl = process.env.OPENMAIC_PUBLIC_URL || process.env.OPENMAIC_BASE_URL;
+          quizOpenmaicUrl = baseUrl ? `${baseUrl}/classroom/${payload.openmaicClassroomId}` : null;
         }
       } catch {
         // ignore parse errors

@@ -105,7 +105,7 @@ function AgentVoicePill({
         const controller = new AbortController();
         previewAbortRef.current = controller;
         const providerConfig = ttsProvidersConfig[providerId];
-        const res = await fetch('/api/generate/tts', {
+        const res = await fetch('/classroom/api/generate/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -335,7 +335,7 @@ function TeacherVoicePill({
         const controller = new AbortController();
         previewAbortRef.current = controller;
         const providerConfig = ttsProvidersConfig[providerId];
-        const res = await fetch('/api/generate/tts', {
+        const res = await fetch('/classroom/api/generate/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

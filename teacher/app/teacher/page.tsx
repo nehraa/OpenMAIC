@@ -144,7 +144,7 @@ export default function TeacherDashboard() {
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Users size={20} /> Your Classes
               </h2>
-              <Link href="/teacher/classes" className="text-sm text-primary hover:underline">View all</Link>
+              <Link href="classes" className="text-sm text-primary hover:underline">View all</Link>
             </div>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
@@ -158,12 +158,12 @@ export default function TeacherDashboard() {
             ) : classes.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p className="mb-2">No classes yet</p>
-                <Link href="/teacher/classes" className="text-primary hover:underline text-sm">Create your first class</Link>
+                <Link href="classes" className="text-primary hover:underline text-sm">Create your first class</Link>
               </div>
             ) : (
               <div className="space-y-3">
                 {classes.map(c => (
-                  <Link key={c.id} href={`/teacher/classes/${c.id}`} className="flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors">
+                  <Link key={c.id} href={`classes/${c.id}`} className="flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors">
                     <div>
                       <span className="font-medium">{c.name}</span>
                       {c.subject && <span className="text-sm text-muted-foreground ml-2">({c.subject})</span>}
@@ -181,19 +181,19 @@ export default function TeacherDashboard() {
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <ClipboardList size={20} /> Recent Assignments
               </h2>
-              <Link href="/teacher/assignments" className="text-sm text-primary hover:underline">View all</Link>
+              <Link href="assignments" className="text-sm text-primary hover:underline">View all</Link>
             </div>
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
             ) : recentAssignments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p className="mb-2">No assignments yet</p>
-                <Link href="/teacher/assignments" className="text-primary hover:underline text-sm">Create your first assignment</Link>
+                <Link href="assignments" className="text-primary hover:underline text-sm">Create your first assignment</Link>
               </div>
             ) : (
               <div className="space-y-3">
                 {recentAssignments.map(a => (
-                  <Link key={a.id} href={`/teacher/assignments/${a.id}`} className="flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors">
+                  <Link key={a.id} href={`assignments/${a.id}`} className="flex justify-between items-center p-3 rounded-lg hover:bg-muted transition-colors">
                     <div>
                       <span className="font-medium">{a.title}</span>
                       {a.class_name && <span className="text-sm text-muted-foreground ml-2">({a.class_name})</span>}
@@ -213,7 +213,7 @@ export default function TeacherDashboard() {
 
         {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link href="/teacher/classes" className="bg-white rounded-xl border p-5 hover:border-primary/40 hover:shadow-md transition-all">
+          <Link href="classes" className="bg-white rounded-xl border p-5 hover:border-primary/40 hover:shadow-md transition-all">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <GraduationCap size={20} className="text-primary" />
@@ -224,7 +224,7 @@ export default function TeacherDashboard() {
               </div>
             </div>
           </Link>
-          <Link href="/teacher/students" className="bg-white rounded-xl border p-5 hover:border-primary/40 hover:shadow-md transition-all">
+          <Link href="students" className="bg-white rounded-xl border p-5 hover:border-primary/40 hover:shadow-md transition-all">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <Users size={20} className="text-primary" />

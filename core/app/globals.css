@@ -1,8 +1,28 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
+
+@reference 'tailwindcss';
+
+@source not ".next";
+@source not ".next.broken-1783424993";
+@source not ".next.broken-css-1783423834";
+@source not ".next.old-1783423021";
+@source not ".next-root";
+@source not "node_modules";
+@source not "packages";
+@source not "openclaw";
+@source not "scripts";
 
 @custom-variant dark (&:is(.dark *));
+
+@custom-variant data-open (&[data-state="open"], &[data-open]:not([data-open="false"]));
+@custom-variant data-closed (&[data-state="closed"], &[data-closed]:not([data-closed="false"]));
+@custom-variant data-checked (&[data-state="checked"], &[data-checked]:not([data-checked="false"]));
+@custom-variant data-unchecked (&[data-state="unchecked"], &[data-unchecked]:not([data-unchecked="false"]));
+@custom-variant data-selected (&[data-selected="true"]);
+@custom-variant data-disabled (&[data-disabled="true"], &[data-disabled]:not([data-disabled="false"]));
+@custom-variant data-active (&[data-state="active"], &[data-active]:not([data-active="false"]));
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
 
 @theme inline {
   --color-background: var(--background);
@@ -121,11 +141,6 @@
     @apply border-border outline-ring/50;
   }
   html {
-    /* Always render the vertical scrollbar so layout doesn't horizontally
-       shift when content grows/shrinks across the viewport-height threshold
-       (e.g. expanding/collapsing recent classrooms). scrollbar-gutter:
-       stable doesn't cover every browser/config combo we see, so fall back
-       to forcing overflow-y: scroll as well. */
     scrollbar-gutter: stable;
     overflow-y: scroll;
   }
@@ -133,86 +148,50 @@
     @apply bg-background text-foreground;
   }
 }
-/* ProseMirror Editor Styles */
+
 .prosemirror-editor {
   cursor: text;
 }
 
 .prosemirror-editor.format-painter {
   cursor:
-    url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjYiIGhlaWdodD0iMTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTcuMzUuMDEybC0uMDY2Ljk5OGE1LjI3MSA1LjI3MSAwIDAwLTEuMTg0LjA2IDMuOCAzLjggMCAwMC0uOTMzLjQ3MmMtLjQ0LjM1Ni0uNzgzLjgxMS0uOTk4IDEuMzI0bC4wMTgtLjAzNnY1LjEySDEuMDR2Ljk4aC0xLjA0bC0uMDAyIDQuMTVjLjE4Ny40MjYuNDYuODEuNzkxIDEuMTE3bC4xNzUuMTUyYy4yOTMuMjA4LjYxNS4zNzMuODkuNDcyLjQxLjA4Mi44My4xMTIgMS4yNDkuMDlsLjA1Ny45OTlhNi4wNjMgNi4wNjMgMCAwMS0xLjU4OC0uMTI5IDQuODM2IDQuODM2IDAgMDEtMS4yNS0uNjQ3IDQuNDYzIDQuNDYzIDAgMDEtLjgzOC0uODgzYy0uMjI0LjMzMi0uNS42NDItLjgyNC45MjdhNC4xMSA0LjExIDAgMDEtMS4zMDUuNjMzQTYuMTI2IDYuMTI2IDAgMDEwIDE1LjkwOWwuMDY4LS45OTdjLjQyNC4wMjYuODUtLjAwMSAxLjIxNy0uMDcuMzM2LS4wOTkuNjUxLS4yNTQuODk0LS40My40My0uMzguNzY1LS44NDcuOTgyLTEuMzY4bC0uMDA1LjAxNFY4LjkzSDIuMTE1di0uOThoMS4wNFYyLjg2MmEzLjc3IDMuNzcgMCAwMC0uNzc0LTEuMTY3bC0uMTY1LS4xNTZhMy4wNjQgMy4wNjQgMCAwMC0uODgtLjQ0OEE1LjA2MiA1LjA2MiAwIDAwLjA2NyAxLjAxTDAgLjAxMmE2LjE0IDYuMTQgMCAwMTEuNTkyLjExYy40NTMuMTM1Ljg3Ny4zNDUgMS4yOS42NS4zLjI2NS41NjUuNTY0Ljc4Ny44OS4yMzMtLjMzMS41Mi0uNjM0Ljg1My0uOTA0YTQuODM1IDQuODM1IDAgMDExLjMtLjY0OEE2LjE1NSA2LjE1NSAwIDAxNy4zNS4wMTJ6IiBmaWxsPSIjMEQwRDBEIi8+PHBhdGggZD0iTTE3LjM1IDE0LjVsNC41LTQuNS02LTZjLTIgMi0zIDItNS41IDIuNS40IDMuMiA0LjgzMyA2LjY2NyA3IDh6bTQuNTg4LTQuNDkzYS4zLjMgMCAwMC40MjQgMGwuNjgtLjY4YTEuNSAxLjUgMCAwMDAtMi4xMjJMMjEuNjkgNS44NTNsMi4wMjUtMS41ODNhMS42MjkgMS42MjkgMCAxMC0yLjI3OS0yLjI5NmwtMS42MDMgMi4wMjItMS4zNTctMS4zNTdhMS41IDEuNSAwIDAwLTIuMTIxIDBsLS42OC42OGEuMy4zIDAgMDAwIC40MjVsNi4yNjMgNi4yNjN6IiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTE1Ljg5MiAzLjk2MnMtMS4wMyAxLjIwMi0yLjQ5NCAxLjg5Yy0xLjAwNi40NzQtMi4xOC41ODYtMi43MzQuNjI3LS4yLjAxNS0uMzQ0LjIxLS4yNzYuMzk5LjI5Mi44MiAxLjExMiAyLjggMi42NTggNC4zNDYgMi4xMjYgMi4xMjcgMy42NTggMi45NjggNC4xNDIgMy4yMDMuMS4wNDguMjE0LjAzLjI5OC0uMDQyLjM4Ni0uMzI1IDEuNS0xLjI3NyAyLjIxLTEuOTg2Ljg5Mi0uODg5IDIuMTg3LTIuNDQ3IDIuMTg3LTIuNDQ3bS40NzkuMDU1YS4zLjMgMCAwMS0uNDI0IDBsLTYuMjY0LTYuMjYzYS4zLjMgMCAwMTAtLjQyNWwuNjgtLjY4YTEuNSAxLjUgMCAwMTIuMTIyIDBsMS4zNTcgMS4zNTcgMS42MDMtMi4wMjJhMS42MjkgMS42MjkgMCAxMTIuMjggMi4yOTZMMjEuNjkgNS44NTNsMS4zNTIgMS4zNTJhMS41IDEuNSAwIDAxMCAyLjEyMmwtLjY4LjY4eiIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+')
+    url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjYiIGhlaWdodD0iMTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTcuMzUuMDEybC0uMDY2Ljk5OGE1LjI3MSA1LjI3MSAwIDAwLTEuMTg0LjA2IDMuOCAzLjggMCAwMC0uOTMzLjQ3MmMtLjQ0LjM1Ni0uNzgzLjgxMS0uOTk4IDEuMzI0bC4wMTgtLjAzNnY1LjEySDEuMDR2Ljk4aC0xLjA0bC0uMDAyIDQuMTVjLjE4Ny40MjYuNDYuODEuNzkxIDEuMTE3bC4xNzUuMTUyYy4yOTMuMjA4LjYxNS4zNzMuODkuNDcyLjQxLjA4Mi44My4xMTIgMS4yNDkuMDlsLjA1Ny45OTlhNi4wNjMgNi4wNjMgMCAwMS0xLjU4OC0uMTI5IDQuODM2IDQuODM2IDAgMDEtMS4yNS0uNjQ3IDQuNDYzIDQuNDYzIDAgMDEtLjgzOC0uODgzYy0uMjI0LjMzMi0uNS42NDItLjgyNC45MjdhNC4xMSA0LjExIDAgMDEtMS4zMDUuNjMzQTYuMTI2IDYuMTI2IDAgMDEwIDE1LjkwOWwuMDY4LS45OTdjLjQyNC4wMjYuODUtLjAwMSAxLjIxNy0uMDcuMzM2LS4wOTkuNjUxLS4yNTQuODk0LS40My40My0uMzguNzY1LS44NDcuOTgyLTEuMzY4bC0uMDA1LjAxNFY4LjkzSDIuMTE1di0uOThoMS4wNFYyLjg2MmEzLjc3IDMuNzcgMCAwMC0uNzc0LTEuMTY3bC4xNjUtLjE1NmEzLjA2NCAzLjA2NCAwIDAwLS44OC0uNDQ4QTUuMDYyIDUuMDYyIDAgMDAuMDY3IDEuMDFMMC4wMTJhNi4xNCA2LjE0IDAgMDExLjU5Mi4xMWMuNDUzLjEzNS44NzcuMzQ1IDEuMjkuNjUuMy4yNjUuNTY1LjU2NC43ODcuODkuMjMzLS4zMzEuNTItLjYzNC44NTMtLjkwNGE0Ljg1NCA0Ljg1NCAwIDAwMS4zLS42NDhBNi4xNTUgNi4xNTUgMCAwMTcuMzUuMDEyekAiIGZpbGw9IiMwRDBEMEQiLz48cGF0aCBkPSJNMTcuMzUgMTQuNWw0LjUtNC41LTYtNmMtMiAyLTMgMi01LjUgMi41LjQgMy4yIDQuODMzIDYuNjY3IDcgOHptNC41ODgtNC40OTNhLjMuMyAwIDAwLjQyNCAwbC42OC0uNjhhMS41IDEuNSAwIDAwMC0yLjEyMkwyMS42OSA1Ljg1M2wyLjAyNS0xLjU4M2ExLjYyOSAxLjYyOSAwIDEwLTIuMjc5LTIuMjk2bC0xLjYwMyAyLjAyMi0xLjM1Ny0xLjM1N2ExLjUgMS41IDAgMDAtMi4xMjEgMGwtLjY4LjY4YS4zLjMgMCAwMDAgLjQyNWw2LjI2MyA2LjI2M3oiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMTUuODkyIDMuOTYyczEtMS4wMyAyLjQ5NC0xLjg5Yy0xLjAwNi40NzQtMi4xOC41ODYtMi43MzQuNjI3LS4yLjAxNS0uMzQ0LjIxLS4yNzYuMzk5LjI5Mi44MiAxLjExMiAyLjggMi42NTggNC4zNDYgMi4xMjYgMi4xMjcgMy42NTggMi45NjggNC4xNDIgMy4yMDMuMS4wNDguMjE0LjAzLjI5OC0uMDQyLjM4Ni0uMzI1IDEuNS0xLjI3NyAyLjIxLTEuOTg2Ljg5Mi0uODg5IDIuMTg3LTIuNDQ3IDIuMTg3LTIuNDQ3bS40NzkuMDU1YS4zLjMgMCAwMS0uNDI0IDBsLTYuMjY0LTYuMjYzYS4zLjMgMCAwMTAtLjQyNWwuNjgtLjY4YTEuNSAxLjUgMCAwMTIuMTIyIDBsMS4zNTcgMS4zNTcgMS42MDMtMi4wMjJhMS42MjkgMS42MjkgMCAxMTIuMjggMi4yOTZMMjEuNjkgNS44NTNsMS4zNTIgMS4zNTJhMS41IDEuNSAwIDAxMCAyLjEyMmwtLjY4LjY4eiIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+')
       2 5,
     default !important;
 }
 
-/* Animation for audio visualizer */
 @keyframes wave {
-  0%,
-  100% {
-    height: 30%;
-  }
-  50% {
-    height: 100%;
-  }
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
 }
 
-/* Breathing bars for presentation speech bubbles (parent is h-3.5 = 14px) */
 @keyframes breathing-bar-1 {
-  0%,
-  100% {
-    height: 3px;
-  }
-  50% {
-    height: 14px;
-  }
-}
-@keyframes breathing-bar-2 {
-  0%,
-  100% {
-    height: 6px;
-  }
-  50% {
-    height: 14px;
-  }
-}
-@keyframes breathing-bar-3 {
-  0%,
-  100% {
-    height: 3px;
-  }
-  50% {
-    height: 11px;
-  }
+  0%, 100% { height: 3px; }
+  50% { height: 14px; }
 }
 
-/* Hide scrollbar by default, show on hover */
+@keyframes breathing-bar-2 {
+  0%, 100% { height: 6px; }
+  50% { height: 14px; }
+}
+
+@keyframes breathing-bar-3 {
+  0%, 100% { height: 3px; }
+  50% { height: 11px; }
+}
+
 @utility scrollbar-hide {
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  &::-webkit-scrollbar { display: none; }
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* Shimmer sweep for skeleton loading */
 @keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-/* Breathing animation for interactive mode button */
 @keyframes interactive-mode-breathe {
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.08);
-  }
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
 }

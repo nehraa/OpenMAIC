@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/lib/server/middleware';
-import { getAssetWithVersions, tagAsset, updateAssetTitle } from '@/lib/server/library';
+import { getAssetWithVersions, tagAsset, updateAssetTitle, deleteAsset } from '@/lib/server/library';
 import type { AuthContext } from '@/lib/server/middleware/auth';
 import { z } from 'zod';
 
@@ -48,4 +48,17 @@ export const PATCH = withRole(['teacher'], async (req: NextRequest, ctx: AuthCon
   }
 
   return NextResponse.json({ asset });
+});
+
+// DELETE /api/teacher/library/assets/[assetId] - Delete a library asset.
+// Owner-only. Idempotent at the route level: a 404 here means "already gone
+// or not yours" — we don't surface that as a 403 (which would leak existence
+// of other teachers' assets).
+export const DELETE = withRole(['teacher'], async (req: NextRequest, ctx: AuthContext, routeCtx) => {
+  const { assetId } = await routeCtx.params;
+  const ok = await deleteAsset(ctx.user.id, assetId);
+  if (!ok) {
+    return NextResponse.json({ error: 'Asset not found or access denied' }, { status: 404 });
+  }
+  return NextResponse.json({ deleted: true, id: assetId });
 });

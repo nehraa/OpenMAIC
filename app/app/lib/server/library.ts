@@ -57,6 +57,7 @@ export async function saveGeneratedContent(data: SaveAssetData): Promise<Content
 export interface LibraryAsset extends ContentAsset {
   version_count: number;
   latest_version_id: string | null;
+  latest_payload?: Record<string, unknown> | null;
 }
 
 export async function getLibraryAssets(teacherId: string, filters?: LibraryFilters): Promise<{ assets: LibraryAsset[]; total: number }> {
@@ -110,7 +111,8 @@ export async function getLibraryAssets(teacherId: string, filters?: LibraryFilte
   const assetsQuery = `
     SELECT ca.*,
       (SELECT COUNT(*) FROM content_asset_versions WHERE asset_id = ca.id) as version_count,
-      (SELECT id FROM content_asset_versions WHERE asset_id = ca.id ORDER BY version_number DESC LIMIT 1) as latest_version_id
+      (SELECT id FROM content_asset_versions WHERE asset_id = ca.id ORDER BY version_number DESC LIMIT 1) as latest_version_id,
+      (SELECT payload_json FROM content_asset_versions WHERE asset_id = ca.id ORDER BY version_number DESC LIMIT 1) as latest_payload
     FROM content_assets ca
     WHERE ${conditions.join(' AND ')}
     ORDER BY ca.created_at DESC
@@ -120,7 +122,21 @@ export async function getLibraryAssets(teacherId: string, filters?: LibraryFilte
   values.push(limit, offset);
   const assetsResult = await db.query(assetsQuery, values);
 
-  return { assets: assetsResult.rows as LibraryAsset[], total };
+  // payload_json is a text column that holds a JSON-encoded string. The pg
+  // driver returns it as a string — parse it so the page can read
+  // asset.latest_payload.slides / .openmaicClassroomId directly.
+  const assets = (assetsResult.rows as LibraryAsset[]).map((row) => {
+    if (row.latest_payload && typeof row.latest_payload === 'string') {
+      try {
+        row.latest_payload = JSON.parse(row.latest_payload);
+      } catch {
+        row.latest_payload = null;
+      }
+    }
+    return row;
+  });
+
+  return { assets, total };
 }
 
 export async function getAssetWithVersions(assetId: string): Promise<AssetWithVersions | null> {

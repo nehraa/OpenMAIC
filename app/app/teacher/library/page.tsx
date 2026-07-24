@@ -21,6 +21,14 @@ interface LibraryAsset {
   latest_version_id: string | null;
   class_id?: string;
   class_name?: string;
+  // Unwrapped from latest_payload (the GET /assets endpoint parses the
+  // payload_json string column so the page can read fields directly).
+  // Used to detect OpenMAIC classroom assets and show the share link.
+  latest_payload?: {
+    openmaicClassroomId?: string;
+    openmaicUrl?: string;
+    [key: string]: unknown;
+  } | null;
 }
 
 interface Class {
@@ -159,19 +167,19 @@ function ReuseModal({ asset, classes, onClose, onSuccess }: ReuseModalProps) {
 
 interface GenerateModalProps {
   onClose: () => void;
-  onSuccess: () => void;
+  onKickoff: (job: { jobId: string; prompt: string; type: 'slide_deck' | 'quiz' }) => void;
 }
 
-function GenerateModal({ onClose, onSuccess }: GenerateModalProps) {
+function GenerateModal({ onClose, onKickoff }: GenerateModalProps) {
   const [prompt, setPrompt] = useState('');
   const [type, setType] = useState<'slide_deck' | 'quiz'>('slide_deck');
-  const [loading, setLoading] = useState(false);
+  const [kicking, setKicking] = useState(false);
   const [error, setError] = useState('');
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!prompt.trim()) return;
-    setLoading(true);
+    setKicking(true);
     setError('');
 
     try {
@@ -181,22 +189,32 @@ function GenerateModal({ onClose, onSuccess }: GenerateModalProps) {
           'Content-Type': 'application/json',
           'x-session-id': getSessionId()
         },
-        body: JSON.stringify({
-          prompt,
-          type
-        })
+        body: JSON.stringify({ prompt, type })
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Generation failed');
+      // Defensive parse — even on non-2xx, the body might be HTML from an
+      // edge error page. Treat any non-JSON failure as a kickoff failure.
+      let data: { jobId?: string; error?: unknown } = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Generation request failed (HTTP ${res.status})`);
       }
 
-      onSuccess();
+      if (!res.ok || !data.jobId) {
+        const message =
+          (typeof data.error === 'string' && data.error) ||
+          `Generation request failed (HTTP ${res.status})`;
+        throw new Error(message);
+      }
+
+      // Hand the job off to the parent; the modal closes and the page shows
+      // a non-blocking toast while generation runs in the background.
+      onKickoff({ jobId: data.jobId, prompt, type });
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+      setKicking(false);
     }
   }
 
@@ -249,19 +267,19 @@ function GenerateModal({ onClose, onSuccess }: GenerateModalProps) {
               type="button"
               onClick={onClose}
               className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium"
-              disabled={loading}
+              disabled={kicking}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="px-6 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-primary/20"
-              disabled={loading || !prompt.trim()}
+              disabled={kicking || !prompt.trim()}
             >
-              {loading ? (
+              {kicking ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
+                  Starting...
                 </>
               ) : 'Generate Now'}
             </button>
@@ -272,7 +290,176 @@ function GenerateModal({ onClose, onSuccess }: GenerateModalProps) {
   );
 }
 
-function AssetCard({ asset, onUse }: { asset: LibraryAsset; onUse: () => void }) {
+interface JobLogEntry {
+  ts: number;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+}
+
+interface ActiveJob {
+  jobId: string;
+  prompt: string;
+  type: 'slide_deck' | 'quiz';
+  status: 'pending' | 'completed' | 'failed';
+  error?: string;
+  mockContent?: boolean;
+  progress: number;
+  step: string;
+  message: string;
+  scenesGenerated: number;
+  totalScenes: number;
+  log: JobLogEntry[];
+  showLog: boolean;
+}
+
+function GenerationNotifications({
+  jobs,
+  onDismiss,
+  onToggleLog
+}: {
+  jobs: ActiveJob[];
+  onDismiss: (jobId: string) => void;
+  onToggleLog: (jobId: string) => void;
+}) {
+  if (jobs.length === 0) return null;
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2 w-96" data-testid="generation-notifications">
+      {jobs.map((job) => {
+        const title =
+          job.prompt.length > 60 ? `${job.prompt.substring(0, 57)}...` : job.prompt;
+        const isSlide = job.type === 'slide_deck';
+        // Clamp progress between 0 and 100 so the bar never goes negative
+        // or wider than the toast during the first poll (server returns 0).
+        const pct = Math.max(0, Math.min(100, Math.round(job.progress ?? 0)));
+        const sceneLabel =
+          job.totalScenes > 0
+            ? `${job.scenesGenerated}/${job.totalScenes} scenes`
+            : null;
+        return (
+          <div
+            key={job.jobId}
+            className={`rounded-xl shadow-lg border p-3 flex flex-col gap-2 ${
+              job.status === 'failed'
+                ? 'bg-red-50 border-red-200'
+                : job.status === 'completed'
+                  ? 'bg-white border-green-200'
+                  : 'bg-white border-gray-200'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {job.status === 'pending' ? (
+                <div className="w-5 h-5 mt-0.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+              ) : job.status === 'completed' ? (
+                <div className="w-5 h-5 mt-0.5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs shrink-0">✓</div>
+              ) : (
+                <div className="w-5 h-5 mt-0.5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs shrink-0">!</div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  {isSlide ? 'Slide deck' : 'Quiz'}
+                </div>
+                <div className="text-sm font-medium text-gray-900 truncate">{title}</div>
+                <div className={`text-xs mt-0.5 ${
+                  job.status === 'failed' ? 'text-red-600' :
+                  job.status === 'completed' ? (job.mockContent ? 'text-amber-600' : 'text-green-600') :
+                  'text-gray-500'
+                }`}>
+                  {job.status === 'pending' && (job.message || 'Generating in background...')}
+                  {job.status === 'completed' && (job.mockContent ? 'Done (sample content)' : 'Done — refresh library to view')}
+                  {job.status === 'failed' && (job.error || 'Failed')}
+                </div>
+              </div>
+              {job.status !== 'pending' && (
+                <button
+                  onClick={() => onDismiss(job.jobId)}
+                  className="text-gray-400 hover:text-gray-600 text-sm shrink-0"
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Progress bar — visible while running. Clamps to 2% min so the
+                user sees movement even before the first scenes start. */}
+            {job.status === 'pending' && (
+              <div>
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-500 ease-out"
+                    style={{ width: `${Math.max(2, pct)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1 text-[10px] text-gray-500">
+                  <span>{pct}%</span>
+                  {sceneLabel && <span>{sceneLabel}</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Log toggle — keeps the toast small by default but lets the
+                teacher expand the trail when something went sideways. */}
+            <button
+              onClick={() => onToggleLog(job.jobId)}
+              className="self-start text-[10px] text-gray-500 hover:text-gray-700 uppercase tracking-wide"
+              data-testid="toggle-log"
+            >
+              {job.showLog ? '▾ Hide log' : '▸ Show log'}
+            </button>
+            {job.showLog && job.log.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-2 max-h-40 overflow-y-auto font-mono text-[10px] leading-relaxed">
+                {job.log.slice(-12).map((entry, i) => (
+                  <div
+                    key={i}
+                    className={
+                      entry.level === 'error'
+                        ? 'text-red-700'
+                        : entry.level === 'warn'
+                          ? 'text-amber-700'
+                          : 'text-gray-600'
+                    }
+                  >
+                    <span className="text-gray-400">
+                      {new Date(entry.ts).toLocaleTimeString()}
+                    </span>{' '}
+                    {entry.message}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AssetCard({
+  asset,
+  accessCode,
+  onUse
+}: {
+  asset: LibraryAsset;
+  accessCode: string;
+  onUse: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const isOpenMAIC =
+    asset.type === 'slide_deck' &&
+    Boolean(asset.latest_payload?.openmaicClassroomId);
+  const shareUrl = asset.latest_payload?.openmaicUrl;
+
+  async function copyCode() {
+    if (!accessCode) return;
+    try {
+      await navigator.clipboard.writeText(accessCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard blocked — teacher can still read it off the badge.
+    }
+  }
+
   return (
     <div className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={onUse}>
       <div className="flex justify-between items-start mb-2">
@@ -290,6 +477,41 @@ function AssetCard({ asset, onUse }: { asset: LibraryAsset; onUse: () => void })
 
       {asset.class_name && (
         <p className="text-xs text-primary font-medium mb-2">{asset.class_name}</p>
+      )}
+
+      {/* Access-code badge — shown only for OpenMAIC classroom assets when
+          a code is configured. The teacher needs this to share with
+          students; without it they have to ask support. */}
+      {isOpenMAIC && accessCode && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-50 ring-1 ring-amber-200 pl-2 pr-1 py-1 text-xs text-amber-900"
+          data-testid="library-access-code"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          <span className="font-medium">Code:</span>
+          <code className="font-mono tracking-widest">{accessCode}</code>
+          <button
+            onClick={copyCode}
+            className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 hover:bg-amber-200 transition-colors"
+            aria-label="Copy access code"
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          {shareUrl && (
+            <a
+              href={shareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 hover:bg-amber-200 transition-colors"
+            >
+              Open
+            </a>
+          )}
+        </div>
       )}
 
       <div className="flex justify-between items-center mt-4">
@@ -322,11 +544,107 @@ export default function LibraryPage() {
   const [selectedAsset, setSelectedAsset] = useState<LibraryAsset | null>(null);
   const [showGenerate, setShowGenerate] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
+  // Mirrors core's ACCESS_CODE — fetched once on mount, shown on each
+  // OpenMAIC classroom asset card so the teacher knows which code to
+  // share with students.
+  const [accessCode, setAccessCode] = useState<string>('');
+
+  // Poll status for any pending jobs every 3s. Stop polling once everything
+  // is resolved; completed/failed jobs stick around as a toast until the
+  // teacher dismisses them.
+  useEffect(() => {
+    const pending = activeJobs.filter(j => j.status === 'pending');
+    if (pending.length === 0) return;
+    const interval = setInterval(async () => {
+      for (const job of pending) {
+        try {
+          const res = await fetch(`/api/teacher/library/generate-status/${job.jobId}`, {
+            headers: { 'x-session-id': getSessionId() }
+          });
+          if (res.status === 404) {
+            setActiveJobs(prev =>
+              prev.map(j =>
+                j.jobId === job.jobId
+                  ? { ...j, status: 'failed', error: 'Server lost the job — please retry' }
+                  : j
+              )
+            );
+            continue;
+          }
+          if (!res.ok) continue;
+          const data = await res.json();
+          setActiveJobs(prev =>
+            prev.map(j =>
+              j.jobId === job.jobId
+                ? {
+                    ...j,
+                    status: data.status,
+                    error: data.error || undefined,
+                    mockContent: data.mockContent || undefined,
+                    progress: data.progress ?? j.progress,
+                    step: data.step ?? j.step,
+                    message: data.message ?? j.message,
+                    scenesGenerated: data.scenesGenerated ?? j.scenesGenerated,
+                    totalScenes: data.totalScenes ?? j.totalScenes,
+                    log: Array.isArray(data.log) ? data.log : j.log,
+                  }
+                : j
+            )
+          );
+        } catch {
+          // Transient network blip — try again next tick.
+        }
+      }
+      // If anything just completed, refresh the library grid so the new
+      // asset shows up without manual reload.
+      if (pending.some(j => j.status !== 'pending')) {
+        // re-runs via state update triggering this effect; harmless no-op here
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeJobs]);
+
+  // When a job completes, pull fresh library data so the new asset appears
+  // without the teacher needing to refresh.
+  useEffect(() => {
+    const justCompleted = activeJobs.some(
+      j => j.status === 'completed'
+    );
+    if (justCompleted) {
+      fetchAssets();
+    }
+  }, [activeJobs.map(j => `${j.jobId}:${j.status}`).join(',')]);
+
+  function dismissJob(jobId: string) {
+    setActiveJobs(prev => prev.filter(j => j.jobId !== jobId));
+  }
+
+  function toggleJobLog(jobId: string) {
+    setActiveJobs(prev =>
+      prev.map(j => (j.jobId === jobId ? { ...j, showLog: !j.showLog } : j))
+    );
+  }
 
   useEffect(() => {
     fetchAssets();
     fetchClasses();
+    fetchAccessCode();
   }, [filter, subjectFilter, search, classFilter]);
+
+  async function fetchAccessCode() {
+    try {
+      const res = await fetch('/api/teacher/access-code', {
+        headers: { 'x-session-id': getSessionId() }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.code) setAccessCode(data.code);
+    } catch {
+      // Non-fatal — badge just won't show if the endpoint is unreachable.
+    }
+  }
 
   async function fetchAssets() {
     try {
@@ -494,6 +812,7 @@ export default function LibraryPage() {
             <AssetCard
               key={asset.id}
               asset={asset}
+              accessCode={accessCode}
               onUse={() => setSelectedAsset(asset)}
             />
           ))}
@@ -516,12 +835,33 @@ export default function LibraryPage() {
       {showGenerate && (
         <GenerateModal
           onClose={() => setShowGenerate(false)}
-          onSuccess={() => {
-            fetchAssets();
-            setShowGenerate(false);
+          onKickoff={(job) => {
+            setActiveJobs(prev => [
+              ...prev,
+              {
+                jobId: job.jobId,
+                prompt: job.prompt,
+                type: job.type,
+                status: 'pending',
+                progress: 0,
+                step: 'queued',
+                message: 'Queued',
+                scenesGenerated: 0,
+                totalScenes: 0,
+                log: [],
+                showLog: false,
+              }
+            ]);
           }}
         />
       )}
+
+      {/* Background generation toasts — non-blocking, persist across modal close */}
+      <GenerationNotifications
+        jobs={activeJobs}
+        onDismiss={dismissJob}
+        onToggleLog={toggleJobLog}
+      />
     </div>
   );
 }

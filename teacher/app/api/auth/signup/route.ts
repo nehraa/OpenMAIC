@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getDb } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/password';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth/jwt';
+import { getAllowedOrigin, sessionCookieOptions } from '@/lib/auth/http';
 
 const signupSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -16,7 +17,7 @@ interface UserRow {
 }
 
 export async function OPTIONS(_request: NextRequest) {
-  const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
+  const allowedOrigin = getAllowedOrigin();
   return new NextResponse(null, {
     status: 204,
     headers: {
@@ -94,15 +95,8 @@ export async function POST(request: NextRequest) {
     const accessToken = await generateAccessToken(userId, tenantId, 'teacher');
     const refreshToken = await generateRefreshToken(userId);
 
-    // Set cookies - domain should be configurable for production
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      domain: cookieDomain,
-      path: '/',
-    };
+    // Set cookies - domain only when explicitly configured for production
+    const cookieOptions = sessionCookieOptions();
 
     const response = NextResponse.json(
       {
@@ -119,7 +113,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Add CORS headers - use env for production
-    const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
+    const allowedOrigin = getAllowedOrigin();
     response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
 

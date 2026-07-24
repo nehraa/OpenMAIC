@@ -58,7 +58,7 @@ async function gradeShortAnswerQuestion(
     if (modelConfig.baseUrl) headers['x-base-url'] = modelConfig.baseUrl;
     if (modelConfig.providerType) headers['x-provider-type'] = modelConfig.providerType;
 
-    const res = await fetch('/api/quiz-grade', {
+    const res = await fetch('/classroom/api/quiz-grade', {
       method: 'POST',
       headers,
       body: JSON.stringify({

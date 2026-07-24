@@ -46,7 +46,7 @@ export default function StudentAssignmentDetailPage({
   async function fetchAssignment() {
     try {
       const sessionId = getSessionId();
-      const res = await fetch(`/api/student/assignments/${assignmentId}`, {
+      const res = await fetch(`/teacher/api/student/assignments/${assignmentId}`, {
         headers: { 'x-session-id': sessionId }
       });
 
@@ -66,7 +66,7 @@ export default function StudentAssignmentDetailPage({
   async function handleStart() {
     try {
       const sessionId = getSessionId();
-      const res = await fetch(`/api/student/assignments/${assignmentId}/start`, {
+      const res = await fetch(`/teacher/api/student/assignments/${assignmentId}/start`, {
         method: 'POST',
         headers: { 'x-session-id': sessionId }
       });
@@ -95,7 +95,7 @@ export default function StudentAssignmentDetailPage({
     setSubmitting(true);
     try {
       const sessionId = getSessionId();
-      const res = await fetch(`/api/student/assignments/${assignmentId}/submit`, {
+      const res = await fetch(`/teacher/api/student/assignments/${assignmentId}/submit`, {
         method: 'POST',
         headers: {
           'x-session-id': sessionId,

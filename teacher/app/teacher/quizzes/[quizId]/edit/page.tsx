@@ -59,7 +59,7 @@ export default function QuizEditPage() {
     return (
       <div className="p-8">
         <div className="text-red-500 mb-4">{error || 'Quiz not found'}</div>
-        <Link href="/teacher/quizzes" className="text-primary hover:underline">Back to Quizzes</Link>
+        <Link href="quizzes" className="text-primary hover:underline">Back to Quizzes</Link>
       </div>
     );
   }
@@ -67,7 +67,7 @@ export default function QuizEditPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/teacher/quizzes" className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block">
+        <Link href="quizzes" className="text-sm text-gray-500 hover:text-gray-700 mb-2 inline-block">
           ← Back to Quizzes
         </Link>
         <div className="flex justify-between items-center">

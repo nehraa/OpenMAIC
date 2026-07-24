@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getDb } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth/password';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth/jwt';
+import { createSession } from '@/lib/auth/session';
+import { getAllowedOrigin, sessionCookieOptions } from '@/lib/auth/http';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -21,7 +23,7 @@ interface UserRow {
 }
 
 export async function OPTIONS(_request: NextRequest) {
-  const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
+  const allowedOrigin = getAllowedOrigin();
   return new NextResponse(null, {
     status: 204,
     headers: {
@@ -92,17 +94,18 @@ export async function POST(request: NextRequest) {
     );
     const refreshToken = await generateRefreshToken(user.id);
 
-    // Set cookies - domain should be configurable for production
-    const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || 'localhost';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      domain: cookieDomain,
-      path: '/',
-    };
+    // Create a DB session so the standalone teacher client (which auths via
+    // x-session-id from localStorage) has a session_id to send on the next
+    // request. Without this, the page stores nothing in localStorage,
+    // redirects to /teacher, the library fetch 401s, and the user bounces
+    // straight back to /login/teacher.
+    const sessionId = await createSession(user.id);
+
+    // Set cookies - domain only when explicitly configured for production
+    const cookieOptions = sessionCookieOptions();
 
     const response = NextResponse.json({
+      session_id: sessionId,
       user: {
         id: user.id,
         name: user.name,
@@ -114,7 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Add CORS headers - use env for production
-    const allowedOrigin = process.env.ACCESS_CONTROL_ALLOW_ORIGIN || 'http://localhost:3001';
+    const allowedOrigin = getAllowedOrigin();
     response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.append('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -129,6 +132,10 @@ export async function POST(request: NextRequest) {
       ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
+
+    // Echo the session id back as a response header too, matching the
+    // /api/auth/verify-otp contract — keeps the client code path simple.
+    response.headers.set('x-session-id', sessionId);
 
     return response;
   } catch (error) {

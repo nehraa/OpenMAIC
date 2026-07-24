@@ -74,7 +74,7 @@ export function ImageSettings({ selectedProviderId }: ImageSettingsProps) {
     setTestStatus('idle');
     setTestMessage('');
     try {
-      const response = await fetch('/api/verify-image-provider', {
+      const response = await fetch('/classroom/api/verify-image-provider', {
         method: 'POST',
         headers: {
           'x-image-provider': selectedProviderId,
