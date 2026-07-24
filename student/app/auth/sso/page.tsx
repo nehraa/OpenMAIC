@@ -1,12 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // Public cross-domain handoff from openmaic.devstudios.me. The API validates
 // the shared auth_sessions row, plants a student-domain JWT cookie, then this
 // page moves to the student dashboard.
 export default function StudentSsoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50" />}>
+      <StudentSsoInner />
+    </Suspense>
+  );
+}
+
+function StudentSsoInner() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get('token');

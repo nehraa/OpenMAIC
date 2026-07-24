@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ClipboardList, Clock, CheckCircle2, Circle } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, ClipboardList, Clock, CheckCircle2, Circle } from 'lucide-react';
 
 interface Assignment {
   id: string;
@@ -87,9 +88,10 @@ export default function StudentAssignmentsPage() {
         ) : (
           <div className="grid gap-4">
             {assignments.map(assignment => (
-              <article
+              <Link
                 key={assignment.id}
-                className="bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all"
+                href={`/assignments/${assignment.id}`}
+                className="block bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
@@ -109,11 +111,14 @@ export default function StudentAssignmentsPage() {
                       )}
                     </div>
                   </div>
-                  <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${statusStyles[assignment.status]}`}>
-                    {statusLabels[assignment.status]}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusStyles[assignment.status]}`}>
+                      {statusLabels[assignment.status]}
+                    </span>
+                    <ArrowRight size={16} className="text-primary" />
+                  </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}
