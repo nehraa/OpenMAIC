@@ -68,6 +68,25 @@ export default function AssignmentsPage() {
     return localStorage.getItem('session_id') || '';
   }
 
+  async function handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this assignment?')) return;
+    try {
+      const res = await fetch(`/teacher/api/teacher/assignments/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-session-id': getSessionId() }
+      });
+      if (res.ok) {
+        setAssignments(prev => prev.filter(a => a.id !== id));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete assignment');
+      }
+    } catch (error) {
+      console.error('Failed to delete assignment:', error);
+      alert('Failed to delete assignment');
+    }
+  }
+
   if (loading) {
     return <div className="p-8">Loading...</div>;
   }
@@ -101,6 +120,7 @@ export default function AssignmentsPage() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Release Date</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Recipients</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -117,6 +137,16 @@ export default function AssignmentsPage() {
                     {assignment.release_at ? new Date(assignment.release_at).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{assignment.recipient_count || 0}</td>
+                  <td className="px-4 py-3">
+                    {assignment.status === 'draft' && (
+                      <button
+                        onClick={() => handleDelete(assignment.id)}
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

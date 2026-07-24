@@ -66,9 +66,11 @@ export const POST = async (request: NextRequest) => {
       return { membership: existing, alreadyEnrolled: true };
     }
 
+    // Self-joins are pending until the teacher approves. The teacher-add
+    // route continues to insert 'active' directly.
     const insertResult = await client.query<MembershipRow>(
-      `INSERT INTO class_memberships (class_id, student_id, source)
-       VALUES ($1, $2, 'manual')
+      `INSERT INTO class_memberships (class_id, student_id, source, status)
+       VALUES ($1, $2, 'manual', 'pending')
        RETURNING *`,
       [classRow.id, authResult.user.id]
     );

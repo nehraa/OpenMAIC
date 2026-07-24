@@ -16,12 +16,21 @@ export const GET = async (request: NextRequest) => {
       `SELECT c.*,
               u.name as teacher_name,
               cm.enrolled_at,
-              cm.source
+              cm.source,
+              cm.status as membership_status
        FROM classes c
        JOIN class_memberships cm ON c.id = cm.class_id
        JOIN users u ON c.teacher_id = u.id
        WHERE cm.student_id = $1
-       ORDER BY cm.enrolled_at DESC`,
+       ORDER BY
+         CASE cm.status
+           WHEN 'pending' THEN 0
+           WHEN 'active' THEN 1
+           WHEN 'restricted' THEN 2
+           WHEN 'rejected' THEN 3
+           ELSE 4
+         END,
+         cm.enrolled_at DESC`,
       [authResult.user.id]
     );
   });

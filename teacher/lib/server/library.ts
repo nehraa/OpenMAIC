@@ -147,6 +147,7 @@ export interface ReuseAssetData {
   assetId: string;
   targetClassId: string;
   title?: string;
+  description?: string;
   releaseAt?: string;
   dueAt?: string;
 }
@@ -175,22 +176,77 @@ export async function reuseAsset(teacherId: string, data: ReuseAssetData): Promi
 
   const assignmentTitle = data.title || asset.title;
 
+  // Bug #13: when reusing a slide deck, auto-generate a quiz from the slides
+  // so the assignment ships with both slides and a quiz. The teacher can
+  // always edit/replace the quiz afterwards.
+  let quizAssetVersionId: string | null = null;
+  if (asset.type === 'slide_deck') {
+    const generated = await autoGenerateQuizFromSlides(teacherId, asset, currentVersion);
+    quizAssetVersionId = generated;
+  }
+
   const assignmentResult = await db.query(`
-    INSERT INTO assignments (tenant_id, class_id, teacher_id, title, slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')
+    INSERT INTO assignments (
+      tenant_id, class_id, teacher_id, title, description,
+      slide_asset_version_id, quiz_asset_version_id, release_at, due_at, status
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft')
     RETURNING *
   `, [
     asset.tenant_id,
     data.targetClassId,
     teacherId,
     assignmentTitle,
+    data.description || '',
     asset.type === 'slide_deck' ? currentVersion.id : null,
-    asset.type === 'quiz' ? currentVersion.id : null,
+    asset.type === 'quiz' ? currentVersion.id : quizAssetVersionId,
     data.releaseAt || null,
     data.dueAt || null
   ]);
 
   return assignmentResult.rows[0] as import('@shared/types/assignment').Assignment;
+}
+
+// Helpers ---------------------------------------------------------------------
+
+async function autoGenerateQuizFromSlides(
+  teacherId: string,
+  asset: ContentAsset,
+  slideVersion: ContentAssetVersion
+): Promise<string | null> {
+  try {
+    const { generateQuizFromSlides, createQuiz, addQuestion } = await import('./quizzes');
+    const questions = await generateQuizFromSlides(slideVersion.id);
+    if (!questions || questions.length === 0) return null;
+
+    const quiz = await createQuiz({
+      title: `${asset.title} — Auto Quiz`,
+      teacherId,
+      subjectTag: 'auto-generated',
+    });
+
+    for (const question of questions) {
+      await addQuestion(quiz.id, {
+        type: question.type,
+        question: question.question,
+        options: question.options,
+        correctIndex: question.correctIndex,
+        sampleAnswer: question.sampleAnswer,
+        points: question.points,
+      });
+    }
+
+    const versionResult = await getDb().query(
+      `SELECT id FROM content_asset_versions
+       WHERE asset_id = $1
+       ORDER BY version_number DESC LIMIT 1`,
+      [quiz.id]
+    );
+    return (versionResult.rows[0] as { id: string } | undefined)?.id ?? null;
+  } catch (err) {
+    console.error('autoGenerateQuizFromSlides failed:', err);
+    return null;
+  }
 }
 
 export interface TagAssetData {

@@ -193,6 +193,7 @@ interface ReuseModalProps {
 function ReuseModal({ asset, classes, onClose, onSuccess, onPreview }: ReuseModalProps) {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [title, setTitle] = useState(asset.title);
+  const [description, setDescription] = useState('');
   const [releaseAt, setReleaseAt] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -202,6 +203,7 @@ function ReuseModal({ asset, classes, onClose, onSuccess, onPreview }: ReuseModa
   const classroomUrl = classroomId ? publicClassroomUrl(classroomId) : null;
   const slideCount = asset.latest_payload?.slides?.length ?? 0;
   const hasSlides = asset.type === 'slide_deck' && slideCount > 0;
+  const isSlideDeck = asset.type === 'slide_deck';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -218,6 +220,7 @@ function ReuseModal({ asset, classes, onClose, onSuccess, onPreview }: ReuseModa
         body: JSON.stringify({
           classId: selectedClassId,
           title,
+          description: description.trim() || undefined,
           releaseAt: releaseAt || undefined,
           dueAt: dueAt || undefined
         })
@@ -293,6 +296,23 @@ function ReuseModal({ asset, classes, onClose, onSuccess, onPreview }: ReuseModa
             className="w-full px-3 py-2 border rounded-lg"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            placeholder={isSlideDeck
+              ? 'Instructions for the students. Anything you want them to know before starting the slides.'
+              : 'Optional context for the quiz.'}
+          />
+          <p className="mt-1 text-xs text-gray-400">{description.length}/2000</p>
         </div>
 
         <div>

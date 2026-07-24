@@ -14,6 +14,11 @@ interface Recipient {
     total_slides: number;
     is_complete: boolean;
   };
+  attempt?: {
+    completion_state: string;
+    score_percent: number | null;
+    submitted_at: string | null;
+  } | null;
 }
 
 interface Assignment {
@@ -172,6 +177,11 @@ export default function AssignmentDetailPage({ params }: PageProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {r.attempt && r.attempt.score_percent != null && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                          Quiz {Math.round(r.attempt.score_percent)}%
+                        </span>
+                      )}
                       {isComplete ? (
                         <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
                           Completed

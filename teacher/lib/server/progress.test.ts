@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Create mock database
 const mockDb = {
   prepare: vi.fn(),
+  query: vi.fn(),
   transaction: vi.fn((fn: Function) => {
     return function (this: any, ...args: any[]) {
       return fn.apply(this, args);
@@ -21,6 +22,7 @@ vi.mock('@/lib/db', () => ({
 import {
   getClassProgress,
   getAssignmentProgress,
+  getStudentProgressEvents,
   exportToCSV
 } from './progress';
 
@@ -28,6 +30,7 @@ describe('Progress Domain', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb.prepare.mockReset();
+    mockDb.query.mockReset();
     mockDb.transaction.mockReset();
   });
 
@@ -160,6 +163,47 @@ describe('Progress Domain', () => {
       expect(result!.assignmentId).toBe('assign-1');
       expect(result!.assignmentTitle).toBe('Test Assignment');
       expect(result!.totalStudents).toBe(2);
+    });
+  });
+
+  describe('getStudentProgressEvents', () => {
+    it('returns progress for an enrolled B2C student', async () => {
+      mockDb.query.mockImplementation((sql: string) => {
+        if (sql.includes('FROM users u')) {
+          const supportsB2cStudents = sql.includes("'student_b2c'");
+          const scopedToTeacher = sql.includes('c.teacher_id = $2');
+          return Promise.resolve({
+            rows: supportsB2cStudents && scopedToTeacher
+              ? [{
+                  id: 'student-1',
+                  name: 'Alice',
+                  phone_e164: '+1234567890',
+                  class_id: 'class-1',
+                  class_name: 'Test Class',
+                }]
+              : [],
+          });
+        }
+
+        return Promise.resolve({ rows: [] });
+      });
+
+      const result = await getStudentProgressEvents('student-1', undefined, 'teacher-1');
+
+      expect(result?.studentId).toBe('student-1');
+    });
+
+    it('returns null when the resolved class is owned by a different teacher', async () => {
+      mockDb.query.mockImplementation((sql: string) => {
+        if (sql.includes('FROM users u')) {
+          return Promise.resolve({ rows: [] });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      const result = await getStudentProgressEvents('student-1', undefined, 'teacher-1');
+
+      expect(result).toBeNull();
     });
   });
 

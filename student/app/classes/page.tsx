@@ -11,6 +11,7 @@ interface Class {
   teacher_name: string;
   enrolled_at: string;
   batch: string;
+  membership_status: 'pending' | 'active' | 'rejected' | 'restricted';
 }
 
 export default function StudentClassesPage() {
@@ -74,41 +75,63 @@ export default function StudentClassesPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {classes.map(cls => (
-              <Link
-                key={cls.id}
-                href={`/classes/${cls.id}`}
-                className="block bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-lg">{cls.name}</h3>
-                      {cls.batch && (
-                        <span className="text-xs px-2 py-1 bg-muted rounded-full">
-                          {cls.batch}
-                        </span>
+            {classes.map(cls => {
+              const isPending = cls.membership_status === 'pending';
+              const isRestricted = cls.membership_status === 'restricted';
+              const isRejected = cls.membership_status === 'rejected';
+              return (
+                <Link
+                  key={cls.id}
+                  href={`/classes/${cls.id}`}
+                  className="block bg-white rounded-xl border p-6 hover:border-primary/40 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-lg">{cls.name}</h3>
+                        {cls.batch && (
+                          <span className="text-xs px-2 py-1 bg-muted rounded-full">
+                            {cls.batch}
+                          </span>
+                        )}
+                        {isPending && (
+                          <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
+                            Awaiting teacher approval
+                          </span>
+                        )}
+                        {isRestricted && (
+                          <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-full">
+                            Restricted
+                          </span>
+                        )}
+                        {isRejected && (
+                          <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">
+                            Rejected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-muted-foreground mb-2">
+                        with {cls.teacher_name}
+                      </p>
+                      {cls.subject && (
+                        <p className="text-sm text-primary/80">
+                          Subject: {cls.subject}
+                        </p>
                       )}
                     </div>
-                    <p className="text-muted-foreground mb-2">
-                      with {cls.teacher_name}
-                    </p>
-                    {cls.subject && (
-                      <p className="text-sm text-primary/80">
-                        Subject: {cls.subject}
-                      </p>
+                    {!isPending && !isRejected && (
+                      <span className="flex items-center gap-1 text-primary font-medium">
+                        View
+                        <ArrowRight size={16} />
+                      </span>
                     )}
                   </div>
-                  <span className="flex items-center gap-1 text-primary font-medium">
-                    View
-                    <ArrowRight size={16} />
-                  </span>
-                </div>
-                <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                  Enrolled: {new Date(cls.enrolled_at).toLocaleDateString()}
-                </div>
-              </Link>
-            ))}
+                  <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+                    Enrolled: {new Date(cls.enrolled_at).toLocaleDateString()}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </main>

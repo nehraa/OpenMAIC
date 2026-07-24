@@ -8,6 +8,7 @@ import { z } from 'zod';
 const ReuseAssetSchema = z.object({
   classId: z.string().min(1, 'Class is required'),
   title: z.string().optional(),
+  description: z.string().optional(),
   releaseAt: z.string().optional(),
   dueAt: z.string().optional()
 });
@@ -37,6 +38,7 @@ export const POST = withRole(['teacher'], async (req: NextRequest, ctx: AuthCont
       assetId,
       targetClassId: data.classId,
       title: data.title,
+      description: data.description,
       releaseAt: data.releaseAt,
       dueAt: data.dueAt
     });

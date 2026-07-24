@@ -193,22 +193,35 @@ export async function getClassProgress(classId: string, filters?: ProgressFilter
       };
     });
 
-    // Generate mock AI insights for demo
-    const averageScore = assignmentProgressList
-      .filter(a => a.quizScorePercent !== null)
-      .reduce((acc, a) => acc + (a.quizScorePercent || 0), 0) / 
-      (assignmentProgressList.filter(a => a.quizScorePercent !== null).length || 1);
+    // Real, data-derived insights. We use the per-student progress that's
+    // already been computed so the panel reflects observed activity instead
+    // of scripted "Algebra" copy.
+    const scored = assignmentProgressList.filter((a) => a.quizScorePercent !== null);
+    const notStarted = assignmentProgressList.filter((a) => a.slidesViewed === 0 && !a.quizCompleted).length;
+    const inProgress = assignmentProgressList.filter((a) => a.slidesViewed > 0 && !a.quizCompleted).length;
+    const averageScore = scored.length === 0
+      ? null
+      : Math.round(
+          (scored.reduce((s, a) => s + (a.quizScorePercent ?? 0), 0) / scored.length) * 100
+        ) / 100;
 
     const insights: string[] = [];
-    if (averageScore < 60) {
-      insights.push('Requires urgent attention: Struggling with core concepts.');
-      insights.push('Recommendation: Assign remedial practice on foundational Algebra.');
-    } else if (averageScore < 80) {
-      insights.push('Showing steady progress but inconsistent in advanced topics.');
-      insights.push('Observation: Making minor errors in multi-step equations.');
+    if (scored.length === 0) {
+      insights.push('No quiz attempts yet — encourage the student to start a quiz.');
     } else {
-      insights.push('Excellent performance: Mastering the current curriculum.');
-      insights.push('Suggestion: Provide enrichment material on complex variables.');
+      if (averageScore !== null && averageScore < 60) {
+        insights.push(`Average quiz score: ${averageScore}% — needs targeted practice.`);
+      } else if (averageScore !== null && averageScore < 80) {
+        insights.push(`Average quiz score: ${averageScore}% — solid but inconsistent.`);
+      } else if (averageScore !== null) {
+        insights.push(`Average quiz score: ${averageScore}% — strong performance.`);
+      }
+      if (notStarted > 0) {
+        insights.push(`${notStarted} assignment${notStarted === 1 ? '' : 's'} not started.`);
+      }
+      if (inProgress > 0) {
+        insights.push(`${inProgress} assignment${inProgress === 1 ? '' : 's'} in progress.`);
+      }
     }
 
     return {
@@ -475,22 +488,27 @@ export interface StudentProgressSummary {
 
 export async function getStudentProgressEvents(
   studentId: string,
-  classId?: string,
+  classId: string | undefined,
+  teacherId: string,
   days = 30
 ): Promise<StudentProgressSummary | null> {
   const db = getDb();
 
-  // Resolve student + class
+  // Resolve student + class. The teacherId clause ensures we never pivot
+  // into a class owned by another teacher when the student is enrolled in
+  // multiple classrooms.
   const studentResult = await db.query(
     `SELECT u.id, u.name, u.phone_e164, cm.class_id, c.name as class_name
      FROM users u
      INNER JOIN class_memberships cm ON cm.student_id = u.id
      INNER JOIN classes c ON c.id = cm.class_id
-     WHERE u.id = $1 AND u.role = 'student_classroom'
-     ${classId ? 'AND cm.class_id = $2' : ''}
+     WHERE u.id = $1
+       AND u.role IN ('student_classroom', 'student_b2c')
+       AND c.teacher_id = $2
+       ${classId ? 'AND cm.class_id = $3' : ''}
      ORDER BY cm.enrolled_at DESC
      LIMIT 1`,
-    classId ? [studentId, classId] : [studentId]
+    classId ? [studentId, teacherId, classId] : [studentId, teacherId]
   );
 
   const student = studentResult.rows[0] as
@@ -600,5 +618,141 @@ export async function getStudentProgressEvents(
     firstEventAt,
     events,
     sparkline,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Weakness profile: aggregate per-question results across all of a student's
+// attempts in the teacher's class. Bug #14 surfaced that the previous
+// `graded.results` payload was discarded at submit time, so a profile could
+// only ever show the per-quiz score. We now persist per_question_json and
+// roll it up by question type (the schema has no topic column to group by).
+// ---------------------------------------------------------------------------
+
+export interface QuestionTypeBreakdown {
+  type: string;
+  total: number;
+  correct: number;
+  accuracy: number | null;
+  pointsEarned: number;
+  totalPoints: number;
+}
+
+export interface WeaknessProfile {
+  studentId: string;
+  classId: string;
+  className: string;
+  attemptsAnalyzed: number;
+  totalQuestions: number;
+  overallAccuracy: number | null;
+  weakestType: QuestionTypeBreakdown | null;
+  strongestType: QuestionTypeBreakdown | null;
+  byType: QuestionTypeBreakdown[];
+}
+
+interface PerQuestionResult {
+  id?: string;
+  type?: string;
+  totalPoints?: number;
+  pointsEarned?: number;
+  isCorrect?: boolean;
+  openEnded?: boolean;
+}
+
+export async function getWeaknessProfile(
+  studentId: string,
+  teacherId: string,
+  classId?: string
+): Promise<WeaknessProfile | null> {
+  const db = getDb();
+
+  // Resolve and authorize the student. Mirrors getStudentProgressEvents.
+  const studentResult = await db.query(
+    `SELECT u.id, u.name, cm.class_id, c.name as class_name
+     FROM users u
+     INNER JOIN class_memberships cm ON cm.student_id = u.id
+     INNER JOIN classes c ON c.id = cm.class_id
+     WHERE u.id = $1
+       AND u.role IN ('student_classroom', 'student_b2c')
+       AND c.teacher_id = $2
+       ${classId ? 'AND cm.class_id = $3' : ''}
+     ORDER BY cm.enrolled_at DESC
+     LIMIT 1`,
+    classId ? [studentId, teacherId, classId] : [studentId, teacherId]
+  );
+
+  const student = studentResult.rows[0] as
+    | { id: string; name: string; class_id: string; class_name: string }
+    | undefined;
+
+  if (!student) return null;
+
+  const attemptsResult = await db.query(
+    `SELECT score_percent, per_question_json
+     FROM assignment_attempts
+     WHERE student_id = $1
+       AND per_question_json IS NOT NULL
+       AND assignment_id IN (
+         SELECT a.id FROM assignments a
+         JOIN classes c ON c.id = a.class_id
+         WHERE c.teacher_id = $2
+           ${classId ? 'AND a.class_id = $3' : ''}
+       )`,
+    classId ? [studentId, teacherId, classId] : [studentId, teacherId]
+  );
+
+  const tally = new Map<string, QuestionTypeBreakdown>();
+  let totalQuestions = 0;
+  let totalCorrect = 0;
+  let totalPoints = 0;
+  let totalEarned = 0;
+
+  for (const row of attemptsResult.rows as Array<{ score_percent: number | null; per_question_json: unknown }>) {
+    const raw = row.per_question_json;
+    if (!Array.isArray(raw)) continue;
+    for (const entry of raw as PerQuestionResult[]) {
+      const type = entry.type ?? 'unknown';
+      const earned = entry.pointsEarned ?? 0;
+      const max = entry.totalPoints ?? 0;
+      const correct = entry.isCorrect === true;
+      const existing = tally.get(type) ?? {
+        type,
+        total: 0,
+        correct: 0,
+        accuracy: null,
+        pointsEarned: 0,
+        totalPoints: 0,
+      };
+      existing.total += 1;
+      if (correct) existing.correct += 1;
+      existing.pointsEarned += earned;
+      existing.totalPoints += max;
+      tally.set(type, existing);
+      totalQuestions += 1;
+      if (correct) totalCorrect += 1;
+      totalPoints += max;
+      totalEarned += earned;
+    }
+  }
+
+  const byType = Array.from(tally.values()).map((b) => ({
+    ...b,
+    accuracy: b.total > 0 ? Math.round((b.correct / b.total) * 1000) / 10 : null,
+  }));
+  byType.sort((a, b) => (a.accuracy ?? 0) - (b.accuracy ?? 0));
+
+  const weakestType = byType.find((b) => b.total > 0) ?? null;
+  const strongestType = byType.length > 0 ? byType[byType.length - 1] : null;
+
+  return {
+    studentId: student.id,
+    classId: student.class_id,
+    className: student.class_name,
+    attemptsAnalyzed: attemptsResult.rows.length,
+    totalQuestions,
+    overallAccuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 1000) / 10 : null,
+    weakestType: weakestType && weakestType.total > 0 ? weakestType : null,
+    strongestType: strongestType && strongestType.total > 0 ? strongestType : null,
+    byType,
   };
 }
