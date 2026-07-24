@@ -246,7 +246,7 @@ export function ProgressGrid({ students, totalStudents: _totalStudents, onExport
                         </button>
                       </td>
                       <td className="px-4 py-3 font-medium">
-                        <Link href={`/teacher/students/${student.studentId}`} className="hover:text-primary hover:underline">
+                        <Link href={`students/${student.studentId}`} className="hover:text-primary hover:underline">
                           {student.studentName}
                         </Link>
                       </td>
@@ -277,7 +277,7 @@ export function ProgressGrid({ students, totalStudents: _totalStudents, onExport
                             {/* View full profile link */}
                             <div className="flex justify-end">
                               <Link
-                                href={`/teacher/students/${student.studentId}`}
+                                href={`students/${student.studentId}`}
                                 className="text-xs text-primary hover:underline font-medium"
                               >
                                 View full activity profile →

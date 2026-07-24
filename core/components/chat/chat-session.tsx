@@ -29,8 +29,8 @@ interface ChatSessionProps {
 }
 
 const AVATARS = {
-  teacher: '/avatars/teacher.png',
-  user: '/avatars/user.png',
+  teacher: '/classroom/avatars/teacher.png',
+  user: '/classroom/avatars/user.png',
 };
 
 /**

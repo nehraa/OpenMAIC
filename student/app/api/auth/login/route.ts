@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getDb } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth/password';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth/jwt';
+import { sessionCookieOptions } from '@/lib/auth/http';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -75,16 +76,19 @@ export const POST = async (request: NextRequest) => {
       },
     });
 
+    // Use the shared cookie options so the cookie is marked `secure` in
+    // production and the `domain` attribute is only set when an operator
+    // has explicitly configured SESSION_COOKIE_DOMAIN. The previous call
+    // site left both unset, which shipped cookies without the Secure flag
+    // in production and pinned them to the default host.
+    const cookieOptions = sessionCookieOptions();
+
     response.cookies.set('access_token', accessToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
+      ...cookieOptions,
       maxAge: 15 * 60,
     });
     response.cookies.set('refresh_token', refreshToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60,
     });
 

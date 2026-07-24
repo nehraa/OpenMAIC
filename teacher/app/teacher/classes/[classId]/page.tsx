@@ -146,7 +146,7 @@ export default function ClassDetailPage({ params }: { params: Promise<{ classId:
 
   return (
     <div className="p-8">
-      <Link href="/teacher/classes" className="text-blue-600 hover:underline mb-4 inline-block">
+      <Link href="classes" className="text-blue-600 hover:underline mb-4 inline-block">
         ← Back to Classes
       </Link>
 

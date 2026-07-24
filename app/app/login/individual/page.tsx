@@ -71,9 +71,11 @@ export default function IndividualLoginPage() {
     setIsLoading(true);
 
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiBase = baseUrl && baseUrl.length > 0 ? baseUrl : '';
       const userId = getOrCreateUserId();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/individual-login`,
+        `${apiBase}/api/auth/individual-login`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -88,7 +90,7 @@ export default function IndividualLoginPage() {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push('/');
+      router.push('/core');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setIsLoading(false);

@@ -55,7 +55,7 @@ export default function StudentAssignmentsPage() {
   async function fetchAssignments() {
     try {
       const sessionId = getSessionId();
-      const res = await fetch('/api/student/assignments', {
+      const res = await fetch('/teacher/api/student/assignments', {
         headers: { 'x-session-id': sessionId }
       });
 

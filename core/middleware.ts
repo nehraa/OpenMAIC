@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const LANDING_URL = process.env.LANDING_URL || 'http://localhost:3001';
-
 /** Convert string to Uint8Array */
 function encode(str: string): Uint8Array {
   return new TextEncoder().encode(str);
@@ -46,14 +44,20 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessCode = process.env.ACCESS_CODE;
 
-  // Whitelist: static assets, _next, api/access-code, health
+  // Whitelist: static assets, _next, api/access-code, health, login
   if (
     pathname.startsWith('/api/access-code/') ||
     pathname === '/api/health' ||
+    // Classroom share URLs are public and use unguessable IDs. Their server
+    // and teacher preview clients both read the same payload through this GET
+    // endpoint; keep writes protected.
+    (pathname === '/api/classroom' && request.method === 'GET') ||
     pathname.startsWith('/_next/static') ||
     pathname.startsWith('/_next/image') ||
     pathname === '/favicon.ico' ||
-    pathname.startsWith('/logos')
+    pathname.startsWith('/logos') ||
+    pathname.startsWith('/login/') ||
+    pathname === '/login'
   ) {
     return NextResponse.next();
   }
@@ -74,10 +78,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Role cookie check for non-API routes
-  if (!pathname.startsWith('/api/')) {
+  if (!pathname.startsWith('/api/') && process.env.REQUIRE_ROLE === 'true') {
     const role = request.cookies.get('aidutech_role')?.value;
     if (role !== 'individual') {
-      const loginUrl = new URL('/login/individual', LANDING_URL);
+      // Redirect to the public landing page where users pick teacher/student/individual
+      const landingUrl = process.env.LANDING_URL || 'https://openmaic.devstudios.me';
+      const loginUrl = new URL(landingUrl);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }

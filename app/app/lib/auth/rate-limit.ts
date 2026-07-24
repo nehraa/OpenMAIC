@@ -107,6 +107,23 @@ export async function checkRateLimit(
 }
 
 /**
+ * Successful authentication must not consume the failure budget. Otherwise a
+ * teacher who signs in five times from the same network is locked out for 15
+ * minutes even though every password was valid.
+ */
+export async function clearRateLimit(
+  request: Request,
+  endpoint: AuthEndpoint
+): Promise<void> {
+  const ip = getClientIp(request);
+  const db = getDb();
+  await db.query(
+    `DELETE FROM auth_rate_limits WHERE ip_address = $1 AND endpoint = $2`,
+    [ip, endpoint]
+  );
+}
+
+/**
  * Create a 429 Too Many Requests response.
  */
 export function rateLimitExceededResponse(retryAfter: number): Response {

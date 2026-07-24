@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '../../../lib/db';
 import { generateAccessToken, generateRefreshToken } from '../../../lib/auth/jwt';
-import { checkRateLimit, rateLimitExceededResponse } from '../../../lib/auth/rate-limit';
+import { checkRateLimit, clearRateLimit, rateLimitExceededResponse } from '../../../lib/auth/rate-limit';
 import { hashRefreshToken } from '../../../lib/auth/refresh-token';
 
 const joinSchema = {
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
       await db.query(
         `INSERT INTO users (id, tenant_id, role, name, email, phone_e164, password_hash, status)
-         VALUES ($1, $2, 'student_classroom', $3, '', $4, NULL, 'active')`,
+         VALUES ($1, $2, 'student_classroom', $3, NULL, $4, NULL, 'active')`,
         [userId, classRow.tenant_id, name, phone]
       );
     }
@@ -114,6 +114,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A student may join after an assignment has already been released. Give
+    // late joiners the same visible recipient rows as students who were
+    // enrolled at release time.
+    await db.query(
+      `INSERT INTO assignment_recipients (tenant_id, assignment_id, student_id, visibility_status)
+       SELECT assignment.tenant_id, assignment.id, $1, 'visible'
+       FROM assignments AS assignment
+       WHERE assignment.class_id = $2
+         AND assignment.status IN ('released', 'closed')
+       ON CONFLICT (assignment_id, student_id) DO NOTHING`,
+      [userId, classRow.id]
+    );
+
     // Generate auth tokens for immediate login
     const accessToken = await generateAccessToken(
       userId,
@@ -131,6 +144,8 @@ export async function POST(request: NextRequest) {
       [sessionId, userId, refreshTokenHash]
     );
 
+    await clearRateLimit(request, 'login');
+
     // Set cookies
     const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
@@ -143,6 +158,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
+      session_id: sessionId,
       user: { id: userId, name, role: 'student_classroom' },
       classId: classRow.id,
       isNewUser

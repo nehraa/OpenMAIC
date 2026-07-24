@@ -147,7 +147,7 @@ export default function StudentProgressPage({ params }: { params: Promise<{ stud
   if (error) {
     return (
       <div className="p-8">
-        <Link href="/teacher/progress" className="text-primary hover:underline flex items-center gap-1 text-sm mb-6">
+        <Link href="progress" className="text-primary hover:underline flex items-center gap-1 text-sm mb-6">
           <ArrowLeft size={14} /> Back to Progress
         </Link>
         <div className="text-center py-12 text-gray-500">
@@ -198,7 +198,7 @@ export default function StudentProgressPage({ params }: { params: Promise<{ stud
     <div className="p-8 max-w-5xl mx-auto">
       {/* Back link */}
       <Link
-        href="/teacher/progress"
+        href="progress"
         className="text-primary hover:underline flex items-center gap-1 text-sm mb-6"
       >
         <ArrowLeft size={14} /> Back to Class Progress

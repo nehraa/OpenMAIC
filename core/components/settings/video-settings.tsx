@@ -73,7 +73,7 @@ export function VideoSettings({ selectedProviderId }: VideoSettingsProps) {
     setTestStatus('idle');
     setTestMessage('');
     try {
-      const response = await fetch('/api/verify-video-provider', {
+      const response = await fetch('/classroom/api/verify-video-provider', {
         method: 'POST',
         headers: {
           'x-video-provider': selectedProviderId,

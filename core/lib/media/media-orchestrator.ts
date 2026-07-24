@@ -194,7 +194,7 @@ async function callImageApi(
   const settings = useSettingsStore.getState();
   const providerConfig = settings.imageProvidersConfig?.[settings.imageProviderId];
 
-  const response = await fetch('/api/generate/image', {
+  const response = await fetch('/classroom/api/generate/image', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -234,7 +234,7 @@ async function callVideoApi(
   const settings = useSettingsStore.getState();
   const providerConfig = settings.videoProvidersConfig?.[settings.videoProviderId];
 
-  const response = await fetch('/api/generate/video', {
+  const response = await fetch('/classroom/api/generate/video', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -272,7 +272,7 @@ async function fetchAsBlob(url: string): Promise<Blob> {
   }
   // For remote URLs, proxy through our server to bypass CORS restrictions
   if (url.startsWith('http://') || url.startsWith('https://')) {
-    const res = await fetch('/api/proxy-media', {
+    const res = await fetch('/classroom/api/proxy-media', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),

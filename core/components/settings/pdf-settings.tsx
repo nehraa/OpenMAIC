@@ -67,7 +67,7 @@ export function PDFSettings({ selectedProviderId }: PDFSettingsProps) {
     setTestMessage('');
 
     try {
-      const response = await fetch('/api/verify-pdf-provider', {
+      const response = await fetch('/classroom/api/verify-pdf-provider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

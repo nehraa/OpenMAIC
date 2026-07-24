@@ -56,6 +56,7 @@ export async function saveGeneratedContent(data: SaveAssetData): Promise<Content
 export interface LibraryAsset extends ContentAsset {
   version_count: number;
   latest_version_id: string | null;
+  latest_payload?: Record<string, unknown> | null;
 }
 
 export async function getLibraryAssets(teacherId: string, filters?: LibraryFilters): Promise<{ assets: LibraryAsset[]; total: number }> {
@@ -90,7 +91,8 @@ export async function getLibraryAssets(teacherId: string, filters?: LibraryFilte
   const assetsQuery = `
     SELECT ca.*,
       (SELECT COUNT(*) FROM content_asset_versions WHERE asset_id = ca.id) as version_count,
-      (SELECT id FROM content_asset_versions WHERE asset_id = ca.id ORDER BY version_number DESC LIMIT 1) as latest_version_id
+      (SELECT id FROM content_asset_versions WHERE asset_id = ca.id ORDER BY version_number DESC LIMIT 1) as latest_version_id,
+      (SELECT payload_json FROM content_asset_versions WHERE asset_id = ca.id ORDER BY version_number DESC LIMIT 1) as latest_payload
     FROM content_assets ca
     WHERE ${conditions.join(' AND ')}
     ORDER BY ca.created_at DESC
@@ -100,7 +102,20 @@ export async function getLibraryAssets(teacherId: string, filters?: LibraryFilte
   values.push(limit, offset);
   const assetsResult = await db.query(assetsQuery, values);
 
-  return { assets: assetsResult.rows as LibraryAsset[], total };
+  // pg returns jsonb as a JS object already, but be defensive in case it's
+  // returned as a string (older drivers or a future column-type change).
+  const assets = assetsResult.rows.map((row) => {
+    if (row.latest_payload && typeof row.latest_payload === 'string') {
+      try {
+        row.latest_payload = JSON.parse(row.latest_payload);
+      } catch {
+        row.latest_payload = null;
+      }
+    }
+    return row as LibraryAsset;
+  });
+
+  return { assets, total };
 }
 
 export async function getAssetWithVersions(assetId: string): Promise<AssetWithVersions | null> {
@@ -221,4 +236,17 @@ export async function getAssetById(assetId: string): Promise<ContentAsset | null
   const db = getDb();
   const result = await db.query('SELECT * FROM content_assets WHERE id = $1', [assetId]);
   return (result.rows[0] as ContentAsset) || null;
+}
+
+export async function deleteAsset(teacherId: string, assetId: string): Promise<boolean> {
+  const db = getDb();
+  // Ownership-checked delete: only the asset's owner can drop it. Versions
+  // cascade via FK; assignments that reference this asset's version are
+  // left in place (assignments survive asset deletion — the link becomes
+  // a historical record).
+  const result = await db.query(
+    'DELETE FROM content_assets WHERE id = $1 AND owner_teacher_id = $2',
+    [assetId, teacherId]
+  );
+  return (result.rowCount ?? 0) > 0;
 }

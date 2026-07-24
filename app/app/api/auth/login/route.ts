@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getDb } from '../../../lib/db';
 import { verifyPassword } from '../../../lib/auth/password';
 import { generateAccessToken, generateRefreshToken } from '../../../lib/auth/jwt';
-import { checkRateLimit, rateLimitExceededResponse } from '../../../lib/auth/rate-limit';
+import { checkRateLimit, clearRateLimit, rateLimitExceededResponse } from '../../../lib/auth/rate-limit';
 import { hashRefreshToken } from '../../../lib/auth/refresh-token';
 
 const loginSchema = z.object({
@@ -129,6 +129,8 @@ export async function POST(request: NextRequest) {
       [sessionId, user.id, refreshTokenHash]
     );
 
+    await clearRateLimit(request, 'login');
+
     // Set cookies
     const cookieDomain = process.env.SESSION_COOKIE_DOMAIN;
     const cookieOptions = {
@@ -139,7 +141,11 @@ export async function POST(request: NextRequest) {
       path: '/',
     };
 
+    // session_id is the auth_sessions row id. The standalone teacher reads
+    // the same shared `auth_sessions` table, so handing this back lets the
+    // login page SSO into the teacher in one click instead of a 2nd login.
     const response = NextResponse.json({
+      session_id: sessionId,
       user: {
         id: user.id,
         name: user.name,

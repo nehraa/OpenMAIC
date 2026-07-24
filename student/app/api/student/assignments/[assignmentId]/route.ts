@@ -89,8 +89,7 @@ export const GET = async (
           if (payload.openmaicClassroomId) {
             const baseUrl =
               process.env.OPENMAIC_PUBLIC_URL ||
-              process.env.OPENMAIC_BASE_URL ||
-              'http://localhost:3000';
+              process.env.OPENMAIC_BASE_URL;
             openmaicUrl = `${baseUrl}/classroom/${payload.openmaicClassroomId}`;
           } else {
             slides = Array.isArray(payload.slides) ? (payload.slides as typeof slides) : [];

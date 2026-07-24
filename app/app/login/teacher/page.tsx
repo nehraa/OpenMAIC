@@ -28,8 +28,8 @@ function GlassInput({
   autoComplete?: string;
 }) {
   return (
-    <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-medium text-foreground/80">
+    <div className="space-y-2" suppressHydrationWarning>
+      <label htmlFor={id} className="text-sm font-medium text-foreground/80" suppressHydrationWarning>
         {label}
       </label>
       <input
@@ -43,6 +43,7 @@ function GlassInput({
         minLength={minLength}
         autoComplete={autoComplete}
         className="glass-input w-full h-12 px-4 rounded-xl text-foreground placeholder:text-muted-foreground"
+        suppressHydrationWarning
       />
     </div>
   );
@@ -69,9 +70,11 @@ export default function TeacherLoginPage() {
     setError('');
 
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiBase = baseUrl && baseUrl.length > 0 ? baseUrl : '';
       const endpoint = isSignup
-        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/signup`
-        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`;
+        ? `${apiBase}/api/auth/signup`
+        : `${apiBase}/api/auth/login`;
       const body = isSignup
         ? { name, email, phone, password }
         : { email, password };
@@ -88,8 +91,22 @@ export default function TeacherLoginPage() {
         throw new Error(data.error || 'Authentication failed');
       }
 
+      const data = await res.json().catch(() => ({} as { session_id?: string }));
+
+      // Hand the parent's auth_sessions row id to the teacher via a one-time
+      // URL token. The teacher's /auth/sso page consumes it, sets localStorage,
+      // and goes to the library. No 2nd login form.
+      const teacherBase = process.env.NEXT_PUBLIC_TEACHER_URL || '';
+      const teacherRoot = teacherBase && teacherBase.length > 0 ? teacherBase : '';
+      if (data.session_id) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        window.location.href = `${teacherRoot}/teacher/auth/sso?token=${encodeURIComponent(data.session_id)}`;
+        return;
+      }
+      // Fallback: no session_id from the API (older parent or signup flow).
+      // Send the user to the teacher and let them log in again there.
       await new Promise((resolve) => setTimeout(resolve, 300));
-      router.push(`${process.env.NEXT_PUBLIC_TEACHER_URL || 'http://localhost:3001'}/teacher`);
+      router.push(`${teacherRoot}/teacher/login/teacher`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {

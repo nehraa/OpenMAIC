@@ -158,7 +158,7 @@ export function ModelSelector({
       setTestingModelId(mid);
 
       try {
-        const response = await fetch('/api/verify-model', {
+        const response = await fetch('/classroom/api/verify-model', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(

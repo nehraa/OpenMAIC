@@ -200,7 +200,7 @@ export function QuizEditor({ quizId, initialQuestions, onSave }: QuizEditorProps
     if (!mcqState.question.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/teacher/quizzes/${quizId}/questions`, {
+      const res = await fetch(`/teacher/api/teacher/quizzes/${quizId}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-session-id': getSessionId() },
         body: JSON.stringify({
@@ -227,7 +227,7 @@ export function QuizEditor({ quizId, initialQuestions, onSave }: QuizEditorProps
     if (!saState.question.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/teacher/quizzes/${quizId}/questions`, {
+      const res = await fetch(`/teacher/api/teacher/quizzes/${quizId}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-session-id': getSessionId() },
         body: JSON.stringify({
@@ -251,7 +251,7 @@ export function QuizEditor({ quizId, initialQuestions, onSave }: QuizEditorProps
 
   async function deleteQuestion(questionId: string) {
     if (!confirm('Delete this question?')) return;
-    const res = await fetch(`/api/teacher/quizzes/${quizId}/questions/${questionId}`, {
+    const res = await fetch(`/teacher/api/teacher/quizzes/${quizId}/questions/${questionId}`, {
       method: 'DELETE',
       headers: { 'x-session-id': getSessionId() }
     });
@@ -269,7 +269,7 @@ export function QuizEditor({ quizId, initialQuestions, onSave }: QuizEditorProps
     if (!confirm(`Publish quiz with ${questions.length} questions? This cannot be undone.`)) return;
     setPublishing(true);
     try {
-      const res = await fetch(`/api/teacher/quizzes/${quizId}/publish`, {
+      const res = await fetch(`/teacher/api/teacher/quizzes/${quizId}/publish`, {
         method: 'POST',
         headers: { 'x-session-id': getSessionId() }
       });

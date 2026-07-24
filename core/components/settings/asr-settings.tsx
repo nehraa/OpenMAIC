@@ -146,7 +146,7 @@ export function ASRSettings({ selectedProviderId }: ASRSettingsProps) {
             if (baseUrlValue?.trim()) formData.append('baseUrl', baseUrlValue);
 
             try {
-              const response = await fetch('/api/transcription', {
+              const response = await fetch('/classroom/api/transcription', {
                 method: 'POST',
                 body: formData,
               });

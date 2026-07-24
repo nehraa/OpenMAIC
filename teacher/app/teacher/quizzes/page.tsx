@@ -53,7 +53,7 @@ export default function QuizzesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        window.location.href = `/teacher/quizzes/${data.quiz.id}/edit`;
+        window.location.href = `/quizzes/${data.quiz.id}/edit`;
       }
     } finally {
       setCreating(false);
@@ -125,7 +125,7 @@ export default function QuizzesPage() {
               {quizzes.map((quiz) => (
                 <tr key={quiz.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <Link href={`/teacher/quizzes/${quiz.id}/edit`} className="text-primary hover:underline font-medium">
+                    <Link href={`quizzes/${quiz.id}/edit`} className="text-primary hover:underline font-medium">
                       {quiz.title}
                     </Link>
                   </td>
@@ -138,11 +138,11 @@ export default function QuizzesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <Link href={`/teacher/quizzes/${quiz.id}/edit`} className="text-sm text-primary hover:underline">
+                      <Link href={`quizzes/${quiz.id}/edit`} className="text-sm text-primary hover:underline">
                         Edit
                       </Link>
                       {quiz.version.status === 'published' && (
-                        <Link href={`/teacher/quizzes/${quiz.id}/edit`} className="text-sm text-gray-500 hover:underline">
+                        <Link href={`quizzes/${quiz.id}/edit`} className="text-sm text-gray-500 hover:underline">
                           View
                         </Link>
                       )}

@@ -13,5 +13,11 @@ export async function GET() {
     authenticated = !!token && verifyAccessToken(token, accessCode);
   }
 
-  return apiSuccess({ enabled, authenticated });
+  // Only expose the code to authenticated visitors so presenters see it on
+  // the slide and can share it with others in the room.
+  return apiSuccess({
+    enabled,
+    authenticated,
+    code: authenticated ? accessCode ?? null : null,
+  });
 }

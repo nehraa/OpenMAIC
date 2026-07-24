@@ -8,13 +8,13 @@ import { persist } from 'zustand/middleware';
 
 /** Predefined avatar options */
 export const AVATAR_OPTIONS = [
-  '/avatars/user.png',
-  '/avatars/teacher-2.png',
-  '/avatars/assist-2.png',
-  '/avatars/clown-2.png',
-  '/avatars/curious-2.png',
-  '/avatars/note-taker-2.png',
-  '/avatars/thinker-2.png',
+  '/classroom/avatars/user.png',
+  '/classroom/avatars/teacher-2.png',
+  '/classroom/avatars/assist-2.png',
+  '/classroom/avatars/clown-2.png',
+  '/classroom/avatars/curious-2.png',
+  '/classroom/avatars/note-taker-2.png',
+  '/classroom/avatars/thinker-2.png',
 ] as const;
 
 export interface UserProfileState {

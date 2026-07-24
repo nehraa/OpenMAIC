@@ -189,7 +189,7 @@ function GenerationPreviewContent() {
           parseFormData.append('baseUrl', currentSession.pdfProviderConfig.baseUrl);
         }
 
-        const parseResponse = await fetch('/api/parse-pdf', {
+        const parseResponse = await fetch('/classroom/api/parse-pdf', {
           method: 'POST',
           body: parseFormData,
           signal,
@@ -302,7 +302,7 @@ function GenerationPreviewContent() {
         const wsSettings = useSettingsStore.getState();
         const wsApiKey =
           wsSettings.webSearchProvidersConfig?.[wsSettings.webSearchProviderId]?.apiKey;
-        const res = await fetch('/api/web-search', {
+        const res = await fetch('/classroom/api/web-search', {
           method: 'POST',
           headers: getApiHeaders(),
           body: JSON.stringify({
@@ -378,7 +378,7 @@ function GenerationPreviewContent() {
           const collected: SceneOutline[] = [];
           let directive: string | undefined;
 
-          fetch('/api/generate/scene-outlines-stream', {
+          fetch('/classroom/api/generate/scene-outlines-stream', {
             method: 'POST',
             headers: getApiHeaders(),
             body: JSON.stringify({
@@ -505,51 +505,51 @@ function GenerationPreviewContent() {
         try {
           const allAvatars = [
             {
-              path: '/avatars/teacher.png',
+              path: '/classroom/avatars/teacher.png',
               desc: 'Male teacher with glasses, holding a book, green background',
             },
             {
-              path: '/avatars/teacher-2.png',
+              path: '/classroom/avatars/teacher-2.png',
               desc: 'Female teacher with long dark hair, blue traditional outfit, gentle expression',
             },
             {
-              path: '/avatars/assist.png',
+              path: '/classroom/avatars/assist.png',
               desc: 'Young female assistant with glasses, pink background, friendly smile',
             },
             {
-              path: '/avatars/assist-2.png',
+              path: '/classroom/avatars/assist-2.png',
               desc: 'Young female in orange top and purple overalls, cheerful and approachable',
             },
             {
-              path: '/avatars/clown.png',
+              path: '/classroom/avatars/clown.png',
               desc: 'Energetic girl with glasses pointing up, green shirt, lively and fun',
             },
             {
-              path: '/avatars/clown-2.png',
+              path: '/classroom/avatars/clown-2.png',
               desc: 'Playful girl with curly hair doing rock gesture, blue shirt, humorous vibe',
             },
             {
-              path: '/avatars/curious.png',
+              path: '/classroom/avatars/curious.png',
               desc: 'Surprised boy with glasses, hand on cheek, curious expression',
             },
             {
-              path: '/avatars/curious-2.png',
+              path: '/classroom/avatars/curious-2.png',
               desc: 'Boy with backpack holding a book and question mark bubble, inquisitive',
             },
             {
-              path: '/avatars/note-taker.png',
+              path: '/classroom/avatars/note-taker.png',
               desc: 'Studious boy with glasses, blue shirt, calm and organized',
             },
             {
-              path: '/avatars/note-taker-2.png',
+              path: '/classroom/avatars/note-taker-2.png',
               desc: 'Active boy with yellow backpack waving, blue outfit, enthusiastic learner',
             },
             {
-              path: '/avatars/thinker.png',
+              path: '/classroom/avatars/thinker.png',
               desc: 'Thoughtful girl with hand on chin, purple background, contemplative',
             },
             {
-              path: '/avatars/thinker-2.png',
+              path: '/classroom/avatars/thinker-2.png',
               desc: 'Girl reading a book intently, long dark hair, intellectual and focused',
             },
           ];
@@ -565,7 +565,7 @@ function GenerationPreviewContent() {
             );
           };
 
-          const agentResp = await fetch('/api/generate/agent-profiles', {
+          const agentResp = await fetch('/classroom/api/generate/agent-profiles', {
             method: 'POST',
             headers: getApiHeaders(),
             body: JSON.stringify({
@@ -676,7 +676,7 @@ function GenerationPreviewContent() {
       const firstOutline = outlines[0];
 
       // Step 2: Generate content (currentStepIndex is already 2)
-      const contentResp = await fetch('/api/generate/scene-content', {
+      const contentResp = await fetch('/classroom/api/generate/scene-content', {
         method: 'POST',
         headers: getApiHeaders(),
         body: JSON.stringify({
@@ -706,7 +706,7 @@ function GenerationPreviewContent() {
       const actionsStepIdx = activeSteps.findIndex((s) => s.id === 'actions');
       setCurrentStepIndex(actionsStepIdx >= 0 ? actionsStepIdx : currentStepIndex + 1);
 
-      const actionsResp = await fetch('/api/generate/scene-actions', {
+      const actionsResp = await fetch('/classroom/api/generate/scene-actions', {
         method: 'POST',
         headers: getApiHeaders(),
         body: JSON.stringify({
@@ -744,7 +744,7 @@ function GenerationPreviewContent() {
           const audioId = `tts_${action.id}`;
           action.audioId = audioId;
           try {
-            const resp = await fetch('/api/generate/tts', {
+            const resp = await fetch('/classroom/api/generate/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -813,7 +813,7 @@ function GenerationPreviewContent() {
 
       sessionStorage.removeItem('generationSession');
       await store.saveToStorage();
-      router.push(`/classroom/${stage.id}`);
+      router.push(`/${stage.id}`);
     } catch (err) {
       // AbortError is expected when navigating away — don't show as error
       if (err instanceof DOMException && err.name === 'AbortError') {

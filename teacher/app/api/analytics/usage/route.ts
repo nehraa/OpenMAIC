@@ -104,13 +104,13 @@ function aggregateByFeature(records: TokenUsage[]) {
 
 function deriveFeatureFromEndpoint(endpoint: string): string {
   if (!endpoint) return 'other';
-  if (endpoint.includes('/library/generate')) {
+  if (endpoint.includes('/teacher/library/generate')) {
     return 'content_generation';
   }
-  if (endpoint.includes('/quizzes/generate')) {
+  if (endpoint.includes('/teacher/quizzes/generate')) {
     return 'quiz_generation';
   }
-  if (endpoint.includes('/sessions') || endpoint.includes('/live-sessions')) {
+  if (endpoint.includes('/teacher/sessions') || endpoint.includes('/live-sessions')) {
     return 'classroom';
   }
   if (endpoint.includes('/pbl/chat')) {

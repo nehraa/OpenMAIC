@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
     const baseUrl = buildRequestOrigin(req);
     const jobId = nanoid(10);
     const job = await createClassroomGenerationJob(jobId, body);
-    const pollUrl = `${baseUrl}/api/generate-classroom/${jobId}`;
+    // Core is mounted at basePath `/classroom`, so its API routes live at
+    // `/classroom/api/...` — not `/api/...`. The poll URL must include that
+    // prefix or the client will get a 404 when polling.
+    const pollUrl = `${baseUrl}/classroom/api/generate-classroom/${jobId}`;
 
     after(() => runClassroomGenerationJob(jobId, body, baseUrl));
 

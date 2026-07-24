@@ -228,7 +228,7 @@ export default function ClassesPage() {
           {classes.map((cls) => (
             <div key={cls.id} className="bg-white border rounded-xl p-5 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-3">
-                <Link href={`/teacher/classes/${cls.id}`} className="font-semibold text-lg hover:text-primary">
+                <Link href={`classes/${cls.id}`} className="font-semibold text-lg hover:text-primary">
                   {cls.name}
                 </Link>
                 <div className="flex gap-1">
@@ -279,7 +279,7 @@ export default function ClassesPage() {
                   Join code: <code className="bg-gray-100 px-1 rounded">{cls.join_code}</code>
                 </span>
                 <Link
-                  href={`/teacher/classes/${cls.id}`}
+                  href={`classes/${cls.id}`}
                   className="text-sm text-primary hover:underline"
                 >
                   View details

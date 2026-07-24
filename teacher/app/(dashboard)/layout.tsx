@@ -15,12 +15,15 @@ import {
   CreditCard,
 } from 'lucide-react'
 
+// basePath='/teacher' + URL = basePath + route path. Route files live at
+// app/teacher/<route>/, so URL = /teacher/teacher/<route> (basePath + literal 'teacher/').
+// pathname() includes basePath, so active comparison must use the same prefix.
 const navItems = [
-  { href: '/classes', label: 'Classes', icon: Users },
-  { href: '/assignments', label: 'Assignments', icon: ClipboardList },
-  { href: '/quizzes', label: 'Quizzes', icon: BookOpen },
-  { href: '/sessions', label: 'Live Sessions', icon: Play },
-  { href: '/library', label: 'Library', icon: Library },
+  { href: '/teacher/classes', label: 'Classes', icon: Users },
+  { href: '/teacher/assignments', label: 'Assignments', icon: ClipboardList },
+  { href: '/teacher/quizzes', label: 'Quizzes', icon: BookOpen },
+  { href: '/teacher/sessions', label: 'Live Sessions', icon: Play },
+  { href: '/teacher/library', label: 'Library', icon: Library },
   { href: '/teacher/progress', label: 'Progress', icon: BarChart3 },
   { href: '/usage', label: 'Usage', icon: CreditCard },
   { href: '/settings', label: 'Settings', icon: Settings },
