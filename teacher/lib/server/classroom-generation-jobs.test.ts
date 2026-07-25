@@ -45,7 +45,7 @@ describe('advanceClassroomGenerationJob', () => {
   });
 
   it('returns live progress from a pending Core job without persisting it', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+    const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({
         done: false,
         status: 'running',
@@ -55,7 +55,8 @@ describe('advanceClassroomGenerationJob', () => {
         scenesGenerated: 3,
         totalScenes: 5,
       }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
-    ));
+    );
+    vi.stubGlobal('fetch', fetchMock);
 
     const result = await advanceClassroomGenerationJob(pendingJob);
 
@@ -68,5 +69,10 @@ describe('advanceClassroomGenerationJob', () => {
     });
     expect(mockQuery).toHaveBeenCalledTimes(1);
     expect(String(mockQuery.mock.calls[0][0])).toContain('poll_failures = 0');
+
+    // Core's middleware rejects unauthenticated calls, so the outbound request
+    // must carry the HMAC-signed `openmaic_access` cookie.
+    const outboundCookie = (fetchMock.mock.calls[0][1] as RequestInit).headers?.Cookie as string;
+    expect(outboundCookie).toMatch(/^openmaic_access=\d+\.[0-9a-f]+$/);
   });
 });

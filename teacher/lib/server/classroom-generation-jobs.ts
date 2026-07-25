@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import { getDb } from '../db';
 import { saveGeneratedContent } from './library';
 import { recordUsage } from './usage';
@@ -100,6 +101,20 @@ function coreBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
+// Core's middleware requires the same HMAC-signed `openmaic_access` cookie
+// the browser flow uses. Teacher shares the ACCESS_CODE secret with core, so
+// mint a token per outbound request rather than threading the user's cookie
+// (which lives on core's host, not teacher's).
+function coreAuthCookie(): string {
+  const accessCode = process.env.ACCESS_CODE;
+  if (!accessCode) {
+    throw new Error('ACCESS_CODE is not configured');
+  }
+  const timestamp = Date.now().toString();
+  const signature = createHmac('sha256', accessCode).update(timestamp).digest('hex');
+  return `openmaic_access=${timestamp}.${signature}`;
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -119,7 +134,10 @@ export async function startCoreClassroomJob(
     url,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: coreAuthCookie(),
+      },
       body: JSON.stringify({
         requirement: prompt,
         ...(requirements ? { requirements } : {}),
@@ -330,7 +348,14 @@ export async function advanceClassroomGenerationJob(
 
   let response: Response;
   try {
-    response = await fetchWithTimeout(job.corePollUrl, { method: 'GET' }, CORE_POLL_TIMEOUT_MS);
+    response = await fetchWithTimeout(
+      job.corePollUrl,
+      {
+        method: 'GET',
+        headers: { Cookie: coreAuthCookie() },
+      },
+      CORE_POLL_TIMEOUT_MS,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Core status request failed';
     return recordPollFailure(job, message);

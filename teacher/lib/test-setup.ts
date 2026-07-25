@@ -3,6 +3,12 @@
 
 import { vi } from 'vitest';
 
+// Needed by tests that call into core's auth-protected routes. Production
+// code mints an HMAC token from this at request time; the placeholder is
+// fine for unit tests that don't actually verify the token contents.
+process.env.ACCESS_CODE = process.env.ACCESS_CODE || 'test-access-code';
+process.env.CORE_INTERNAL_URL = process.env.CORE_INTERNAL_URL || 'http://core.test';
+
 // Mock the entire better-sqlite3 module
 vi.mock('better-sqlite3', () => {
   const createMockStatement = () => {

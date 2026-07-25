@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function StudentLoginPage() {
   const router = useRouter()
+  const [mode, setMode] = useState<'phone' | 'email'>('phone')
+  const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -47,15 +49,18 @@ export default function StudentLoginPage() {
     setIsSubmitting(true)
 
     try {
+      const payload =
+        mode === 'phone' ? { phone } : { email, password }
+
       const response = await fetch('/student/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       })
 
       if (response.status === 401) {
-        setError('Invalid email or password')
+        setError(mode === 'phone' ? 'No student found for that phone' : 'Invalid email or password')
         return
       }
 
@@ -73,9 +78,8 @@ export default function StudentLoginPage() {
   }
 
   const canSubmit =
-    email.trim().length > 0 &&
-    password.length > 0 &&
-    !isSubmitting
+    isSubmitting ||
+    (mode === 'phone' ? phone.trim().length > 0 : email.trim().length > 0 && password.length > 0)
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -93,31 +97,52 @@ export default function StudentLoginPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  required
-                />
-              </div>
+              {mode === 'phone' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone (E.164, e.g. +15551234567)</Label>
+                  <Input
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+15551234567"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use the phone number you used when joining your class.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Your password"
-                  autoComplete="current-password"
-                  required
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Your password"
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
+                </>
+              )}
 
               {error && (
                 <Alert variant="destructive">
@@ -133,6 +158,19 @@ export default function StudentLoginPage() {
               >
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError('')
+                    setMode(mode === 'phone' ? 'email' : 'phone')
+                  }}
+                  className="text-sm text-primary hover:underline font-medium"
+                >
+                  {mode === 'phone' ? 'Sign in with email + password' : 'Sign in with phone only'}
+                </button>
+              </div>
             </form>
           )}
 
